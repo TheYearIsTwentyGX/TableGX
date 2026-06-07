@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --color-table-bg: var(--table-bg, #ffffff);
+  --color-table-header-bg: var(--table-header-bg, #f9fafb);
+  --color-table-row-hover: var(--table-row-hover, #f3f4f6);
+  --color-table-border: var(--table-border, #e5e7eb);
+  --color-table-accent: var(--table-accent, #2563eb);
+  --color-table-accent-hover: var(--table-accent-hover, #1d4ed8);
+  --color-table-text: var(--table-text, #111827);
+  --color-table-text-muted: var(--table-text-muted, #6b7280);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+.dark {
+  --color-table-bg: #1f2937;          /* gray-800 */
+  --color-table-header-bg: #111827;   /* gray-900 */
+  --color-table-row-hover: #374151;   /* gray-700 */
+  --color-table-border: #374151;      /* gray-700 */
+  --color-table-accent: #60a5fa;      /* blue-400 */
+  --color-table-accent-hover: #93c5fd;/* blue-300 */
+  --color-table-text: #f9fafb;        /* gray-50 */
+  --color-table-text-muted: #9ca3af;  /* gray-400 */
+}
+
+@layer base {
+  body {
+    color: #111827;
+    background-color: #f3f4f6; /* Switched to a slightly off-white bg so table pop is visible */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
