@@ -55,8 +55,8 @@ const defaultData: Facility[] = [
   { id: '5', name: 'Veterans Hospital', dba: 'VH', beds: 120, isActive: true, city: 'Miami', state: 'FL', revenue: 900000, manager: 'Frank Blue', phone: '555-0106', email: 'frank@vh.com', rating: 4, zipCode: '33101', address: '202 Vet Blvd', website: 'vh.com', fax: '555-0206', director: 'Dr. Blue', capacity: 140, occupancy: 80, lastInspection: '2025-01-05', complianceScore: 94, yearBuilt: 1960, operatingExpense: 750000, netProfit: 150000, staffCount: 95, satisfactionScore: 91, fundingType: 'Public', region: 'Southeast', emergencyPhone: '555-0906', operatingRooms: 5, outpatientDaily: 75, nurseRatio: '1:4' },
 ];
 
-// Generate massive data
-const mockData: Facility[] = Array.from({ length: 5000 }, (_, i) => {
+// Generate ~500 rows
+const mockData: Facility[] = Array.from({ length: 500 }, (_, i) => {
   const rev = Math.floor(Math.random() * 2000000) + 100000;
   const exp = Math.floor(Math.random() * 1500000) + 50000;
   return {
@@ -253,6 +253,7 @@ export default function App() {
 
   const commonColumns = columns.slice(0, 2); // Name and DBA
 
+  // Tab 1: Exactly 15 columns
   const tab1Columns = [
     ...commonColumns,
     columns.find(c => c.id === 'isActive')!,
@@ -262,11 +263,15 @@ export default function App() {
     columns.find(c => c.id === 'netProfit')!,
     columns.find(c => c.id === 'fundingType')!,
     columns.find(c => c.id === 'region')!,
+    columns.find(c => c.id === 'city')!,
+    columns.find(c => c.id === 'state')!,
     { header: 'Capacity', accessorKey: 'capacity', id: 'capacity', meta: { editable: true } },
     { header: 'Occupancy %', accessorKey: 'occupancy', id: 'occupancy', meta: { editable: true } },
-    { header: 'Compliance Score', accessorKey: 'complianceScore', id: 'complianceScore' }
+    { header: 'Compliance Score', accessorKey: 'complianceScore', id: 'complianceScore' },
+    columns.find(c => c.id === 'actions')!
   ] as ColumnDef<Facility>[];
 
+  // Tab 2: Exactly 15 columns
   const tab2Columns = [
     ...commonColumns,
     { header: 'Manager', accessorKey: 'manager', id: 'manager', meta: { editable: true } },
@@ -277,21 +282,44 @@ export default function App() {
     { header: 'Fax Number', accessorKey: 'fax', id: 'fax' },
     { header: 'Website', accessorKey: 'website', id: 'website' },
     { header: 'Star Rating', accessorKey: 'rating', id: 'rating', meta: { editable: true } },
-    columns.find(c => c.id === 'staffCount')!
+    columns.find(c => c.id === 'staffCount')!,
+    columns.find(c => c.id === 'satisfactionScore')!,
+    columns.find(c => c.id === 'nurseRatio')!,
+    { header: 'Year Built', accessorKey: 'yearBuilt', id: 'yearBuilt' },
+    columns.find(c => c.id === 'actions')!
   ] as ColumnDef<Facility>[];
 
+  // Tab 3: Exactly 30 columns
   const tab3Columns = [
     ...commonColumns,
-    { header: 'Zip Code', accessorKey: 'zipCode', id: 'zipCode' },
+    columns.find(c => c.id === 'isActive')!,
+    columns.find(c => c.id === 'beds')!,
+    { header: 'Capacity', accessorKey: 'capacity', id: 'capacity' },
+    { header: 'Occupancy %', accessorKey: 'occupancy', id: 'occupancy' },
+    columns.find(c => c.id === 'revenue')!,
+    columns.find(c => c.id === 'operatingExpense')!,
+    columns.find(c => c.id === 'netProfit')!,
+    columns.find(c => c.id === 'fundingType')!,
+    { header: 'Compliance Score', accessorKey: 'complianceScore', id: 'complianceScore' },
+    { header: 'Manager', accessorKey: 'manager', id: 'manager' },
+    { header: 'Director', accessorKey: 'director', id: 'director' },
+    { header: 'Phone Number', accessorKey: 'phone', id: 'phone' },
+    columns.find(c => c.id === 'emergencyPhone')!,
+    { header: 'Email Address', accessorKey: 'email', id: 'email' },
+    { header: 'Fax Number', accessorKey: 'fax', id: 'fax' },
+    { header: 'Website', accessorKey: 'website', id: 'website' },
+    { header: 'Star Rating', accessorKey: 'rating', id: 'rating' },
+    columns.find(c => c.id === 'staffCount')!,
+    columns.find(c => c.id === 'satisfactionScore')!,
+    columns.find(c => c.id === 'nurseRatio')!,
     columns.find(c => c.id === 'city')!,
     columns.find(c => c.id === 'state')!,
+    { header: 'Zip Code', accessorKey: 'zipCode', id: 'zipCode' },
     { header: 'Address', accessorKey: 'address', id: 'address' },
-    columns.find(c => c.id === 'operatingRooms')!,
-    columns.find(c => c.id === 'outpatientDaily')!,
-    columns.find(c => c.id === 'nurseRatio')!,
-    columns.find(c => c.id === 'satisfactionScore')!,
+    columns.find(c => c.id === 'region')!,
     { header: 'Year Built', accessorKey: 'yearBuilt', id: 'yearBuilt' },
-    { header: 'Last Inspection', accessorKey: 'lastInspection', id: 'lastInspection' }
+    { header: 'Last Inspection', accessorKey: 'lastInspection', id: 'lastInspection' },
+    columns.find(c => c.id === 'actions')!
   ] as ColumnDef<Facility>[];
 
   const tabs: TabbedTableTab<Facility>[] = [
