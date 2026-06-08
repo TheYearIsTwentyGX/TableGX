@@ -27,48 +27,74 @@ type Facility = {
   lastInspection: string;
   complianceScore: number;
   yearBuilt: number;
+  // New Columns
+  operatingExpense: number;
+  netProfit: number;
+  staffCount: number;
+  satisfactionScore: number;
+  fundingType: string;
+  region: string;
+  emergencyPhone: string;
+  operatingRooms: number;
+  outpatientDaily: number;
+  nurseRatio: string;
   children?: Facility[];
 };
 
 const defaultData: Facility[] = [
-  { id: '1', name: 'General Hospital', dba: 'GenH', beds: 250, isActive: true, city: 'NYC', state: 'NY', revenue: 1000000, manager: 'John Doe', phone: '555-0100', email: 'john@genh.com', rating: 5, zipCode: '10001', address: '123 Main St', website: 'genh.com', fax: '555-0200', director: 'Dr. Smith', capacity: 300, occupancy: 85, lastInspection: '2025-01-10', complianceScore: 98, yearBuilt: 1980 },
-  { id: '2', name: 'City Clinic', dba: 'CC', beds: 50, isActive: true, city: 'LA', state: 'CA', revenue: 500000, manager: 'Jane Smith', phone: '555-0101', email: 'jane@cc.com', rating: 4, zipCode: '90001', address: '456 Oak St', website: 'cc.com', fax: '555-0201', director: 'Dr. Jones', capacity: 60, occupancy: 90, lastInspection: '2025-02-15', complianceScore: 95, yearBuilt: 2005 },
+  { id: '1', name: 'General Hospital', dba: 'GenH', beds: 250, isActive: true, city: 'NYC', state: 'NY', revenue: 1000000, manager: 'John Doe', phone: '555-0100', email: 'john@genh.com', rating: 5, zipCode: '10001', address: '123 Main St', website: 'genh.com', fax: '555-0200', director: 'Dr. Smith', capacity: 300, occupancy: 85, lastInspection: '2025-01-10', complianceScore: 98, yearBuilt: 1980, operatingExpense: 800000, netProfit: 200000, staffCount: 150, satisfactionScore: 92, fundingType: 'Private', region: 'Northeast', emergencyPhone: '555-0900', operatingRooms: 8, outpatientDaily: 120, nurseRatio: '1:3' },
+  { id: '2', name: 'City Clinic', dba: 'CC', beds: 50, isActive: true, city: 'LA', state: 'CA', revenue: 500000, manager: 'Jane Smith', phone: '555-0101', email: 'jane@cc.com', rating: 4, zipCode: '90001', address: '456 Oak St', website: 'cc.com', fax: '555-0201', director: 'Dr. Jones', capacity: 60, occupancy: 90, lastInspection: '2025-02-15', complianceScore: 95, yearBuilt: 2005, operatingExpense: 350000, netProfit: 150000, staffCount: 40, satisfactionScore: 88, fundingType: 'Public', region: 'West', emergencyPhone: '555-0901', operatingRooms: 2, outpatientDaily: 45, nurseRatio: '1:4' },
   {
-    id: '3', name: 'Regional Medical Center', dba: 'RMC', beds: 500, isActive: false, city: 'Chicago', state: 'IL', revenue: 2000000, manager: 'Bob Brown', phone: '555-0102', email: 'bob@rmc.com', rating: 3, zipCode: '60601', address: '789 Pine St', website: 'rmc.com', fax: '555-0202', director: 'Dr. Brown', capacity: 550, occupancy: 70, lastInspection: '2024-11-20', complianceScore: 88, yearBuilt: 1975,
+    id: '3', name: 'Regional Medical Center', dba: 'RMC', beds: 500, isActive: false, city: 'Chicago', state: 'IL', revenue: 2000000, manager: 'Bob Brown', phone: '555-0102', email: 'bob@rmc.com', rating: 3, zipCode: '60601', address: '789 Pine St', website: 'rmc.com', fax: '555-0202', director: 'Dr. Brown', capacity: 550, occupancy: 70, lastInspection: '2024-11-20', complianceScore: 88, yearBuilt: 1975, operatingExpense: 1700000, netProfit: 300000, staffCount: 320, satisfactionScore: 85, fundingType: 'Non-Profit', region: 'Midwest', emergencyPhone: '555-0902', operatingRooms: 12, outpatientDaily: 250, nurseRatio: '1:4',
     children: [
-      { id: '3-1', name: 'RMC - North Wing', dba: 'RMC-N', beds: 200, isActive: false, city: 'Chicago', state: 'IL', revenue: 800000, manager: 'Alice White', phone: '555-0103', email: 'alice@rmc.com', rating: 4, zipCode: '60602', address: '789 Pine St N', website: 'rmc.com/n', fax: '555-0203', director: 'Dr. White', capacity: 220, occupancy: 60, lastInspection: '2024-11-21', complianceScore: 90, yearBuilt: 1978 },
-      { id: '3-2', name: 'RMC - South Wing', dba: 'RMC-S', beds: 300, isActive: true, city: 'Chicago', state: 'IL', revenue: 1200000, manager: 'Charlie Green', phone: '555-0104', email: 'charlie@rmc.com', rating: 4, zipCode: '60603', address: '789 Pine St S', website: 'rmc.com/s', fax: '555-0204', director: 'Dr. Green', capacity: 330, occupancy: 80, lastInspection: '2024-11-22', complianceScore: 92, yearBuilt: 1982 },
+      { id: '3-1', name: 'RMC - North Wing', dba: 'RMC-N', beds: 200, isActive: false, city: 'Chicago', state: 'IL', revenue: 800000, manager: 'Alice White', phone: '555-0103', email: 'alice@rmc.com', rating: 4, zipCode: '60602', address: '789 Pine St N', website: 'rmc.com/n', fax: '555-0203', director: 'Dr. White', capacity: 220, occupancy: 60, lastInspection: '2024-11-21', complianceScore: 90, yearBuilt: 1978, operatingExpense: 700000, netProfit: 100000, staffCount: 120, satisfactionScore: 87, fundingType: 'Non-Profit', region: 'Midwest', emergencyPhone: '555-0903', operatingRooms: 4, outpatientDaily: 100, nurseRatio: '1:3' },
+      { id: '3-2', name: 'RMC - South Wing', dba: 'RMC-S', beds: 300, isActive: true, city: 'Chicago', state: 'IL', revenue: 1200000, manager: 'Charlie Green', phone: '555-0104', email: 'charlie@rmc.com', rating: 4, zipCode: '60603', address: '789 Pine St S', website: 'rmc.com/s', fax: '555-0204', director: 'Dr. Green', capacity: 330, occupancy: 80, lastInspection: '2024-11-22', complianceScore: 92, yearBuilt: 1982, operatingExpense: 1000000, netProfit: 200000, staffCount: 200, satisfactionScore: 89, fundingType: 'Non-Profit', region: 'Midwest', emergencyPhone: '555-0904', operatingRooms: 8, outpatientDaily: 150, nurseRatio: '1:4' },
     ]
   },
-  { id: '4', name: 'Childrens Hospital', dba: 'CH', beds: 150, isActive: true, city: 'Austin', state: 'TX', revenue: 1500000, manager: 'Eve Black', phone: '555-0105', email: 'eve@ch.com', rating: 5, zipCode: '73301', address: '101 Kids Way', website: 'ch.com', fax: '555-0205', director: 'Dr. Black', capacity: 160, occupancy: 95, lastInspection: '2025-03-01', complianceScore: 99, yearBuilt: 2010 },
-  { id: '5', name: 'Veterans Hospital', dba: 'VH', beds: 120, isActive: true, city: 'Miami', state: 'FL', revenue: 900000, manager: 'Frank Blue', phone: '555-0106', email: 'frank@vh.com', rating: 4, zipCode: '33101', address: '202 Vet Blvd', website: 'vh.com', fax: '555-0206', director: 'Dr. Blue', capacity: 140, occupancy: 80, lastInspection: '2025-01-05', complianceScore: 94, yearBuilt: 1960 },
+  { id: '4', name: 'Childrens Hospital', dba: 'CH', beds: 150, isActive: true, city: 'Austin', state: 'TX', revenue: 1500000, manager: 'Eve Black', phone: '555-0105', email: 'eve@ch.com', rating: 5, zipCode: '73301', address: '101 Kids Way', website: 'ch.com', fax: '555-0205', director: 'Dr. Black', capacity: 160, occupancy: 95, lastInspection: '2025-03-01', complianceScore: 99, yearBuilt: 2010, operatingExpense: 1200000, netProfit: 300000, staffCount: 110, satisfactionScore: 96, fundingType: 'Private', region: 'Southwest', emergencyPhone: '555-0905', operatingRooms: 6, outpatientDaily: 80, nurseRatio: '1:2' },
+  { id: '5', name: 'Veterans Hospital', dba: 'VH', beds: 120, isActive: true, city: 'Miami', state: 'FL', revenue: 900000, manager: 'Frank Blue', phone: '555-0106', email: 'frank@vh.com', rating: 4, zipCode: '33101', address: '202 Vet Blvd', website: 'vh.com', fax: '555-0206', director: 'Dr. Blue', capacity: 140, occupancy: 80, lastInspection: '2025-01-05', complianceScore: 94, yearBuilt: 1960, operatingExpense: 750000, netProfit: 150000, staffCount: 95, satisfactionScore: 91, fundingType: 'Public', region: 'Southeast', emergencyPhone: '555-0906', operatingRooms: 5, outpatientDaily: 75, nurseRatio: '1:4' },
 ];
 
 // Generate massive data
-const mockData: Facility[] = Array.from({ length: 1000 }, (_, i) => ({
-  id: `mock-${i}`,
-  name: `Facility ${i}`,
-  dba: `DBA ${i}`,
-  beds: Math.floor(Math.random() * 500) + 50,
-  isActive: Math.random() > 0.5,
-  city: `City ${Math.floor(i / 10)}`,
-  state: ['CA', 'NY', 'TX', 'FL', 'IL'][Math.floor(Math.random() * 5)],
-  revenue: Math.floor(Math.random() * 1000000),
-  manager: `Manager ${i}`,
-  phone: `555-01${Math.floor(Math.random() * 99)}`,
-  email: `contact${i}@example.com`,
-  rating: Math.floor(Math.random() * 5) + 1,
-  zipCode: `1234${Math.floor(Math.random() * 9)}`,
-  address: `${Math.floor(Math.random() * 9999)} Main St`,
-  website: `hospital${i}.com`,
-  fax: `555-02${Math.floor(Math.random() * 99)}`,
-  director: `Director ${i}`,
-  capacity: Math.floor(Math.random() * 500) + 50,
-  occupancy: Math.floor(Math.random() * 100),
-  lastInspection: `202${Math.floor(Math.random() * 5)}-0${Math.floor(Math.random() * 9) + 1}-15`,
-  complianceScore: Math.floor(Math.random() * 20) + 80,
-  yearBuilt: 1950 + Math.floor(Math.random() * 70)
-}));
+const mockData: Facility[] = Array.from({ length: 5000 }, (_, i) => {
+  const rev = Math.floor(Math.random() * 2000000) + 100000;
+  const exp = Math.floor(Math.random() * 1500000) + 50000;
+  return {
+    id: `mock-${i}`,
+    name: `Facility ${i}`,
+    dba: `DBA ${i}`,
+    beds: Math.floor(Math.random() * 500) + 50,
+    isActive: Math.random() > 0.5,
+    city: `City ${Math.floor(i / 10)}`,
+    state: ['CA', 'NY', 'TX', 'FL', 'IL'][Math.floor(Math.random() * 5)],
+    revenue: rev,
+    manager: `Manager ${i}`,
+    phone: `555-01${Math.floor(Math.random() * 90) + 10}`,
+    email: `contact${i}@example.com`,
+    rating: Math.floor(Math.random() * 5) + 1,
+    zipCode: `1234${Math.floor(Math.random() * 9)}`,
+    address: `${Math.floor(Math.random() * 9999)} Main St`,
+    website: `hospital${i}.com`,
+    fax: `555-02${Math.floor(Math.random() * 90) + 10}`,
+    director: `Director ${i}`,
+    capacity: Math.floor(Math.random() * 500) + 50,
+    occupancy: Math.floor(Math.random() * 100),
+    lastInspection: `202${Math.floor(Math.random() * 5)}-0${Math.floor(Math.random() * 9) + 1}-15`,
+    complianceScore: Math.floor(Math.random() * 20) + 80,
+    yearBuilt: 1950 + Math.floor(Math.random() * 70),
+    // New mock variables
+    operatingExpense: exp,
+    netProfit: rev - exp,
+    staffCount: Math.floor(Math.random() * 250) + 10,
+    satisfactionScore: Math.floor(Math.random() * 40) + 60,
+    fundingType: ['Public', 'Private', 'Non-Profit'][Math.floor(Math.random() * 3)],
+    region: ['Northeast', 'Southeast', 'Midwest', 'Southwest', 'West'][Math.floor(Math.random() * 5)],
+    emergencyPhone: `555-09${Math.floor(Math.random() * 90) + 10}`,
+    operatingRooms: Math.floor(Math.random() * 16) + 1,
+    outpatientDaily: Math.floor(Math.random() * 400) + 20,
+    nurseRatio: `1:${Math.floor(Math.random() * 6) + 2}`
+  };
+});
 
 export default function App() {
   const [data, setData] = useState<Facility[]>([...defaultData, ...mockData]);
@@ -118,6 +144,67 @@ export default function App() {
       accessorKey: 'revenue',
       meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
     },
+    // New Columns definitions
+    {
+      id: 'operatingExpense',
+      header: 'Operating Exp.',
+      accessorKey: 'operatingExpense',
+      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'netProfit',
+      header: 'Net Profit',
+      accessorKey: 'netProfit',
+      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'staffCount',
+      header: 'Staff Count',
+      accessorKey: 'staffCount',
+      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'satisfactionScore',
+      header: 'Satisfaction %',
+      accessorKey: 'satisfactionScore',
+      meta: { editable: true, inputType: 'number', footerAggregate: 'avg' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'fundingType',
+      header: 'Funding Type',
+      accessorKey: 'fundingType',
+      meta: { editable: true, inputType: 'text' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'region',
+      header: 'Region',
+      accessorKey: 'region',
+      meta: { editable: true, inputType: 'text' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'emergencyPhone',
+      header: 'Emerg. Phone',
+      accessorKey: 'emergencyPhone',
+      meta: { editable: true, inputType: 'text' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'operatingRooms',
+      header: 'OR Count',
+      accessorKey: 'operatingRooms',
+      meta: { editable: true, inputType: 'number' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'outpatientDaily',
+      header: 'Daily Outpatients',
+      accessorKey: 'outpatientDaily',
+      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+    },
+    {
+      id: 'nurseRatio',
+      header: 'Nurse-to-Patient',
+      accessorKey: 'nurseRatio',
+      meta: { editable: true, inputType: 'text' } as TableColumnMeta<Facility>
+    },
     {
       id: 'actions',
       header: 'Actions',
@@ -164,14 +251,17 @@ export default function App() {
     return true;
   };
 
-  const commonColumns = columns.slice(0, 2); // DBA and Beds
+  const commonColumns = columns.slice(0, 2); // Name and DBA
 
   const tab1Columns = [
     ...commonColumns,
     columns.find(c => c.id === 'isActive')!,
-    columns.find(c => c.id === 'city')!,
-    columns.find(c => c.id === 'state')!,
+    columns.find(c => c.id === 'beds')!,
     columns.find(c => c.id === 'revenue')!,
+    columns.find(c => c.id === 'operatingExpense')!,
+    columns.find(c => c.id === 'netProfit')!,
+    columns.find(c => c.id === 'fundingType')!,
+    columns.find(c => c.id === 'region')!,
     { header: 'Capacity', accessorKey: 'capacity', id: 'capacity', meta: { editable: true } },
     { header: 'Occupancy %', accessorKey: 'occupancy', id: 'occupancy', meta: { editable: true } },
     { header: 'Compliance Score', accessorKey: 'complianceScore', id: 'complianceScore' }
@@ -182,19 +272,24 @@ export default function App() {
     { header: 'Manager', accessorKey: 'manager', id: 'manager', meta: { editable: true } },
     { header: 'Director', accessorKey: 'director', id: 'director', meta: { editable: true } },
     { header: 'Phone Number', accessorKey: 'phone', id: 'phone', meta: { editable: true } },
+    columns.find(c => c.id === 'emergencyPhone')!,
     { header: 'Email Address', accessorKey: 'email', id: 'email', meta: { editable: true } },
     { header: 'Fax Number', accessorKey: 'fax', id: 'fax' },
     { header: 'Website', accessorKey: 'website', id: 'website' },
-    { header: 'Star Rating', accessorKey: 'rating', id: 'rating', meta: { editable: true } }
+    { header: 'Star Rating', accessorKey: 'rating', id: 'rating', meta: { editable: true } },
+    columns.find(c => c.id === 'staffCount')!
   ] as ColumnDef<Facility>[];
 
   const tab3Columns = [
     ...commonColumns,
     { header: 'Zip Code', accessorKey: 'zipCode', id: 'zipCode' },
     columns.find(c => c.id === 'city')!,
+    columns.find(c => c.id === 'state')!,
     { header: 'Address', accessorKey: 'address', id: 'address' },
-    { header: 'Manager', accessorKey: 'manager', id: 'manager' },
-    { header: 'Phone Number', accessorKey: 'phone', id: 'phone' },
+    columns.find(c => c.id === 'operatingRooms')!,
+    columns.find(c => c.id === 'outpatientDaily')!,
+    columns.find(c => c.id === 'nurseRatio')!,
+    columns.find(c => c.id === 'satisfactionScore')!,
     { header: 'Year Built', accessorKey: 'yearBuilt', id: 'yearBuilt' },
     { header: 'Last Inspection', accessorKey: 'lastInspection', id: 'lastInspection' }
   ] as ColumnDef<Facility>[];
@@ -206,7 +301,7 @@ export default function App() {
       editable: true,
       columns: tab1Columns,
       frozenColumns: 2,
-      editableColumnIds: ['dba', 'beds', 'isActive', 'city', 'state', 'revenue'],
+      editableColumnIds: ['dba', 'beds', 'isActive', 'city', 'state', 'revenue', 'operatingExpense', 'netProfit', 'fundingType', 'region'],
       singleClickEdit: false,
       onSaveEdit: handleSaveEdit,
     },
@@ -216,7 +311,7 @@ export default function App() {
       editable: true,
       columns: tab2Columns,
       frozenColumns: 2,
-      editableColumnIds: ['dba', 'beds', 'manager', 'phone', 'email', 'rating'],
+      editableColumnIds: ['dba', 'beds', 'manager', 'phone', 'email', 'rating', 'emergencyPhone', 'staffCount'],
       singleClickEdit: true,
       onSaveEdit: handleSaveEdit,
     },
