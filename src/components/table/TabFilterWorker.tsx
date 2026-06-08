@@ -26,6 +26,13 @@ export function TabFilterWorker<TRow extends Record<string, unknown>>({
     state: { columnFilters },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    defaultColumn: {
+      filterFn: (row, columnId, filterValue) => {
+        if (!Array.isArray(filterValue) || filterValue.length === 0) return true;
+        const val = row.getValue(columnId);
+        return filterValue.includes(String(val ?? ''));
+      }
+    }
   });
 
   const filteredRows = table.getFilteredRowModel().rows;

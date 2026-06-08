@@ -129,7 +129,8 @@ export function useTableEngine<TRow extends Record<string, unknown>>({
     defaultColumn: {
       filterFn: (row, columnId, filterValue) => {
         if (!Array.isArray(filterValue) || filterValue.length === 0) return true;
-        return filterValue.includes(row.getValue(columnId));
+        const val = row.getValue(columnId);
+        return filterValue.includes(String(val ?? ''));
       }
     }
   });
