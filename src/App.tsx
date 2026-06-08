@@ -416,6 +416,7 @@ export default function App() {
           getSubRows={(row: Facility) => row.children}
           getRowId={(row: Facility) => row.id}
           animateScrollOnly={true}
+          enableFooter={true}
           classNames={activeTheme === 'glass' ? LIQUID_GLASS_THEME : activeTheme === 'brutalist' ? BRUTALIST_THEME : undefined}
         />
       </div>

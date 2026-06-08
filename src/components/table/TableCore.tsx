@@ -8,7 +8,7 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 import { BodyCell } from './BodyCell';
 import { HeaderFilter } from './HeaderFilter';
 import { ROW_HEIGHT_PX, HEADER_HEIGHT_PX } from './constants';
-import type { TableClassNames } from './types';
+import type { TableClassNames, TableColumnMeta } from './types';
 
 export type TableCoreProps<TRow> = {
   table: Table<TRow>;
@@ -28,6 +28,7 @@ export type TableCoreProps<TRow> = {
   tabTransitionDirection?: number;
   classNames?: TableClassNames;
   fullData?: TRow[];
+  enableFooter?: boolean;
 };
 
 // Persists the native scrollbar visibility across tab unmounts to prevent visual flashing during animations
@@ -51,6 +52,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
   tabTransitionDirection = 0,
   classNames,
   fullData,
+  enableFooter = false,
 }: TableCoreProps<TRow>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAnimating, setIsAnimating] = useState(!!animateScrollOnly);
@@ -127,6 +129,53 @@ export function TableCore<TRow extends Record<string, unknown>>({
 
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalHeight = rowVirtualizer.getTotalSize();
+
+  const getFooterValue = (col: Column<TRow, unknown>) => {
+    const meta = col.columnDef.meta as TableColumnMeta<TRow> | undefined;
+    if (!meta) return '';
+
+    if (meta.footerLabel !== undefined) {
+      return meta.footerLabel;
+    }
+
+    const aggregate = meta.footerAggregate;
+    if (!aggregate) return '';
+
+    const leafRows = rows.filter(r => !r.subRows || r.subRows.length === 0);
+    const values = leafRows.map(r => r.getValue(col.id));
+
+    let result: number | string = '';
+
+    if (aggregate === 'count') {
+      result = values.filter(v => v !== undefined && v !== null && v !== '').length;
+    } else {
+      const numValues = values
+        .map(v => typeof v === 'string' ? parseFloat(v) : Number(v))
+        .filter(v => !isNaN(v) && typeof v === 'number');
+
+      if (numValues.length > 0) {
+        if (aggregate === 'sum') {
+          result = numValues.reduce((sum, v) => sum + v, 0);
+        } else if (aggregate === 'avg') {
+          result = numValues.reduce((sum, v) => sum + v, 0) / numValues.length;
+        } else if (aggregate === 'min') {
+          result = Math.min(...numValues);
+        } else if (aggregate === 'max') {
+          result = Math.max(...numValues);
+        }
+      }
+    }
+
+    if (result === '') return '';
+
+    if (typeof result === 'number') {
+      if (meta.footerFormat) {
+        return meta.footerFormat(result);
+      }
+      return result.toLocaleString();
+    }
+    return String(result);
+  };
 
   const handleEnterEdit = (rowId: string | number, columnId: string, initialValue: string) => {
     if (editableColumnIds.includes(columnId)) {
@@ -211,7 +260,10 @@ export function TableCore<TRow extends Record<string, unknown>>({
       >
         <div 
           className="flex min-w-full"
-          style={{ width: pinnedWidth + scrollWidth, minHeight: totalHeight + HEADER_HEIGHT_PX }}
+          style={{ 
+            width: pinnedWidth + scrollWidth, 
+            minHeight: totalHeight + HEADER_HEIGHT_PX + (enableFooter ? ROW_HEIGHT_PX : 0) 
+          }}
         >
           {/* Pinned Pane */}
           {frozenColumns > 0 && (
@@ -249,9 +301,15 @@ export function TableCore<TRow extends Record<string, unknown>>({
                           onMouseDown={header.getResizeHandler()}
                           onTouchStart={header.getResizeHandler()}
                           onClick={e => e.stopPropagation()}
-                          className={`absolute right-0 top-0 h-full w-4 cursor-col-resize z-10 select-none touch-none hover:bg-table-accent/30 dark:hover:bg-blue-500/30 ${header.column.getIsResizing() ? 'bg-table-accent/50 dark:bg-blue-500/50' : 'bg-transparent'}`}
+                          className="absolute right-0 top-0 h-full w-4 cursor-col-resize z-10 select-none touch-none group"
                           role="separator"
-                        />
+                        >
+                          <div className={`mx-auto w-[2px] h-full transition-colors ${
+                            header.column.getIsResizing() 
+                              ? 'bg-table-accent dark:bg-blue-500' 
+                              : 'bg-transparent group-hover:bg-table-accent/50 dark:group-hover:bg-blue-500/50'
+                          }`} />
+                        </div>
                       )}
                     </div>
                   );
@@ -272,29 +330,64 @@ export function TableCore<TRow extends Record<string, unknown>>({
                       className={twMerge("absolute top-0 left-0 w-full flex hover:bg-table-row-hover dark:hover:bg-gray-800 data-[hovered=true]:bg-table-row-hover dark:data-[hovered=true]:bg-gray-800 transition-colors text-table-text dark:text-gray-300", classNames?.bodyRow)}
                       style={{ height: ROW_HEIGHT_PX, transform: `translateY(${vRow.start}px)` }}
                     >
-                      {pinnedCols.map((col, idx) => (
-                        <div key={col.id} style={{ width: getColWidth(col) }} className={twMerge("h-full", classNames?.bodyCell)}>
-                          <BodyCell
-                            cell={cells[idx]}
-                            editable={editable}
-                            isSubmitting={isSubmitting}
-                            editingState={editingState}
-                            onEnterEdit={handleEnterEdit}
-                            onSaveEdit={handleSaveEdit}
-                            onCancelEdit={() => setEditingState(null)}
-                            singleClickEdit={singleClickEdit}
-                            className={getCellClassName?.(row.original, col.id)}
-                            isDisclosureColumn={idx === 0}
-                            depth={row.depth}
-                            isExpanded={row.getIsExpanded()}
-                            onToggleExpand={row.getToggleExpandedHandler()}
-                          />
-                        </div>
-                      ))}
+                      {pinnedCols.map((col, idx) => {
+                        const isLastPinnedCol = idx === pinnedCols.length - 1;
+                        return (
+                          <div 
+                            key={col.id} 
+                            style={{ width: getColWidth(col) }} 
+                            className={twMerge(
+                              "h-full", 
+                              (bordered && !isLastPinnedCol) ? "border-r border-table-border dark:border-gray-700" : "",
+                              classNames?.bodyCell
+                            )}
+                          >
+                            <BodyCell
+                              cell={cells[idx]}
+                              editable={editable}
+                              isSubmitting={isSubmitting}
+                              editingState={editingState}
+                              onEnterEdit={handleEnterEdit}
+                              onSaveEdit={handleSaveEdit}
+                              onCancelEdit={() => setEditingState(null)}
+                              singleClickEdit={singleClickEdit}
+                              className={getCellClassName?.(row.original, col.id)}
+                              isDisclosureColumn={idx === 0}
+                              depth={row.depth}
+                              isExpanded={row.getIsExpanded()}
+                              onToggleExpand={row.getToggleExpandedHandler()}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )
                 })}
               </div>
+
+              {/* Footer */}
+              {enableFooter && (
+                <div 
+                  className={twMerge(
+                    "sticky bottom-0 z-30 bg-table-header-bg dark:bg-gray-800 border-t border-table-border dark:border-gray-700 flex", 
+                    classNames?.headerRow ? classNames.headerRow.replace(/border-b/g, 'border-t') : ''
+                  )} 
+                  style={{ height: ROW_HEIGHT_PX }}
+                >
+                  {pinnedCols.map((col) => (
+                    <div 
+                      key={col.id} 
+                      className={twMerge(
+                        "relative font-bold text-xs text-table-text dark:text-gray-200 border-r border-table-border dark:border-gray-700 last:border-r-0 flex items-center px-3 truncate",
+                        classNames?.headerCell
+                      )} 
+                      style={{ width: getColWidth(col) }}
+                    >
+                      {getFooterValue(col)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -333,16 +426,22 @@ export function TableCore<TRow extends Record<string, unknown>>({
                 {visibleScrollCols.map(({ col }) => {
                   const header = table.getHeaderGroups()[0].headers.find(h => h.column.id === col.id);
                   return (
-                    <div key={col.id} className="relative font-semibold text-xs text-table-text dark:text-gray-200 border-r border-table-border dark:border-gray-700 last:border-r-0" style={{ width: getColWidth(col), flexShrink: 0 }}>
+                    <div key={col.id} className="relative font-semibold text-xs text-table-text dark:text-gray-200 border-r border-table-border dark:border-gray-700" style={{ width: getColWidth(col), flexShrink: 0 }}>
                       {renderHeaderContent(col, header)}
                       {col.getCanResize() && header && (
                         <div
                           onMouseDown={header.getResizeHandler()}
                           onTouchStart={header.getResizeHandler()}
                           onClick={e => e.stopPropagation()}
-                          className={`absolute right-0 top-0 h-full w-4 cursor-col-resize z-10 select-none touch-none hover:bg-table-accent/30 dark:hover:bg-blue-500/30 ${header.column.getIsResizing() ? 'bg-table-accent/50 dark:bg-blue-500/50' : 'bg-transparent'}`}
+                          className="absolute right-0 top-0 h-full w-4 cursor-col-resize z-10 select-none touch-none group"
                           role="separator"
-                        />
+                        >
+                          <div className={`mx-auto w-[2px] h-full transition-colors ${
+                            header.column.getIsResizing() 
+                              ? 'bg-table-accent dark:bg-blue-500' 
+                              : 'bg-transparent group-hover:bg-table-accent/50 dark:group-hover:bg-blue-500/50'
+                          }`} />
+                        </div>
                       )}
                     </div>
                   );
@@ -368,29 +467,68 @@ export function TableCore<TRow extends Record<string, unknown>>({
                       style={{ height: ROW_HEIGHT_PX, transform: `translateY(${vRow.start}px)`, width: scrollWidth }}
                     >
                       {leftPadding > 0 && <div style={{ width: leftPadding, flexShrink: 0 }} />}
-                      {visibleScrollCols.map(({ col, scrollIndex }) => (
-                        <div key={col.id} style={{ width: getColWidth(col), flexShrink: 0 }} className={twMerge("h-full", classNames?.bodyCell)}>
-                          <BodyCell
-                            cell={cells[frozenColumns + scrollIndex]}
-                            editable={editable}
-                            isSubmitting={isSubmitting}
-                            editingState={editingState}
-                            onEnterEdit={handleEnterEdit}
-                            onSaveEdit={handleSaveEdit}
-                            onCancelEdit={() => setEditingState(null)}
-                            singleClickEdit={singleClickEdit}
-                            className={getCellClassName?.(row.original, col.id)}
-                            isDisclosureColumn={frozenColumns === 0 && scrollIndex === 0}
-                            depth={row.depth}
-                            isExpanded={row.getIsExpanded()}
-                            onToggleExpand={row.getToggleExpandedHandler()}
-                          />
-                        </div>
-                      ))}
+                      {visibleScrollCols.map(({ col, scrollIndex }) => {
+                        const isLastScrollCol = col.id === scrollCols[scrollCols.length - 1]?.id;
+                        return (
+                          <div 
+                            key={col.id} 
+                            style={{ width: getColWidth(col), flexShrink: 0 }} 
+                            className={twMerge(
+                              "h-full", 
+                              (bordered || isLastScrollCol) ? "border-r border-table-border dark:border-gray-700" : "",
+                              classNames?.bodyCell
+                            )}
+                          >
+                            <BodyCell
+                              cell={cells[frozenColumns + scrollIndex]}
+                              editable={editable}
+                              isSubmitting={isSubmitting}
+                              editingState={editingState}
+                              onEnterEdit={handleEnterEdit}
+                              onSaveEdit={handleSaveEdit}
+                              onCancelEdit={() => setEditingState(null)}
+                              singleClickEdit={singleClickEdit}
+                              className={getCellClassName?.(row.original, col.id)}
+                              isDisclosureColumn={frozenColumns === 0 && scrollIndex === 0}
+                              depth={row.depth}
+                              isExpanded={row.getIsExpanded()}
+                              onToggleExpand={row.getToggleExpandedHandler()}
+                            />
+                          </div>
+                        );
+                      })}
                       {rightPadding > 0 && <div style={{ width: rightPadding, flexShrink: 0 }} />}
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* Footer */}
+            {enableFooter && rows.length > 0 && visibleScrollCols.length > 0 && (
+              <div 
+                className={twMerge(
+                  "sticky bottom-0 z-30 bg-table-header-bg dark:bg-gray-800 border-t border-table-border dark:border-gray-700 flex", 
+                  classNames?.headerRow ? classNames.headerRow.replace(/border-b/g, 'border-t') : ''
+                )} 
+                style={{ height: ROW_HEIGHT_PX, width: scrollWidth }}
+              >
+                {leftPadding > 0 && <div style={{ width: leftPadding, flexShrink: 0 }} />}
+                {visibleScrollCols.map(({ col }) => {
+                  return (
+                    <div 
+                      key={col.id} 
+                      className={twMerge(
+                        "relative font-bold text-xs text-table-text dark:text-gray-200 border-r border-table-border dark:border-gray-700 flex items-center px-3 truncate",
+                        classNames?.headerCell
+                      )} 
+                      style={{ width: getColWidth(col), flexShrink: 0 }}
+                    >
+                      {getFooterValue(col)}
+                    </div>
+                  );
+                })}
+                {rightPadding > 0 && <div style={{ width: rightPadding, flexShrink: 0 }} />}
               </div>
             )}
           </motion.div>

@@ -21,6 +21,7 @@ export function ReadOnlyTable<TRow extends Record<string, unknown>>(props: ReadO
         tabTransitionDirection={props.tabTransitionDirection}
         classNames={props.classNames}
         fullData={props.fullData}
+        enableFooter={props.enableFooter}
       />
     </div>
   );

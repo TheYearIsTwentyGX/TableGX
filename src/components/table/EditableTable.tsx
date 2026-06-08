@@ -33,6 +33,7 @@ export function EditableTable<TRow extends Record<string, unknown>>({
         tabTransitionDirection={tabTransitionDirection}
         classNames={classNames}
         fullData={props.fullData}
+        enableFooter={props.enableFooter}
       />
     </div>
   );
