@@ -250,6 +250,7 @@ export const BodyCell = React.memo(BodyCellInner, (prev, next) => {
     prev.editingState?.columnId === next.editingState?.columnId &&
     prev.isExpanded === next.isExpanded &&
     prev.depth === next.depth &&
-    prev.className === next.className
+    prev.className === next.className &&
+    prev.cell.column.columnDef.meta === next.cell.column.columnDef.meta
   );
 }) as typeof BodyCellInner;
