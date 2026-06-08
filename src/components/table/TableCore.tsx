@@ -304,7 +304,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
                           className="absolute right-0 top-0 h-full w-4 cursor-col-resize z-10 select-none touch-none group"
                           role="separator"
                         >
-                          <div className={`mx-auto w-[2px] h-full transition-colors ${
+                          <div className={`absolute right-0 w-[2px] h-full transition-colors ${
                             header.column.getIsResizing() 
                               ? 'bg-table-accent dark:bg-blue-500' 
                               : 'bg-transparent group-hover:bg-table-accent/50 dark:group-hover:bg-blue-500/50'
@@ -436,7 +436,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
                           className="absolute right-0 top-0 h-full w-4 cursor-col-resize z-10 select-none touch-none group"
                           role="separator"
                         >
-                          <div className={`mx-auto w-[2px] h-full transition-colors ${
+                          <div className={`absolute right-0 w-[2px] h-full transition-colors ${
                             header.column.getIsResizing() 
                               ? 'bg-table-accent dark:bg-blue-500' 
                               : 'bg-transparent group-hover:bg-table-accent/50 dark:group-hover:bg-blue-500/50'
