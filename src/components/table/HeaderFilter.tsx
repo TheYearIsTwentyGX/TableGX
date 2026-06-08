@@ -7,9 +7,10 @@ import { twMerge } from 'tailwind-merge';
 type HeaderFilterProps<TRow> = {
   column: Column<TRow, unknown>;
   className?: string;
+  fullData?: TRow[];
 };
 
-export function HeaderFilter<TRow>({ column, className }: HeaderFilterProps<TRow>) {
+export function HeaderFilter<TRow>({ column, className, fullData }: HeaderFilterProps<TRow>) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -21,8 +22,28 @@ export function HeaderFilter<TRow>({ column, className }: HeaderFilterProps<TRow
   const popoverRef = useRef<HTMLDivElement>(null);
   
   const uniqueValues = useMemo(() => {
-    return Array.from(column.getFacetedUniqueValues().keys()).map(v => String(v)).sort();
-  }, [column]);
+    if (!fullData) {
+      return Array.from(column.getFacetedUniqueValues().keys()).map(v => String(v)).sort();
+    }
+    const accessorKey = (column.columnDef as any).accessorKey;
+    const key = column.id || accessorKey;
+    if (!key) return [];
+
+    const values = new Set<string>();
+    const addValuesRecursive = (items: any[]) => {
+      items.forEach((item) => {
+        const val = item[key];
+        if (val !== undefined && val !== null) {
+          values.add(String(val));
+        }
+        if (item.children && Array.isArray(item.children)) {
+          addValuesRecursive(item.children);
+        }
+      });
+    };
+    addValuesRecursive(fullData);
+    return Array.from(values).sort();
+  }, [column, fullData]);
 
   // Sync staged state when opening
   useEffect(() => {

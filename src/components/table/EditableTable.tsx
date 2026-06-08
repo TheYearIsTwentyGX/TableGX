@@ -32,6 +32,7 @@ export function EditableTable<TRow extends Record<string, unknown>>({
         animateScrollOnly={animateScrollOnly}
         tabTransitionDirection={tabTransitionDirection}
         classNames={classNames}
+        fullData={props.fullData}
       />
     </div>
   );

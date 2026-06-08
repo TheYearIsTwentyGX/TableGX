@@ -71,6 +71,7 @@ export type MeasureTextFn = (text: string, font?: string) => number;
 
 export type ReadOnlyTableProps<TRow> = {
   data: TRow[];
+  fullData?: TRow[];
   columns: ColumnDef<TRow>[];
   getRowId: (row: TRow) => string | number;
   toolbar?: React.ReactNode;

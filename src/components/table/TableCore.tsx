@@ -27,6 +27,7 @@ export type TableCoreProps<TRow> = {
   animateScrollOnly?: boolean;
   tabTransitionDirection?: number;
   classNames?: TableClassNames;
+  fullData?: TRow[];
 };
 
 // Persists the native scrollbar visibility across tab unmounts to prevent visual flashing during animations
@@ -49,6 +50,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
   animateScrollOnly,
   tabTransitionDirection = 0,
   classNames,
+  fullData,
 }: TableCoreProps<TRow>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAnimating, setIsAnimating] = useState(!!animateScrollOnly);
@@ -158,7 +160,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
         
         {canFilter && (
           <div className="flex-shrink-0 mr-3 z-10">
-            <HeaderFilter column={col} className={classNames?.filterPopover} />
+            <HeaderFilter column={col} fullData={fullData} className={classNames?.filterPopover} />
           </div>
         )}
       </div>

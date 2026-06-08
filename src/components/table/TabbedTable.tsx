@@ -107,6 +107,7 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
         <EditableTable
           {...props}
           data={displayData}
+          fullData={props.data}
           columns={tab.columns}
           frozenColumns={tab.frozenColumns}
           editableColumnIds={tab.editableColumnIds}
@@ -128,6 +129,7 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
         <ReadOnlyTable
           {...props}
           data={displayData}
+          fullData={props.data}
           columns={tab.columns}
           frozenColumns={tab.frozenColumns}
           initialSorting={tab.initialSorting}

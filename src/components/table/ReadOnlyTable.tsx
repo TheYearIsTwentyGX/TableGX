@@ -20,6 +20,7 @@ export function ReadOnlyTable<TRow extends Record<string, unknown>>(props: ReadO
         animateScrollOnly={props.animateScrollOnly}
         tabTransitionDirection={props.tabTransitionDirection}
         classNames={props.classNames}
+        fullData={props.fullData}
       />
     </div>
   );
