@@ -6,11 +6,11 @@ import { twMerge } from 'tailwind-merge';
 
 type HeaderFilterProps<TRow> = {
   column: Column<TRow, unknown>;
-  className?: string;
+  popoverClassName?: string;
   fullData?: TRow[];
 };
 
-export function HeaderFilter<TRow>({ column, className, fullData }: HeaderFilterProps<TRow>) {
+export function HeaderFilter<TRow>({ column, popoverClassName, fullData }: HeaderFilterProps<TRow>) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -157,7 +157,7 @@ export function HeaderFilter<TRow>({ column, className, fullData }: HeaderFilter
   };
 
   return (
-    <div className={twMerge("relative inline-flex items-center", className)}>
+    <div className="relative inline-flex items-center">
       <button
         ref={buttonRef}
         onClick={handleToggleOpen}
@@ -173,7 +173,10 @@ export function HeaderFilter<TRow>({ column, className, fullData }: HeaderFilter
       {isOpen && createPortal(
         <div 
           ref={popoverRef}
-          className="header-filter-popover fixed w-64 bg-table-bg dark:bg-gray-800 border border-table-border dark:border-gray-700 rounded-lg shadow-lg z-[100] flex flex-col font-normal text-sm"
+          className={twMerge(
+            "header-filter-popover fixed w-64 bg-table-bg dark:bg-gray-800 border border-table-border dark:border-gray-700 rounded-lg shadow-lg z-[100] flex flex-col font-normal text-sm",
+            popoverClassName
+          )}
           style={{ top: coords.top, left: coords.left }}
           onClick={e => e.stopPropagation()} // Prevent table sorting/interactions
         >

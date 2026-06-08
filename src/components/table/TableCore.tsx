@@ -217,7 +217,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
         
         {canFilter && (
           <div className="flex-shrink-0 mr-3 z-10">
-            <HeaderFilter column={col} fullData={fullData} className={classNames?.filterPopover} />
+            <HeaderFilter column={col} fullData={fullData} popoverClassName={classNames?.filterPopover} />
           </div>
         )}
       </div>
