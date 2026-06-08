@@ -101,6 +101,19 @@ export default function App() {
   const [activeTheme, setActiveTheme] = useState<'default' | 'glass' | 'brutalist'>('default');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // Dynamic Number Formatting Controls
+  const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
+  const [thousandSeparator, setThousandSeparator] = useState<boolean>(true);
+  const [negativeFormat, setNegativeFormat] = useState<'minus' | 'parentheses'>('parentheses');
+  const [negativeInRed, setNegativeInRed] = useState<boolean>(true);
+
+  const numberFormatConfig = {
+    decimalPlaces,
+    thousandSeparator,
+    negativeFormat,
+    negativeInRed
+  };
+
   const columns: ColumnDef<Facility>[] = [
     {
       id: 'name',
@@ -122,7 +135,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: { thousandSeparator: true, decimalPlaces: 0 }
+        numberFormat: { thousandSeparator, decimalPlaces: 0 }
       } as TableColumnMeta<Facility>
     },
     {
@@ -151,7 +164,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: { thousandSeparator: true, decimalPlaces: 2 }
+        numberFormat: numberFormatConfig
       } as TableColumnMeta<Facility>
     },
     // New Columns definitions
@@ -163,7 +176,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: { thousandSeparator: true, decimalPlaces: 2 }
+        numberFormat: numberFormatConfig
       } as TableColumnMeta<Facility>
     },
     {
@@ -174,12 +187,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: {
-          thousandSeparator: true,
-          decimalPlaces: 2,
-          negativeFormat: 'parentheses',
-          negativeInRed: true
-        }
+        numberFormat: numberFormatConfig
       } as TableColumnMeta<Facility>
     },
     {
@@ -395,6 +403,18 @@ export default function App() {
     brutalist: isDarkMode ? 'text-[#00ff00] font-mono font-bold' : 'text-black font-mono font-bold'
   };
 
+  const formatControlsBgMap = {
+    default: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm',
+    glass: 'bg-white/10 backdrop-blur-md border-white/20 shadow-lg',
+    brutalist: isDarkMode ? 'bg-black border-[#00ff00] border-4' : 'bg-[#ffff00] border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+  };
+
+  const formatControlsTextMap = {
+    default: isDarkMode ? 'text-gray-200' : 'text-gray-700',
+    glass: 'text-white',
+    brutalist: isDarkMode ? 'text-[#00ff00] font-mono' : 'text-black font-mono font-bold'
+  };
+
   return (
     <div className={`w-full h-screen p-8 flex flex-col transition-colors duration-500 ${isDarkMode ? 'dark' : ''} ${themeBgMap[activeTheme]}`}>
       <div className="mb-6 flex justify-between items-end">
@@ -431,6 +451,72 @@ export default function App() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Number Formatting Controls */}
+      <div className={`mb-6 p-4 rounded-lg border flex flex-wrap gap-6 items-center text-sm transition-all duration-300 ${formatControlsBgMap[activeTheme]} ${formatControlsTextMap[activeTheme]}`}>
+        <div className="font-bold flex items-center gap-1 uppercase tracking-wider text-xs opacity-80">
+          <span>Format Controls:</span>
+        </div>
+        
+        {/* Decimals */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="decimals-select" className="font-semibold">Decimals:</label>
+          <select 
+            id="decimals-select"
+            value={decimalPlaces} 
+            onChange={e => setDecimalPlaces(Number(e.target.value))}
+            className={`px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-table-accent bg-transparent ${
+              activeTheme === 'brutalist' 
+                ? (isDarkMode ? 'border-[#00ff00] text-[#00ff00]' : 'border-black text-black')
+                : (isDarkMode ? 'border-gray-700 text-white bg-gray-900' : 'border-gray-300 text-gray-900 bg-white')
+            }`}
+          >
+            {[0, 1, 2, 3, 4].map(d => (
+              <option key={d} value={d} className={isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}>{d}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Thousand Separator */}
+        <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
+          <input 
+            type="checkbox" 
+            checked={thousandSeparator} 
+            onChange={e => setThousandSeparator(e.target.checked)}
+            className="w-4 h-4 cursor-pointer"
+          />
+          Thousand Separator
+        </label>
+
+        {/* Negative Format */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="negatives-select" className="font-semibold">Negatives:</label>
+          <select 
+            id="negatives-select"
+            value={negativeFormat} 
+            onChange={e => setNegativeFormat(e.target.value as any)}
+            className={`px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-table-accent bg-transparent ${
+              activeTheme === 'brutalist' 
+                ? (isDarkMode ? 'border-[#00ff00] text-[#00ff00]' : 'border-black text-black')
+                : (isDarkMode ? 'border-gray-700 text-white bg-gray-900' : 'border-gray-300 text-gray-900 bg-white')
+            }`}
+          >
+            <option value="minus" className={isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}>Minus (-123.00)</option>
+            <option value="parentheses" className={isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}>Parentheses ((123.00))</option>
+          </select>
+        </div>
+
+        {/* Negatives in Red */}
+        <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
+          <input 
+            type="checkbox" 
+            checked={negativeInRed} 
+            onChange={e => setNegativeInRed(e.target.checked)}
+            className="w-4 h-4 cursor-pointer"
+          />
+          Negatives in Red
+        </label>
       </div>
 
       <div className={`flex-1 overflow-hidden flex flex-col ${activeTheme === 'default' ? 'bg-white shadow-xl rounded-lg border border-gray-200' : ''}`}>
