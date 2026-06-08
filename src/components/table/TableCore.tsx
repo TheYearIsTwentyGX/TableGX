@@ -9,6 +9,7 @@ import { BodyCell } from './BodyCell';
 import { HeaderFilter } from './HeaderFilter';
 import { ROW_HEIGHT_PX, HEADER_HEIGHT_PX } from './constants';
 import type { TableClassNames, TableColumnMeta } from './types';
+import { formatNumber } from './utils/formatters';
 
 export type TableCoreProps<TRow> = {
   table: Table<TRow>;
@@ -130,7 +131,7 @@ export function TableCore<TRow extends Record<string, unknown>>({
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalHeight = rowVirtualizer.getTotalSize();
 
-  const getFooterValue = (col: Column<TRow, unknown>) => {
+  const getFooterValue = (col: Column<TRow, unknown>): React.ReactNode => {
     const meta = col.columnDef.meta as TableColumnMeta<TRow> | undefined;
     if (!meta) return '';
 
@@ -171,6 +172,13 @@ export function TableCore<TRow extends Record<string, unknown>>({
     if (typeof result === 'number') {
       if (meta.footerFormat) {
         return meta.footerFormat(result);
+      }
+      if (meta.numberFormat) {
+        const formatted = formatNumber(result, meta.numberFormat);
+        if (meta.numberFormat.negativeInRed && result < 0) {
+          return <span className="text-red-600 dark:text-red-400 font-medium">{formatted}</span>;
+        }
+        return formatted;
       }
       return result.toLocaleString();
     }

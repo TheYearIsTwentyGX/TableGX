@@ -31,11 +31,21 @@ export type CellAction<TRow> = {
   tooltip?: string;
 };
 
+export type NumberFormatConfig = {
+  decimalPlaces?: number;
+  thousandSeparator?: boolean;
+  negativeFormat?: 'minus' | 'parentheses';
+  negativeInRed?: boolean;
+};
+
 export type TableColumnMeta<TRow = Record<string, unknown>> = {
   // --- Editing ---
   editable?: boolean;
   inputType?: EditInputType;
   selectOptions?: { label: string; value: string }[];
+
+  // --- Formatting ---
+  numberFormat?: NumberFormatConfig;
 
   // --- Auto-sizing hints ---
   measureText?: (row: TRow) => string;

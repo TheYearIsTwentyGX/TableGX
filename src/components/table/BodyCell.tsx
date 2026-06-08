@@ -4,6 +4,7 @@ import type { Cell } from '@tanstack/react-table';
 import type { TableColumnMeta } from './types';
 import { ChevronRight } from 'lucide-react';
 import { INDENT_STEP_PX } from './constants';
+import { formatNumber } from './utils/formatters';
 
 type BodyCellProps<TRow> = {
   cell: Cell<TRow, unknown>;
@@ -160,6 +161,17 @@ function BodyCellInner<TRow extends Record<string, unknown>>({
           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-50"
         />
       );
+    }
+
+    if (meta?.numberFormat && value !== undefined && value !== null && value !== '') {
+      const num = Number(value);
+      if (!isNaN(num)) {
+        const formatted = formatNumber(num, meta.numberFormat);
+        if (meta.numberFormat.negativeInRed && num < 0) {
+          return <span className="text-red-600 dark:text-red-400 font-medium">{formatted}</span>;
+        }
+        return formatted;
+      }
     }
 
     return flexRender(cell.column.columnDef.cell, cell.getContext());

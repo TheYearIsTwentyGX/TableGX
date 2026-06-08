@@ -18,3 +18,37 @@ export function parseDateSafe(value: string): Date | null {
   }
   return null;
 }
+
+import type { NumberFormatConfig } from '../types';
+
+export function formatNumber(value: number, config: NumberFormatConfig): string {
+  const decimals = config.decimalPlaces ?? 0;
+  
+  let formatted = '';
+  if (config.thousandSeparator ?? true) {
+    formatted = value.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  } else {
+    formatted = value.toFixed(decimals);
+  }
+
+  if (value < 0) {
+    if (config.negativeFormat === 'parentheses') {
+      const absValue = Math.abs(value);
+      let absFormatted = '';
+      if (config.thousandSeparator ?? true) {
+        absFormatted = absValue.toLocaleString(undefined, {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
+      } else {
+        absFormatted = absValue.toFixed(decimals);
+      }
+      formatted = `(${absFormatted})`;
+    }
+  }
+
+  return formatted;
+}

@@ -118,7 +118,12 @@ export default function App() {
       id: 'beds',
       header: 'Beds',
       accessorKey: 'beds',
-      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+      meta: {
+        editable: true,
+        inputType: 'number',
+        footerAggregate: 'sum',
+        numberFormat: { thousandSeparator: true, decimalPlaces: 0 }
+      } as TableColumnMeta<Facility>
     },
     {
       id: 'isActive',
@@ -142,20 +147,40 @@ export default function App() {
       id: 'revenue',
       header: 'Revenue',
       accessorKey: 'revenue',
-      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+      meta: {
+        editable: true,
+        inputType: 'number',
+        footerAggregate: 'sum',
+        numberFormat: { thousandSeparator: true, decimalPlaces: 2 }
+      } as TableColumnMeta<Facility>
     },
     // New Columns definitions
     {
       id: 'operatingExpense',
       header: 'Operating Exp.',
       accessorKey: 'operatingExpense',
-      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+      meta: {
+        editable: true,
+        inputType: 'number',
+        footerAggregate: 'sum',
+        numberFormat: { thousandSeparator: true, decimalPlaces: 2 }
+      } as TableColumnMeta<Facility>
     },
     {
       id: 'netProfit',
       header: 'Net Profit',
       accessorKey: 'netProfit',
-      meta: { editable: true, inputType: 'number', footerAggregate: 'sum' } as TableColumnMeta<Facility>
+      meta: {
+        editable: true,
+        inputType: 'number',
+        footerAggregate: 'sum',
+        numberFormat: {
+          thousandSeparator: true,
+          decimalPlaces: 2,
+          negativeFormat: 'parentheses',
+          negativeInRed: true
+        }
+      } as TableColumnMeta<Facility>
     },
     {
       id: 'staffCount',
