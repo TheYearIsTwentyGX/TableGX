@@ -1,10 +1,11 @@
 import React, { useState, useLayoutEffect } from 'react';
 import { flexRender } from '@tanstack/react-table';
 import type { Cell } from '@tanstack/react-table';
-import type { TableColumnMeta } from './types';
+import type { TableColumnMeta, TableClassNames, NumberFormatConfig } from './types';
 import { ChevronRight } from 'lucide-react';
 import { INDENT_STEP_PX } from './constants';
 import { formatNumber } from './utils/formatters';
+import { twMerge } from 'tailwind-merge';
 
 type BodyCellProps<TRow> = {
   cell: Cell<TRow, unknown>;
@@ -20,6 +21,8 @@ type BodyCellProps<TRow> = {
   depth?: number;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  classNames?: TableClassNames;
+  numberFormatConfig?: NumberFormatConfig;
 };
 
 function BodyCellInner<TRow extends Record<string, unknown>>({
@@ -35,7 +38,9 @@ function BodyCellInner<TRow extends Record<string, unknown>>({
   isDisclosureColumn,
   depth = 0,
   isExpanded,
-  onToggleExpand
+  onToggleExpand,
+  classNames,
+  numberFormatConfig
 }: BodyCellProps<TRow>) {
   const meta = cell.column.columnDef.meta as TableColumnMeta<TRow> | undefined;
   const isEditing = editingState?.rowId === cell.row.id && editingState?.columnId === cell.column.id;
@@ -166,8 +171,16 @@ function BodyCellInner<TRow extends Record<string, unknown>>({
     if (meta?.numberFormat && value !== undefined && value !== null && value !== '') {
       const num = Number(value);
       if (!isNaN(num)) {
-        const formatted = formatNumber(num, meta.numberFormat);
-        if (meta.numberFormat.negativeInRed && num < 0) {
+        let activeFormat = meta.numberFormat;
+        if (numberFormatConfig) {
+          const merged = { ...numberFormatConfig };
+          if (meta.numberFormat.isInteger || meta.numberFormat.decimalPlaces === 0) {
+            merged.decimalPlaces = 0;
+          }
+          activeFormat = { ...meta.numberFormat, ...merged };
+        }
+        const formatted = formatNumber(num, activeFormat);
+        if (activeFormat.negativeInRed && num < 0) {
           return <span className="text-red-600 dark:text-red-400 font-medium">{formatted}</span>;
         }
         return formatted;
@@ -181,7 +194,11 @@ function BodyCellInner<TRow extends Record<string, unknown>>({
 
   return (
     <div
-      className={`relative h-full flex items-center px-3 border-b border-gray-200 dark:border-gray-700 overflow-hidden text-sm ${className}`}
+      className={twMerge(
+        "relative h-full flex items-center px-3 overflow-hidden text-sm",
+        classNames ? "" : "border-b border-gray-200 dark:border-gray-700",
+        className
+      )}
       style={{
         paddingLeft: isDisclosureColumn ? `${(depth * INDENT_STEP_PX) + 12}px` : undefined
       }}
@@ -251,6 +268,8 @@ export const BodyCell = React.memo(BodyCellInner, (prev, next) => {
     prev.isExpanded === next.isExpanded &&
     prev.depth === next.depth &&
     prev.className === next.className &&
-    prev.cell.column.columnDef.meta === next.cell.column.columnDef.meta
+    prev.classNames === next.classNames &&
+    prev.cell.column.columnDef.meta === next.cell.column.columnDef.meta &&
+    JSON.stringify(prev.numberFormatConfig) === JSON.stringify(next.numberFormatConfig)
   );
 }) as typeof BodyCellInner;

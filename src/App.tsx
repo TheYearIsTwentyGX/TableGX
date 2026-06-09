@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { TabbedTable } from './components/table';
 import type { TableColumnMeta, TabbedTableTab } from './components/table';
-import { LIQUID_GLASS_THEME, BRUTALIST_THEME } from './components/table/themes';
+import { LIQUID_GLASS_THEME, BRUTALIST_THEME, LTCDATA_PLUS_THEME } from './components/table/themes';
 
 type Facility = {
   id: string;
@@ -98,21 +98,10 @@ const mockData: Facility[] = Array.from({ length: 500 }, (_, i) => {
 
 export default function App() {
   const [data, setData] = useState<Facility[]>([...defaultData, ...mockData]);
-  const [activeTheme, setActiveTheme] = useState<'default' | 'glass' | 'brutalist'>('default');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [activeTheme, setActiveTheme] = useState<'default' | 'glass' | 'brutalist' | 'LTCData+'>('LTCData+');
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // Dynamic Number Formatting Controls
-  const [decimalPlaces, setDecimalPlaces] = useState<number>(2);
-  const [thousandSeparator, setThousandSeparator] = useState<boolean>(true);
-  const [negativeFormat, setNegativeFormat] = useState<'minus' | 'parentheses'>('parentheses');
-  const [negativeInRed, setNegativeInRed] = useState<boolean>(true);
-
-  const numberFormatConfig = {
-    decimalPlaces,
-    thousandSeparator,
-    negativeFormat,
-    negativeInRed
-  };
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   const columns: ColumnDef<Facility>[] = [
     {
@@ -135,7 +124,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: { thousandSeparator, decimalPlaces: 0 }
+        numberFormat: { thousandSeparator: true, decimalPlaces: 0, isInteger: true }
       } as TableColumnMeta<Facility>
     },
     {
@@ -164,7 +153,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: numberFormatConfig
+        numberFormat: {}
       } as TableColumnMeta<Facility>
     },
     // New Columns definitions
@@ -176,7 +165,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: numberFormatConfig
+        numberFormat: {}
       } as TableColumnMeta<Facility>
     },
     {
@@ -187,7 +176,7 @@ export default function App() {
         editable: true,
         inputType: 'number',
         footerAggregate: 'sum',
-        numberFormat: numberFormatConfig
+        numberFormat: {}
       } as TableColumnMeta<Facility>
     },
     {
@@ -388,38 +377,46 @@ export default function App() {
   const themeBgMap = {
     default: isDarkMode ? 'bg-gray-900' : 'bg-gray-100',
     glass: isDarkMode ? 'bg-gradient-to-br from-gray-900 via-indigo-950 to-black' : 'bg-gradient-to-br from-fuchsia-600 via-violet-600 to-cyan-500',
-    brutalist: isDarkMode ? 'bg-[#1a1a1a] border-[16px] border-[#00ff00]' : 'bg-[#ffffff] border-[16px] border-black'
+    brutalist: isDarkMode ? 'bg-[#1a1a1a] border-[16px] border-[#00ff00]' : 'bg-[#ffffff] border-[16px] border-black',
+    'LTCData+': isDarkMode ? 'bg-slate-900' : 'bg-slate-50'
   };
 
   const themeTextMap = {
     default: isDarkMode ? 'text-white' : 'text-gray-900',
     glass: 'text-white',
-    brutalist: isDarkMode ? 'text-[#00ff00] font-black uppercase tracking-tighter' : 'text-black font-black uppercase tracking-tighter'
+    brutalist: isDarkMode ? 'text-[#00ff00] font-black uppercase tracking-tighter' : 'text-black font-black uppercase tracking-tighter',
+    'LTCData+': isDarkMode ? 'text-slate-100' : 'text-slate-900'
   };
 
   const themeSubtextMap = {
     default: isDarkMode ? 'text-gray-400' : 'text-gray-500',
     glass: 'text-white/80',
-    brutalist: isDarkMode ? 'text-[#00ff00] font-mono font-bold' : 'text-black font-mono font-bold'
+    brutalist: isDarkMode ? 'text-[#00ff00] font-mono font-bold' : 'text-black font-mono font-bold',
+    'LTCData+': isDarkMode ? 'text-slate-400' : 'text-slate-500'
   };
 
-  const formatControlsBgMap = {
-    default: isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm',
-    glass: 'bg-white/10 backdrop-blur-md border-white/20 shadow-lg',
-    brutalist: isDarkMode ? 'bg-black border-[#00ff00] border-4' : 'bg-[#ffff00] border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-  };
 
-  const formatControlsTextMap = {
-    default: isDarkMode ? 'text-gray-200' : 'text-gray-700',
-    glass: 'text-white',
-    brutalist: isDarkMode ? 'text-[#00ff00] font-mono' : 'text-black font-mono font-bold'
-  };
+
+  const badgeClass = activeTheme === 'brutalist'
+    ? "px-2 py-0.5 border-2 border-black dark:border-[#00ff00] bg-white dark:bg-black font-mono font-black text-xs text-black dark:text-[#00ff00] uppercase"
+    : activeTheme === 'glass'
+      ? "px-2 py-0.5 bg-white/20 border border-white/30 rounded-full text-xs font-semibold backdrop-blur-md text-white"
+      : activeTheme === 'LTCData+'
+        ? "px-2 py-0.5 bg-slate-200 dark:bg-[#2b303b] border border-slate-300 dark:border-[#3a4150] rounded-full text-xs font-semibold text-slate-700 dark:text-gray-300"
+        : "px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full text-xs font-semibold text-gray-700 dark:text-gray-300";
 
   return (
     <div className={`w-full h-screen p-8 flex flex-col transition-colors duration-500 ${isDarkMode ? 'dark' : ''} ${themeBgMap[activeTheme]}`}>
       <div className="mb-6 flex justify-between items-end">
         <div>
-          <h1 className={`text-2xl font-bold ${themeTextMap[activeTheme]}`}>Facilities Manager</h1>
+          <div className="flex items-center gap-3">
+            <h1 className={`text-2xl font-bold ${themeTextMap[activeTheme]}`}>Facilities Manager</h1>
+            {selectedRowIds.length > 0 && (
+              <span className={badgeClass}>
+                {selectedRowIds.length} Selected
+              </span>
+            )}
+          </div>
           <p className={`text-sm ${themeSubtextMap[activeTheme]}`}>Demoing Virtualization, Resizing, Nested Rows, Tabs, and Inline Editing</p>
         </div>
         
@@ -434,15 +431,15 @@ export default function App() {
             />
             Dark Mode
           </label>
-          <div className={`flex rounded-lg overflow-hidden border-2 ${activeTheme === 'glass' ? 'border-white/40 shadow-lg' : activeTheme === 'brutalist' ? (isDarkMode ? 'border-[#00ff00] border-4 shadow-[4px_4px_0px_0px_rgba(0,255,0,1)]' : 'border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]') : (isDarkMode ? 'border-gray-700' : 'border-gray-200')}`}>
-            {(['default', 'glass', 'brutalist'] as const).map(theme => (
+          <div className={`flex rounded-lg overflow-hidden border-2 ${activeTheme === 'glass' ? 'border-white/40 shadow-lg' : activeTheme === 'brutalist' ? (isDarkMode ? 'border-[#00ff00] border-4 shadow-[4px_4px_0px_0px_rgba(0,255,0,1)]' : 'border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]') : activeTheme === 'LTCData+' ? (isDarkMode ? 'border-slate-700' : 'border-slate-300') : (isDarkMode ? 'border-gray-700' : 'border-gray-200')}`}>
+            {(['default', 'glass', 'brutalist', 'LTCData+'] as const).map(theme => (
               <button
                 key={theme}
                 onClick={() => setActiveTheme(theme)}
-                className={`px-4 py-2 text-sm font-semibold capitalize transition-all
+                className={`px-4 py-2 text-sm font-semibold transition-all
                   ${activeTheme === theme 
-                    ? activeTheme === 'glass' ? (isDarkMode ? 'bg-black/40 backdrop-blur text-white' : 'bg-white/30 backdrop-blur text-white') : activeTheme === 'brutalist' ? (isDarkMode ? 'bg-[#00ff00] text-black font-black' : 'bg-black text-white font-black') : 'bg-table-accent text-white'
-                    : activeTheme === 'glass' ? 'bg-white/10 text-white/70 hover:bg-white/20' : activeTheme === 'brutalist' ? (isDarkMode ? 'bg-[#1a1a1a] text-[#00ff00] border-r-4 border-[#00ff00] last:border-r-0 hover:bg-black' : 'bg-white text-black border-r-4 border-black last:border-r-0 hover:bg-[#ffeb3b]') : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-50')
+                    ? activeTheme === 'glass' ? (isDarkMode ? 'bg-black/40 backdrop-blur text-white capitalize' : 'bg-white/30 backdrop-blur text-white capitalize') : activeTheme === 'brutalist' ? (isDarkMode ? 'bg-[#00ff00] text-black font-black capitalize' : 'bg-black text-white font-black capitalize') : activeTheme === 'LTCData+' ? (isDarkMode ? 'bg-[#2b303b] text-white' : 'bg-slate-200 text-slate-900') : 'bg-table-accent text-white capitalize'
+                    : activeTheme === 'glass' ? 'bg-white/10 text-white/70 hover:bg-white/20 capitalize' : activeTheme === 'brutalist' ? (isDarkMode ? 'bg-[#1a1a1a] text-[#00ff00] border-r-4 border-[#00ff00] last:border-r-0 hover:bg-black capitalize' : 'bg-white text-black border-r-4 border-black last:border-r-0 hover:bg-[#ffeb3b] capitalize') : activeTheme === 'LTCData+' ? (isDarkMode ? 'bg-transparent text-slate-400 hover:bg-[#2b303b]/50' : 'bg-white text-slate-500 hover:bg-slate-50') : (isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 capitalize' : 'bg-white text-gray-600 hover:bg-gray-50 capitalize')
                   }
                 `}
               >
@@ -453,71 +450,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Number Formatting Controls */}
-      <div className={`mb-6 p-4 rounded-lg border flex flex-wrap gap-6 items-center text-sm transition-all duration-300 ${formatControlsBgMap[activeTheme]} ${formatControlsTextMap[activeTheme]}`}>
-        <div className="font-bold flex items-center gap-1 uppercase tracking-wider text-xs opacity-80">
-          <span>Format Controls:</span>
-        </div>
-        
-        {/* Decimals */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="decimals-select" className="font-semibold">Decimals:</label>
-          <select 
-            id="decimals-select"
-            value={decimalPlaces} 
-            onChange={e => setDecimalPlaces(Number(e.target.value))}
-            className={`px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-table-accent bg-transparent ${
-              activeTheme === 'brutalist' 
-                ? (isDarkMode ? 'border-[#00ff00] text-[#00ff00]' : 'border-black text-black')
-                : (isDarkMode ? 'border-gray-700 text-white bg-gray-900' : 'border-gray-300 text-gray-900 bg-white')
-            }`}
-          >
-            {[0, 1, 2, 3, 4].map(d => (
-              <option key={d} value={d} className={isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}>{d}</option>
-            ))}
-          </select>
-        </div>
 
-        {/* Thousand Separator */}
-        <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
-          <input 
-            type="checkbox" 
-            checked={thousandSeparator} 
-            onChange={e => setThousandSeparator(e.target.checked)}
-            className="w-4 h-4 cursor-pointer"
-          />
-          Thousand Separator
-        </label>
-
-        {/* Negative Format */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="negatives-select" className="font-semibold">Negatives:</label>
-          <select 
-            id="negatives-select"
-            value={negativeFormat} 
-            onChange={e => setNegativeFormat(e.target.value as any)}
-            className={`px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-table-accent bg-transparent ${
-              activeTheme === 'brutalist' 
-                ? (isDarkMode ? 'border-[#00ff00] text-[#00ff00]' : 'border-black text-black')
-                : (isDarkMode ? 'border-gray-700 text-white bg-gray-900' : 'border-gray-300 text-gray-900 bg-white')
-            }`}
-          >
-            <option value="minus" className={isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}>Minus (-123.00)</option>
-            <option value="parentheses" className={isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}>Parentheses ((123.00))</option>
-          </select>
-        </div>
-
-        {/* Negatives in Red */}
-        <label className="flex items-center gap-2 cursor-pointer font-semibold select-none">
-          <input 
-            type="checkbox" 
-            checked={negativeInRed} 
-            onChange={e => setNegativeInRed(e.target.checked)}
-            className="w-4 h-4 cursor-pointer"
-          />
-          Negatives in Red
-        </label>
-      </div>
 
       <div className={`flex-1 overflow-hidden flex flex-col ${activeTheme === 'default' ? 'bg-white shadow-xl rounded-lg border border-gray-200' : ''}`}>
         <TabbedTable<Facility>
@@ -528,7 +461,13 @@ export default function App() {
           getRowId={(row: Facility) => row.id}
           animateScrollOnly={true}
           enableFooter={true}
-          classNames={activeTheme === 'glass' ? LIQUID_GLASS_THEME : activeTheme === 'brutalist' ? BRUTALIST_THEME : undefined}
+          enableRowSelection={true}
+          selectedRowIds={selectedRowIds}
+          onSelectedRowIdsChange={setSelectedRowIds}
+          enableColumnVisibility={true}
+          enableNumberFormatConfig={true}
+          columnVisibilityStorageKeyBase="demo-table-visibility"
+          classNames={activeTheme === 'glass' ? LIQUID_GLASS_THEME : activeTheme === 'brutalist' ? BRUTALIST_THEME : activeTheme === 'LTCData+' ? LTCDATA_PLUS_THEME : undefined}
         />
       </div>
     </div>

@@ -1,0 +1,38 @@
+# Source files
+src/
+public/
+index.html
+
+# Configuration files
+vite.config.ts
+tsconfig.json
+tsconfig.node.json
+tsconfig.app.json
+eslint.config.js
+postcss.config.js
+tailwind.config.js
+
+# Build and cache directories
+.vite/
+
+# Specifications and internal docs
+Table Specs.md
+Table Spec.md
+*.md
+!README.md
+!CHANGELOG.md
+
+# Tests
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Agent Skills Artifacts
+skills/_artifacts/
+
+# System / Editor files
+.vscode/
+.DS_Store
+*.log

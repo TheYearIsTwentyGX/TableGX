@@ -1,16 +1,20 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, createContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { twMerge } from 'tailwind-merge';
 import type { ColumnFiltersState, Updater } from '@tanstack/react-table';
-import type { TabbedTableProps, TabbedTableTab } from './types';
+import type { TabbedTableProps, TabbedTableTab, NumberFormatConfig, TableColumnMeta } from './types';
 import { ReadOnlyTable } from './ReadOnlyTable';
 import { EditableTable } from './EditableTable';
 import { TabFilterWorker } from './TabFilterWorker';
+
+export const TabActionsContext = createContext<HTMLDivElement | null>(null);
 
 export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedTableProps<TRow>) {
   const [activeTabId, setActiveTabId] = useState<string>(
     props.activeTabId ?? props.defaultTabId ?? props.tabs[0]?.id
   );
+  
+  const [actionsContainer, setActionsContainer] = useState<HTMLDivElement | null>(null);
   
   // Controlled vs uncontrolled tab state
   const currentTabId = props.activeTabId !== undefined ? props.activeTabId : activeTabId;
@@ -34,6 +38,57 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
   // Cross-Tab Filtering
   const [tabFilters, setTabFilters] = useState<Record<string, ColumnFiltersState>>({});
   const [filteredIdsByTab, setFilteredIdsByTab] = useState<Record<string, Set<string>>>({});
+
+  // Number Formatting Controls State
+  const [internalNumberFormatConfig, setInternalNumberFormatConfig] = useState<NumberFormatConfig>({
+    decimalPlaces: 2,
+    thousandSeparator: true,
+    negativeFormat: 'parentheses',
+    negativeInRed: true,
+    ...props.defaultNumberFormatConfig
+  });
+
+  const activeNumberFormatConfig = props.numberFormatConfig !== undefined 
+    ? props.numberFormatConfig 
+    : internalNumberFormatConfig;
+
+  const handleNumberFormatConfigChange = useCallback((next: NumberFormatConfig) => {
+    setInternalNumberFormatConfig(next);
+    props.onNumberFormatConfigChange?.(next);
+  }, [props.onNumberFormatConfigChange]);
+
+  const hasNumericColumns = useMemo(() => {
+    return props.tabs.some(tab => 
+      tab.columns.some(col => {
+        const meta = col.meta as TableColumnMeta<TRow> | undefined;
+        return !!meta?.numberFormat;
+      })
+    );
+  }, [props.tabs]);
+
+  const hideDecimalsControl = useMemo(() => {
+    const allNumericCols: any[] = [];
+    const seenColIds = new Set<string>();
+
+    props.tabs.forEach(tab => {
+      tab.columns.forEach(col => {
+        const id = col.id || (col as any).accessorKey;
+        if (!id || seenColIds.has(id)) return;
+        const meta = col.meta as TableColumnMeta<TRow> | undefined;
+        if (meta?.numberFormat) {
+          seenColIds.add(id);
+          allNumericCols.push(col);
+        }
+      });
+    });
+
+    if (allNumericCols.length === 0) return false;
+
+    return allNumericCols.every(col => {
+      const meta = col.meta as TableColumnMeta<TRow> | undefined;
+      return meta?.numberFormat?.isInteger === true || meta?.numberFormat?.decimalPlaces === 0;
+    });
+  }, [props.tabs]);
 
   const handleFilteredIdsChange = useCallback((tabId: string, ids: Set<string>) => {
     setFilteredIdsByTab((prev) => {
@@ -101,6 +156,13 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
     exit: { zIndex: 0, x: 0.01, transition: { duration: 0.25 } }
   };
 
+  const getStorageKey = (tab: TabbedTableTab<TRow>) => {
+    if (tab.columnVisibilityStorageKey) return tab.columnVisibilityStorageKey;
+    const base = props.columnVisibilityStorageKeyBase || props.columnVisibilityStorageKey;
+    if (base) return `${base}:${tab.id}`;
+    return undefined;
+  };
+
   const renderTabContent = (tab: TabbedTableTab<TRow>) => {
     if (tab.editable) {
       return (
@@ -122,6 +184,11 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
           classNames={props.classNames}
           columnFilters={tabFilters[tab.id] || []}
           onColumnFiltersChange={handleColumnFiltersChange}
+          columnVisibilityStorageKey={getStorageKey(tab)}
+          numberFormatConfig={activeNumberFormatConfig}
+          onNumberFormatConfigChange={handleNumberFormatConfigChange}
+          enableNumberFormatConfig={props.enableNumberFormatConfig && hasNumericColumns}
+          hideDecimalsControl={hideDecimalsControl}
         />
       );
     } else {
@@ -139,13 +206,19 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
           classNames={props.classNames}
           columnFilters={tabFilters[tab.id] || []}
           onColumnFiltersChange={handleColumnFiltersChange}
+          columnVisibilityStorageKey={getStorageKey(tab)}
+          numberFormatConfig={activeNumberFormatConfig}
+          onNumberFormatConfigChange={handleNumberFormatConfigChange}
+          enableNumberFormatConfig={props.enableNumberFormatConfig && hasNumericColumns}
+          hideDecimalsControl={hideDecimalsControl}
         />
       );
     }
   };
 
   return (
-    <div className={twMerge("flex flex-col h-full border border-table-border dark:border-gray-700 rounded-md overflow-hidden bg-table-bg dark:bg-gray-900", props.classNames?.container)}>
+    <TabActionsContext.Provider value={actionsContainer}>
+      <div className={twMerge("flex flex-col h-full border border-table-border dark:border-gray-700 rounded-md overflow-hidden bg-table-bg dark:bg-gray-900", props.classNames?.container)}>
       
       {/* Hidden Headless Tab Filter Workers */}
       {props.tabs.map(tab => (
@@ -161,8 +234,8 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
       ))}
 
       {/* Tab Strip */}
-      <div className={twMerge("flex items-center justify-between border-b border-table-border dark:border-gray-700 bg-table-header-bg dark:bg-gray-800 px-2 pt-2", props.classNames?.tabStrip)}>
-        <div className="flex space-x-2 overflow-x-auto">
+      <div className={twMerge("shrink-0 flex items-stretch justify-between gap-3 border-b border-table-border dark:border-gray-700 bg-table-header-bg dark:bg-gray-800/40 pr-2", props.classNames?.tabStrip)}>
+        <div className="flex items-end overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {props.tabs.map((tab) => {
             const isActive = tab.id === currentTabId;
             return (
@@ -170,18 +243,31 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
                 key={tab.id}
                 onClick={() => setTab(tab.id)}
                 className={twMerge(
-                  "px-4 py-2 text-sm font-medium border-b-2 transition-colors relative",
+                  "relative -mb-px rounded-t-md border-x border-t px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                   isActive 
-                    ? props.classNames?.tabButtonActive || 'border-table-accent dark:border-blue-500 text-table-accent dark:text-blue-400' 
-                    : props.classNames?.tabButton || 'border-transparent text-table-text-muted dark:text-gray-400 hover:text-table-text dark:hover:text-gray-200 hover:border-table-border dark:hover:border-gray-600'
+                    ? props.classNames?.tabButtonActive || 'border-table-border dark:border-gray-700 bg-table-bg dark:bg-[#2b303b] text-table-text dark:text-gray-100' 
+                    : props.classNames?.tabButton || 'border-transparent bg-transparent text-table-text-muted dark:text-gray-400 hover:bg-gray-100/70 dark:hover:bg-gray-800/70 hover:text-table-text dark:hover:text-gray-200'
                 )}
               >
-                {tab.label}
+                {isActive && (
+                  <span aria-hidden className="absolute inset-x-0 -bottom-px h-px bg-table-bg dark:bg-[#2b303b]" />
+                )}
+                {isActive && (
+                  <motion.span
+                    layoutId="ts-tabbed-table-indicator"
+                    className="absolute inset-x-0 bottom-0 z-10 h-0.5 bg-table-accent dark:bg-blue-500"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{tab.label}</span>
               </button>
             );
           })}
         </div>
-        {props.actions && <div className="p-2">{props.actions}</div>}
+        <div className="flex items-center gap-2 p-2">
+          {props.actions}
+          <div ref={setActionsContainer} className="flex items-center gap-2" />
+        </div>
       </div>
 
       {/* Tab Content Area */}
@@ -201,6 +287,7 @@ export function TabbedTable<TRow extends Record<string, unknown>>(props: TabbedT
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+      </div>
+    </TabActionsContext.Provider>
   );
 }

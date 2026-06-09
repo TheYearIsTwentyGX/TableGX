@@ -1,0 +1,37 @@
+library:
+  name: 'tablegx'
+  version: '1.0.0'
+  repository: ''
+  description: 'High-performance, type-safe, animated React table system'
+generated_from:
+  domain_map: 'skills/_artifacts/domain_map.yaml'
+  skill_spec: 'skills/_artifacts/skill_spec.md'
+generated_at: '2026-06-08'
+
+skills:
+  - name: 'Initialize TabbedTable'
+    slug: 'init-tabbed-table'
+    type: 'core'
+    domain: 'core-setup'
+    path: 'skills/init-tabbed-table/SKILL.md'
+    description: 'Set up a TabbedTable with shared row selections and filters'
+    sources:
+      - 'Table Specs.md'
+
+  - name: 'Configure Action Columns'
+    slug: 'config-action-columns'
+    type: 'core'
+    domain: 'cell-interactivity'
+    path: 'skills/config-action-columns/SKILL.md'
+    description: 'Add interactive buttons to cells using column meta'
+    sources:
+      - 'Table Specs.md'
+
+  - name: 'Theming Popovers'
+    slug: 'theming-popovers'
+    type: 'core'
+    domain: 'theming'
+    path: 'skills/theming-popovers/SKILL.md'
+    description: 'Apply glassmorphism themes without breaking CSS stacking'
+    sources:
+      - 'src/components/table/themes.ts'

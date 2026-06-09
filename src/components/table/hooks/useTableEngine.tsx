@@ -38,6 +38,7 @@ export type TableEngineProps<TRow> = {
   onExpandedChange?: (next: ExpandedState) => void;
   defaultExpanded?: boolean | Record<string, boolean>;
   measure?: MeasureTextFn;
+  columnVisibilityStorageKey?: string;
 };
 
 export function useTableEngine<TRow extends Record<string, unknown>>({
@@ -56,7 +57,8 @@ export function useTableEngine<TRow extends Record<string, unknown>>({
   expanded: controlledExpanded,
   onExpandedChange,
   defaultExpanded,
-  measure = defaultMeasureText
+  measure = defaultMeasureText,
+  columnVisibilityStorageKey
 }: TableEngineProps<TRow>) {
 
   const [sorting, setSorting] = useState<SortingState>(initialSorting || []);
@@ -65,7 +67,26 @@ export function useTableEngine<TRow extends Record<string, unknown>>({
   const [internalExpanded, setInternalExpanded] = useState<ExpandedState>(
     defaultExpanded === true ? true : (typeof defaultExpanded === 'object' ? defaultExpanded : {})
   );
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    if (columnVisibilityStorageKey) {
+      try {
+        const stored = localStorage.getItem(columnVisibilityStorageKey);
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Failed to parse column visibility from localStorage', e);
+      }
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    if (columnVisibilityStorageKey) {
+      localStorage.setItem(columnVisibilityStorageKey, JSON.stringify(columnVisibility));
+    }
+  }, [columnVisibility, columnVisibilityStorageKey]);
 
   const filters = columnFilters !== undefined ? columnFilters : internalFilters;
   const setFilters = onColumnFiltersChange || setInternalFilters;
@@ -92,9 +113,55 @@ export function useTableEngine<TRow extends Record<string, unknown>>({
     }
   }, [selectedRowIds]);
 
+  const finalColumns = useMemo(() => {
+    if (!enableRowSelection) return columns;
+
+    const selectColumn: ColumnDef<TRow> = {
+      id: 'select',
+      header: ({ table }) => (
+        <div className="flex items-center justify-center w-full h-full">
+          <input
+            type="checkbox"
+            checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate' as any)}
+            ref={(input) => {
+              if (input) {
+                input.indeterminate = table.getIsSomePageRowsSelected();
+              }
+            }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+            className="w-4 h-4 text-table-accent dark:text-blue-500 rounded border-table-border dark:border-gray-600 focus:ring-table-accent dark:focus:ring-blue-500 cursor-pointer"
+            aria-label="Select all rows"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center w-full h-full">
+          <input
+            type="checkbox"
+            checked={row.getIsSelected()}
+            disabled={!row.getCanSelect()}
+            ref={(input) => {
+              if (input) {
+                input.indeterminate = row.getIsSomeSelected();
+              }
+            }}
+            onChange={row.getToggleSelectedHandler()}
+            className="w-4 h-4 text-table-accent dark:text-blue-500 rounded border-table-border dark:border-gray-600 focus:ring-table-accent dark:focus:ring-blue-500 cursor-pointer"
+            aria-label="Select row"
+          />
+        </div>
+      ),
+      meta: {
+        fixedMeasureWidth: 48,
+      } as any,
+    };
+
+    return [selectColumn, ...columns];
+  }, [columns, enableRowSelection]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: finalColumns,
     getRowId: (row) => String(getRowId(row)),
     state: {
       sorting,
@@ -120,6 +187,7 @@ export function useTableEngine<TRow extends Record<string, unknown>>({
     getExpandedRowModel: getExpandedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     enableMultiSort,
+    isMultiSortEvent: (e: any) => e.shiftKey,
     enableRowSelection,
     getSubRows: enableExpanding ? getSubRows : undefined,
     enableExpanding,

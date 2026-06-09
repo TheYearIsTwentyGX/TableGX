@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# @twentygx/tablegx
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A high-performance, type-safe, and animated React table system.
 
-Currently, two official plugins are available:
+`@twentygx/tablegx` is a powerful grid component built on top of `@tanstack/react-table` and `framer-motion`. It provides layout-shift-free auto-sizing, frozen columns, inline editing, nested rows, and built-in glassmorphism aesthetics out of the box.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Installation
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install @twentygx/tablegx
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+*Note: `react` and `react-dom` are required peer dependencies.*
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## AI Agent Support (TanStack Intent)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+If you use an AI coding agent (like Cursor, Claude Code, or Copilot), this package ships with built-in Agent Skills to prevent the AI from making common mistakes.
+
+To load the skills into your agent's context, run:
+
+```bash
+npx @tanstack/intent@latest install
 ```
+
+## Quick Start
+
+Import the components and the generated CSS styles to get started.
+
+```tsx
+import { TabbedTable, LIQUID_GLASS_THEME } from '@twentygx/tablegx';
+import '@twentygx/tablegx/style.css'; // Import the required CSS
+
+// 1. Define your data type
+type User = { id: string; name: string; role: string };
+
+// 2. Define your columns using standard TanStack Table definitions
+const columns = [
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'role', header: 'Role' }
+];
+
+// 3. Define your tabs
+const tabs = [
+  {
+    id: 'all',
+    label: 'All Users',
+    columns,
+    frozenColumns: 1
+  }
+];
+
+// 4. Render the table
+export function App({ data }: { data: User[] }) {
+  return (
+    <div className="h-screen w-full bg-slate-900 p-8">
+      <TabbedTable
+        data={data}
+        tabs={tabs}
+        idColumn="id"
+        getRowId={(row) => row.id}
+        classNames={LIQUID_GLASS_THEME} // Use built-in themes or provide your own!
+      />
+    </div>
+  );
+}
+```
+
+## Features
+
+- **Tabbed, Editable, and Read-Only Views**: Swap between `TabbedTable`, `EditableTable`, and `ReadOnlyTable` using the same underlying highly-optimized engine.
+- **Shared Tab Filters**: Filters and selections persist and intersect seamlessly across tabs.
+- **Zero Layout Shift**: Columns auto-size dynamically before paint using off-screen text measurement.
+- **Frozen Panes**: Pin leading columns with sticky positioning that integrates perfectly with horizontal scroll synchronization.
+- **Inline Editing**: Double-click (or single-click) to edit cells inline with built-in text, number, select, and boolean editors.
+- **Nested Rows**: Built-in support for hierarchical data and expand/collapse trees.
+- **Action Columns**: Easily add buttons directly to cells using column `meta.actions` without fighting click propagation.

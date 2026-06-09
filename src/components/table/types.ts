@@ -11,6 +11,8 @@ export type TableClassNames = {
   tabButton?: string;
   tabButtonActive?: string;
   filterPopover?: string;
+  columnVisibilityPopover?: string;
+  numberFormatPopover?: string;
   scrollContainer?: string;
   tabContentArea?: string;
   injectedBgClass?: string;
@@ -36,6 +38,7 @@ export type NumberFormatConfig = {
   thousandSeparator?: boolean;
   negativeFormat?: 'minus' | 'parentheses';
   negativeInRed?: boolean;
+  isInteger?: boolean;
 };
 
 export type TableColumnMeta<TRow = Record<string, unknown>> = {
@@ -69,6 +72,11 @@ export type AdvancedFeatureProps<TRow> = {
   enableColumnVisibility?: boolean;
   columnVisibilityStorageKey?: string;
   enableFooter?: boolean;
+  enableNumberFormatConfig?: boolean;
+  hideDecimalsControl?: boolean;
+  numberFormatConfig?: NumberFormatConfig;
+  onNumberFormatConfigChange?: (config: NumberFormatConfig) => void;
+  defaultNumberFormatConfig?: NumberFormatConfig;
   // Nested rows
   enableExpanding?: boolean;
   getSubRows?: (row: TRow) => TRow[] | undefined;

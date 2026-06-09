@@ -1,14 +1,5 @@
 {
-  "name": "table-system",
-  "private": true,
-  "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
   "dependencies": {
     "@chenglou/pretext": "^0.0.7",
     "@tanstack/react-table": "^8.21.3",
@@ -16,8 +7,6 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
@@ -36,6 +25,38 @@
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
-  }
+    "vite": "^8.0.12",
+    "vite-plugin-dts": "^5.0.2"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/tablegx.es.js",
+      "require": "./dist/tablegx.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./style.css": "./dist/tablegx.css"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "!skills/_artifacts"
+  ],
+  "keywords": [
+    "tanstack-intent"
+  ],
+  "main": "./dist/tablegx.umd.js",
+  "module": "./dist/tablegx.es.js",
+  "name": "@twentygx/tablegx",
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "types": "./dist/index.d.ts",
+  "version": "1.0.1"
 }
