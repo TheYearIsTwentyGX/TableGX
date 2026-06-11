@@ -31,6 +31,7 @@ export type {
   CellAction,
   CellActionButton,
   CellActionCustom,
+  CellRenderContext,
   FooterAggregate,
   TableColumnMeta,
   EditingState,
@@ -60,6 +61,11 @@ export {
   badgeColumn,
   customColumn,
 } from './lib/columns'
+
+// Custom cell rendering & interaction primitives
+export { CellOverflowList } from './core/CellOverflowList'
+export type { CellOverflowListProps } from './core/CellOverflowList'
+export { isolateCellEvent, cellInteractionProps } from './lib/isolate'
 
 // Utilities
 export { getCellEditValue } from './lib/cell'

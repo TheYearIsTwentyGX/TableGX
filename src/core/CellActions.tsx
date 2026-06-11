@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog'
+import { isolateCellEvent as isolate } from '../lib/isolate'
 import { Button } from '../ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import type { CellAction, CellActionButton, TableRowData } from '../types'
@@ -19,11 +20,6 @@ type CellActionsProps<TRow extends TableRowData> = {
   actions: CellAction<TableRowData>[]
   row: TRow
   isSubmitting?: boolean
-}
-
-/** Swallows every event that could leak into row/cell behaviors (spec §20.2). */
-function isolate(e: React.SyntheticEvent) {
-  e.stopPropagation()
 }
 
 function ActionButton<TRow extends TableRowData>({

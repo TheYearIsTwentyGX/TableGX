@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
   badgeColumn,
+  CellOverflowList,
+  customColumn,
   dateColumn,
   numberColumn,
   ReadOnlyTable,
@@ -9,7 +11,7 @@ import {
   type ColumnDef,
 } from 'tablegx'
 import { people, type Person } from '../data'
-import { Section, Toggle } from '../ui'
+import { Pill, Section, Toggle } from '../ui'
 
 export function ReadOnlyExample() {
   const [loading, setLoading] = useState(false)
@@ -17,12 +19,35 @@ export function ReadOnlyExample() {
   const [frozen, setFrozen] = useState(true)
   const [selectable, setSelectable] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
+  const [clicked, setClicked] = useState<string | null>(null)
 
   const columns = useMemo<ColumnDef<Person, unknown>[]>(
     () => [
-      textColumn('name', 'Name'),
+      // `meta.onCellClick` makes the whole Name cell clickable. The click is
+      // isolated from row selection (toggle it on to verify the row doesn't
+      // select when you click the name).
+      textColumn('name', 'Name', {
+        onCellClick: (ctx) => setClicked(String(ctx.value)),
+      }),
       textColumn('email', 'Email'),
       badgeColumn('role', 'Role'),
+      // Custom, non-truncating cell: multiple inline tags laid out side by side
+      // via `customColumn` + `CellOverflowList`, collapsing extras into "+N".
+      customColumn<Person>(
+        'skills',
+        'Skills',
+        ({ value }) => (
+          <CellOverflowList>
+            {((value as string[]) ?? []).map((s) => (
+              <Pill key={s}>{s}</Pill>
+            ))}
+          </CellOverflowList>
+        ),
+        {
+          measureText: (row) => ((row.skills as string[]) ?? []).join('  '),
+          maxColumnWidth: 240,
+        },
+      ),
       selectColumn('department', 'Department', [
         { label: 'Platform', value: 'Platform' },
         { label: 'Growth', value: 'Growth' },
@@ -43,7 +68,7 @@ export function ReadOnlyExample() {
   return (
     <Section
       title="ReadOnlyTable"
-      description="Virtualized display grid. Sort by clicking headers, filter from the header menus, and scroll 200 rows."
+      description="Virtualized display grid. The Skills column is a custom, non-truncating cell that collapses extra tags into a '+N'. Click a Name to fire its onCellClick — isolated from row selection."
       controls={
         <>
           <Toggle label="Loading skeleton" checked={loading} onChange={setLoading} />
@@ -53,6 +78,9 @@ export function ReadOnlyExample() {
           {selectable && (
             <span className="text-xs text-muted-foreground">{selected.length} selected</span>
           )}
+          <span className="text-xs text-muted-foreground">
+            {clicked ? `Clicked: ${clicked}` : 'Click a name…'}
+          </span>
         </>
       }
     >

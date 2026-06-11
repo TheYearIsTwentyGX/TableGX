@@ -1,4 +1,10 @@
-import type { ColumnDef, ColumnFiltersState, SortingState } from '@tanstack/react-table'
+import type {
+  Column,
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  Table,
+} from '@tanstack/react-table'
 import type { Dispatch, MouseEvent, ReactNode, SetStateAction } from 'react'
 
 /** Base constraint for all row types. */
@@ -48,6 +54,26 @@ export type CellAction<TRow> = CellActionButton<TRow> | CellActionCustom<TRow>
 
 export type FooterAggregate = 'sum' | 'avg' | 'min' | 'max' | 'count'
 
+/**
+ * Typed context handed to a column's custom cell renderer (`meta.renderCell`)
+ * and cell click handler (`meta.onCellClick`). Lets a consumer fully control a
+ * cell's content and click behavior with full type information.
+ */
+export type CellRenderContext<TRow extends TableRowData = TableRowData> = {
+  /** The full row record. */
+  row: TRow
+  /** The cell's accessor value. */
+  value: unknown
+  /** The column id. */
+  columnId: string
+  /** The underlying TanStack column instance. */
+  column: Column<TRow, unknown>
+  /** The owning TanStack table instance. */
+  table: Table<TRow>
+  /** True only when this exact cell is currently in edit mode (EditableTable). */
+  isEditing: boolean
+}
+
 /** The single custom per-column metadata contract (spec §5.1). */
 export type TableColumnMeta = {
   // --- Editing ---
@@ -71,7 +97,7 @@ export type TableColumnMeta = {
   // --- Cell actions ---
   actions?: CellAction<TableRowData>[]
 
-  // --- Custom rendering ---
+  // --- Custom rendering & interaction ---
   /**
    * Opt this column's value area out of single-line truncation, giving the
    * column's `cell` renderer full layout control (e.g. multiple badges, wrapping
@@ -80,6 +106,24 @@ export type TableColumnMeta = {
    * auto-sizing can size the column — the raw value is not meaningful here.
    */
   disableTruncate?: boolean
+  /**
+   * Fully controls a cell's content, taking precedence over the column's
+   * TanStack `cell`. The output is rendered in a non-truncating,
+   * horizontally-flexible container so multiple inline elements sit side by
+   * side instead of being clipped. Because custom content has no inferable
+   * text, pair this with `measureText` / `fixedMeasureWidth` / `maxColumnWidth`
+   * for correct auto-sizing.
+   */
+  renderCell?: (ctx: CellRenderContext) => ReactNode
+  /**
+   * Makes the whole cell clickable (e.g. to open a portaled popover). The
+   * implementation isolates the event from row selection / expansion / edit
+   * before invoking. On an editable column, opting into this means the cell
+   * does NOT also auto-enter inline edit; an actively-editing cell still shows
+   * its editor. Use the exported `isolateCellEvent` / `cellInteractionProps`
+   * to stop interactive children inside a custom cell from leaking events.
+   */
+  onCellClick?: (ctx: CellRenderContext, event: MouseEvent) => void
 }
 
 declare module '@tanstack/react-table' {

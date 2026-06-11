@@ -9,6 +9,7 @@ export type Person = {
   startDate: string
   active: boolean
   manager?: string
+  skills: string[]
 }
 
 const firstNames = [
@@ -22,6 +23,10 @@ const lastNames = [
 const roles = ['Engineer', 'Designer', 'Manager', 'Analyst', 'Recruiter']
 const departments = ['Platform', 'Growth', 'Design', 'Finance', 'People']
 const statuses = ['active', 'onLeave', 'archived']
+export const skillPool = [
+  'React', 'TypeScript', 'Go', 'SQL', 'Figma', 'Rust', 'Python', 'AWS',
+  'Docker', 'GraphQL', 'CSS', 'Node', 'Kafka', 'Redis',
+]
 
 function pick<T>(arr: T[], i: number): T {
   return arr[i % arr.length]!
@@ -41,6 +46,9 @@ export function makePeople(count: number): Person[] {
     const name = `${pick(firstNames, i)} ${pick(lastNames, i * 13 + Math.floor(i / 20) * 7 + 3)}`
     const dayOffset = (i * 37) % 1400
     const date = new Date(2021, 0, 1 + dayOffset)
+    const skills = Array.from(
+      new Set(Array.from({ length: 2 + (i % 6) }, (_, k) => pick(skillPool, i * 5 + k * 3))),
+    )
     out.push({
       id: `p-${i + 1}`,
       name,
@@ -52,6 +60,7 @@ export function makePeople(count: number): Person[] {
       startDate: date.toISOString().slice(0, 10),
       active: i % 3 !== 0,
       manager: i % 5 === 0 ? undefined : `${pick(firstNames, i + 4)} ${pick(lastNames, i + 9)}`,
+      skills,
     })
   }
   return out

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
   badgeColumn,
+  CellOverflowList,
+  customColumn,
   dateColumn,
   numberColumn,
   selectColumn,
@@ -10,7 +12,7 @@ import {
   type TabbedTableTab,
 } from 'tablegx'
 import { makePeople, ROLE_OPTIONS, STATUS_OPTIONS, type Person } from '../data'
-import { Section, Toggle } from '../ui'
+import { Pill, Section, Toggle } from '../ui'
 
 export function TabbedExample() {
   const [rows, setRows] = useState<Person[]>(() => makePeople(120))
@@ -21,6 +23,23 @@ export function TabbedExample() {
     () => [
       textColumn('name', 'Name'),
       badgeColumn('role', 'Role'),
+      // Custom overflow cell — the same renderCell + CellOverflowList primitive
+      // works unchanged on TabbedTable via the shared BodyCell.
+      customColumn<Person>(
+        'skills',
+        'Skills',
+        ({ value }) => (
+          <CellOverflowList>
+            {((value as string[]) ?? []).map((s) => (
+              <Pill key={s}>{s}</Pill>
+            ))}
+          </CellOverflowList>
+        ),
+        {
+          measureText: (row) => ((row.skills as string[]) ?? []).join('  '),
+          maxColumnWidth: 240,
+        },
+      ),
       selectColumn('status', 'Status', STATUS_OPTIONS),
       dateColumn('startDate', 'Start date'),
     ],

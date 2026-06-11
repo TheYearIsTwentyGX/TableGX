@@ -1,11 +1,11 @@
-import type { Cell } from '@tanstack/react-table'
+import type { Cell, Column, Table } from '@tanstack/react-table'
 import { flexRender } from '@tanstack/react-table'
 import { CheckIcon, PencilIcon } from 'lucide-react'
 import * as React from 'react'
 import { INDENT_STEP_PX, ROW_HEIGHT_PX } from '../constants'
 import { cn } from '../lib/cn'
 import { Checkbox } from '../ui/checkbox'
-import type { TableColumnMeta, TableRowData } from '../types'
+import type { CellRenderContext, TableColumnMeta, TableRowData } from '../types'
 import { CellActions } from './CellActions'
 import { CellEditor, type EditNavigation } from './CellEditors'
 import { ExpandToggle } from './ExpandToggle'
@@ -59,6 +59,22 @@ function BodyCellInner<TRow extends TableRowData>({
   const row = cell.row
   const isBoolean = meta.inputType === 'boolean'
   const actions = meta.actions
+  const renderCell = meta.renderCell
+  const onCellClick = meta.onCellClick
+  const hasCellClick = typeof onCellClick === 'function'
+  const needsContext = Boolean(renderCell) || hasCellClick
+
+  // Built only when a custom renderer/click handler needs it.
+  const cellContext: CellRenderContext | null = needsContext
+    ? {
+        row: row.original,
+        value: cell.getValue(),
+        columnId: cell.column.id,
+        column: cell.column as unknown as Column<TableRowData, unknown>,
+        table: cell.getContext().table as unknown as Table<TableRowData>,
+        isEditing,
+      }
+    : null
 
   const interactiveBoolean = canEdit && isBoolean && singleClickEdit && !editorsDisabled
 
@@ -68,12 +84,21 @@ function BodyCellInner<TRow extends TableRowData>({
   }
 
   const clickProps: React.HTMLAttributes<HTMLDivElement> = {}
-  if (canEdit && !isEditing) {
-    if (singleClickEdit) {
-      // Boolean cells become directly interactive instead of entering edit mode.
-      if (!isBoolean) clickProps.onClick = beginEdit
-    } else {
-      clickProps.onDoubleClick = beginEdit
+  if (!isEditing) {
+    if (hasCellClick) {
+      // A column opting into custom click behavior takes over the cell click
+      // and, on editable columns, suppresses the auto inline-edit entry.
+      clickProps.onClick = (event) => {
+        event.stopPropagation()
+        onCellClick!(cellContext!, event)
+      }
+    } else if (canEdit) {
+      if (singleClickEdit) {
+        // Boolean cells become directly interactive instead of entering edit mode.
+        if (!isBoolean) clickProps.onClick = beginEdit
+      } else {
+        clickProps.onDoubleClick = beginEdit
+      }
     }
   }
 
@@ -88,6 +113,14 @@ function BodyCellInner<TRow extends TableRowData>({
         onCommit={(value, nav) => onCommitEdit(cell, value, nav)}
         onCancel={onCancelEdit}
       />
+    )
+  } else if (renderCell && cellContext) {
+    // Custom content: a non-truncating, horizontally-flexible container so
+    // multiple inline elements sit side by side instead of being clipped.
+    // The outer cell keeps `overflow-hidden` so the overflow affordance and
+    // portaled popovers still clip/escape correctly.
+    content = (
+      <div className="flex min-w-0 flex-1 items-center gap-2">{renderCell(cellContext)}</div>
     )
   } else if (isBoolean) {
     const checked = Boolean(row.original[cell.column.id] ?? cell.getValue())
@@ -143,7 +176,7 @@ function BodyCellInner<TRow extends TableRowData>({
       data-tgx-cell={cell.column.id}
       className={cn(
         'group/cell flex items-center gap-1 overflow-hidden px-3 text-sm',
-        canEdit && !isEditing && 'cursor-pointer',
+        !isEditing && (hasCellClick || canEdit) && 'cursor-pointer',
         className,
       )}
       style={{ width, height: ROW_HEIGHT_PX }}
@@ -162,7 +195,7 @@ function BodyCellInner<TRow extends TableRowData>({
         </span>
       )}
       {content}
-      {canEdit && !isEditing && !isBoolean && (
+      {canEdit && !isEditing && !isBoolean && !hasCellClick && (
         <PencilIcon
           aria-hidden
           className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover/cell:opacity-60"
