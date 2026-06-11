@@ -236,11 +236,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableColumnVisibility && activeTab && !(activeTab.editable && activeTab.columnGroups)
       ? activeTab.columns
           .map((c) => c as ColumnDef<TRow, unknown>)
-          .filter((c, index) => {
-            if (c.enableHiding === false) return false
-            const frozen = activeTab.frozenColumns ?? 0
-            return index >= frozen
-          })
+          .filter((c) => c.enableHiding !== false)
           .map((c) => {
             const id = getColumnId(c)
             return {

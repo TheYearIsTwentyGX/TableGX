@@ -585,12 +585,26 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const visibleLeafColumnsRef = useRef<Column<TRow, unknown>[]>(visibleLeafColumns)
   visibleLeafColumnsRef.current = visibleLeafColumns
 
-  const pinnedCount = Math.min(
-    visibleLeafColumns.length,
-    (enableRowSelection ? 1 : 0) + Math.max(0, frozenColumns),
-  )
-  const pinnedColumns = visibleLeafColumns.slice(0, pinnedCount)
-  const scrollColumns = visibleLeafColumns.slice(pinnedCount)
+  // Pinning is by column *identity*, not position: the frozen pane is the
+  // visible intersection of the canonical frozen id set (selection column plus
+  // the first N data leaf columns), so hiding a frozen column shrinks the pane
+  // without promoting the next scrollable column into it.
+  const frozenColumnIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (enableRowSelection) ids.add(SELECTION_COLUMN_ID)
+    for (const col of table
+      .getAllLeafColumns()
+      .filter((c) => c.id !== SELECTION_COLUMN_ID)
+      .slice(0, Math.max(0, frozenColumns))) {
+      ids.add(col.id)
+    }
+    return ids
+  }, [table, enableRowSelection, frozenColumns])
+  const pinnedColumns = visibleLeafColumns.filter((c) => frozenColumnIds.has(c.id))
+  const scrollColumns = visibleLeafColumns.filter((c) => !frozenColumnIds.has(c.id))
+  // The canonical frozen set is a prefix of the column order, so visible pinned
+  // columns remain contiguous at the front of visibleLeafColumns.
+  const pinnedCount = pinnedColumns.length
 
   pinnedColumnIdsRef.current = new Set(pinnedColumns.map((c) => c.id))
 
@@ -872,26 +886,18 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   const pickerItems = useMemo(() => {
     if (!enableColumnVisibility || hideBuiltInPicker || columnGroups) return []
-    const frozenIds = new Set(
-      table
-        .getAllLeafColumns()
-        .filter((c) => c.id !== SELECTION_COLUMN_ID)
-        .slice(0, Math.max(0, frozenColumns))
-        .map((c) => c.id),
-    )
+    // Frozen columns are listed alongside scrollable ones; only the selection
+    // column and columns with hiding disabled are excluded.
     return table
       .getAllLeafColumns()
-      .filter(
-        (col) =>
-          col.id !== SELECTION_COLUMN_ID && col.getCanHide() && !frozenIds.has(col.id),
-      )
+      .filter((col) => col.id !== SELECTION_COLUMN_ID && col.getCanHide())
       .map((col) => ({
         id: col.id,
         label: headerLabelOf(col.columnDef as ColumnDef<TRow, unknown>, col.id, columnLabel),
         visible: col.getIsVisible(),
       }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableColumnVisibility, hideBuiltInPicker, columnGroups, table, frozenColumns, columnLabel, visibility])
+  }, [enableColumnVisibility, hideBuiltInPicker, columnGroups, table, columnLabel, visibility])
 
   // ----- Group header segments (spec §12: recomputed colspans) -----
 
