@@ -29,6 +29,8 @@ export type {
   EditInputType,
   MeasureTextFn,
   CellAction,
+  CellActionButton,
+  CellActionCustom,
   FooterAggregate,
   TableColumnMeta,
   EditingState,
@@ -56,6 +58,7 @@ export {
   selectColumn,
   dateColumn,
   badgeColumn,
+  customColumn,
 } from './lib/columns'
 
 // Utilities

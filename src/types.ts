@@ -14,7 +14,7 @@ export type EditInputType = 'text' | 'number' | 'boolean' | 'select'
 export type MeasureTextFn = (text: string, font: string) => number
 
 /** Declarative action button rendered inside a cell (see spec §20). */
-export type CellAction<TRow> = {
+export type CellActionButton<TRow> = {
   id: string
   /** Label and/or icon. At least one is required; icon-only buttons must set ariaLabel. */
   label?: string
@@ -29,6 +29,22 @@ export type CellAction<TRow> = {
   confirm?: { title: string; description?: string; confirmLabel?: string }
   tooltip?: string
 }
+
+/**
+ * Arbitrary custom action control rendered inside a cell's action slot. Use for
+ * anything the declarative button variant can't express — popover triggers,
+ * dropdown menus, etc. The slot click-isolates the rendered control (selection,
+ * expand, and edit are never triggered) without consumer cooperation.
+ */
+export type CellActionCustom<TRow> = {
+  id: string
+  /** Render any interactive control for this row. */
+  render: (row: TRow) => ReactNode
+  isHidden?: (row: TRow) => boolean
+}
+
+/** A cell action: either a declarative button or a custom-rendered control. Discriminated by the `render` field. */
+export type CellAction<TRow> = CellActionButton<TRow> | CellActionCustom<TRow>
 
 export type FooterAggregate = 'sum' | 'avg' | 'min' | 'max' | 'count'
 
@@ -54,6 +70,16 @@ export type TableColumnMeta = {
 
   // --- Cell actions ---
   actions?: CellAction<TableRowData>[]
+
+  // --- Custom rendering ---
+  /**
+   * Opt this column's value area out of single-line truncation, giving the
+   * column's `cell` renderer full layout control (e.g. multiple badges, wrapping
+   * content, interactive controls). Defaults to false (truncated single line).
+   * When using custom content, set `measureText` or `fixedMeasureWidth` so
+   * auto-sizing can size the column — the raw value is not meaningful here.
+   */
+  disableTruncate?: boolean
 }
 
 declare module '@tanstack/react-table' {

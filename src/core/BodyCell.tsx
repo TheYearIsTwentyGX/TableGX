@@ -121,6 +121,15 @@ function BodyCellInner<TRow extends TableRowData>({
         <span className="truncate text-muted-foreground">{checked ? 'Yes' : 'No'}</span>
       </span>
     )
+  } else if (meta.disableTruncate) {
+    // Full layout control: no single-line truncation. Keep flex-1 so the
+    // ml-auto actions slot still right-aligns and min-w-0 so content can't blow
+    // out the column width.
+    content = (
+      <span className="flex min-w-0 flex-1 items-center">
+        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      </span>
+    )
   } else {
     content = (
       <span className="min-w-0 flex-1 truncate">

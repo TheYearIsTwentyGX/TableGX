@@ -13,7 +13,7 @@ import {
 } from '../ui/alert-dialog'
 import { Button } from '../ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
-import type { CellAction, TableRowData } from '../types'
+import type { CellAction, CellActionButton, TableRowData } from '../types'
 
 type CellActionsProps<TRow extends TableRowData> = {
   actions: CellAction<TableRowData>[]
@@ -31,7 +31,7 @@ function ActionButton<TRow extends TableRowData>({
   row,
   isSubmitting,
 }: {
-  action: CellAction<TableRowData>
+  action: CellActionButton<TableRowData>
   row: TRow
   isSubmitting?: boolean
 }) {
@@ -142,9 +142,22 @@ export function CellActions<TRow extends TableRowData>({
       onClick={isolate}
       onDoubleClick={isolate}
     >
-      {visible.map((action) => (
-        <ActionButton key={action.id} action={action} row={row} isSubmitting={isSubmitting} />
-      ))}
+      {visible.map((action) =>
+        'render' in action ? (
+          <span
+            key={action.id}
+            data-tgx-cell-action={action.id}
+            onClick={isolate}
+            onDoubleClick={isolate}
+            onMouseDown={isolate}
+            onPointerDown={isolate}
+          >
+            {action.render(row)}
+          </span>
+        ) : (
+          <ActionButton key={action.id} action={action} row={row} isSubmitting={isSubmitting} />
+        ),
+      )}
     </span>
   )
 }

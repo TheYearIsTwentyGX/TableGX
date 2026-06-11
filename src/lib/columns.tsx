@@ -1,4 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table'
+import type { ReactNode } from 'react'
 import { Badge } from '../ui/badge'
 import type { TableColumnMeta, TableRowData } from '../types'
 import { formatDateSafe } from './date'
@@ -122,5 +123,33 @@ export function badgeColumn<TRow extends TableRowData>(
     enableColumnFilter: true,
     filterFn: tgxFilterFn,
     meta: { measureText: (row) => String(row[id] ?? ''), ...meta },
+  } as ColumnDef<TRow, unknown>
+}
+
+/**
+ * Custom column: full control over cell content via a render function that
+ * receives the row. The value area opts out of truncation (`disableTruncate`),
+ * so multi-element layouts (e.g. several badges) and interactive controls
+ * (e.g. a popover trigger) render unclipped.
+ *
+ * Because the rendered content is arbitrary, auto-sizing can't infer a width
+ * from the raw value — pass `meta.measureText` or `meta.fixedMeasureWidth` to
+ * size the column. The `id` is used as the accessor key for sorting/filtering;
+ * if it isn't a real row field, supply `meta` accordingly.
+ */
+export function customColumn<TRow extends TableRowData>(
+  id: string,
+  header: string,
+  render: (row: TRow) => ReactNode,
+  meta?: TableColumnMeta,
+): ColumnDef<TRow, unknown> {
+  return {
+    id,
+    header,
+    accessorKey: id,
+    cell: ({ row }) => render(row.original),
+    enableColumnFilter: true,
+    filterFn: tgxFilterFn,
+    meta: { disableTruncate: true, ...meta },
   } as ColumnDef<TRow, unknown>
 }
