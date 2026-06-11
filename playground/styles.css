@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+/* Scan the live library source (imported via the `tablegx` alias) so Tailwind
+   generates every utility the table components use. */
+@source '../src';
+
+/* The library's exported design tokens + overlay animations. */
+@import '../src/theme.css';
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}

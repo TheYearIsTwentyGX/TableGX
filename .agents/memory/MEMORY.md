@@ -1,0 +1,1 @@
+- [Dark mode class placement](dark-mode-tokens.md) — toggle `.dark` on `<html>`, not a nested div, or `<body>` + Radix portals stay light.

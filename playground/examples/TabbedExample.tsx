@@ -1,0 +1,119 @@
+import { useMemo, useState } from 'react'
+import {
+  badgeColumn,
+  dateColumn,
+  numberColumn,
+  selectColumn,
+  TabbedTable,
+  textColumn,
+  type ColumnDef,
+  type TabbedTableTab,
+} from 'tablegx'
+import { makePeople, ROLE_OPTIONS, STATUS_OPTIONS, type Person } from '../data'
+import { Section, Toggle } from '../ui'
+
+export function TabbedExample() {
+  const [rows, setRows] = useState<Person[]>(() => makePeople(120))
+  const [selectable, setSelectable] = useState(true)
+  const [selected, setSelected] = useState<string[]>([])
+
+  const overviewColumns = useMemo<ColumnDef<Person, unknown>[]>(
+    () => [
+      textColumn('name', 'Name'),
+      badgeColumn('role', 'Role'),
+      selectColumn('status', 'Status', STATUS_OPTIONS),
+      dateColumn('startDate', 'Start date'),
+    ],
+    [],
+  )
+
+  const compensationColumns = useMemo<ColumnDef<Person, unknown>[]>(
+    () => [
+      textColumn('name', 'Name'),
+      numberColumn('salary', 'Salary', {
+        editable: true,
+        footerAggregate: 'avg',
+        footerLabel: 'Avg ',
+        footerFormat: (v) => `$${Math.round(v).toLocaleString()}`,
+      }),
+      selectColumn('department', 'Department', [
+        { label: 'Platform', value: 'Platform' },
+        { label: 'Growth', value: 'Growth' },
+        { label: 'Design', value: 'Design' },
+        { label: 'Finance', value: 'Finance' },
+        { label: 'People', value: 'People' },
+      ]),
+    ],
+    [],
+  )
+
+  const contactColumns = useMemo<ColumnDef<Person, unknown>[]>(
+    () => [
+      textColumn('name', 'Name'),
+      textColumn('email', 'Email'),
+      selectColumn('role', 'Role', ROLE_OPTIONS),
+    ],
+    [],
+  )
+
+  const tabs = useMemo<TabbedTableTab<Person>[]>(
+    () => [
+      {
+        id: 'overview',
+        label: 'Overview',
+        columns: overviewColumns,
+        frozenColumns: 1,
+        initialSorting: [{ id: 'name', desc: false }],
+      },
+      {
+        id: 'compensation',
+        label: 'Compensation',
+        columns: compensationColumns,
+        frozenColumns: 1,
+        editable: true,
+        editableColumnIds: ['salary'],
+        onSaveEdit: async (row, columnId, value) => {
+          setRows((prev) =>
+            prev.map((r) => (r.id === row.id ? { ...r, [columnId]: value } : r)),
+          )
+          return true
+        },
+      },
+      {
+        id: 'contact',
+        label: 'Contact',
+        columns: contactColumns,
+      },
+    ],
+    [overviewColumns, compensationColumns, contactColumns],
+  )
+
+  return (
+    <Section
+      title="TabbedTable"
+      description="Multiple views over one dataset with shared selection, cross-tab filter intersection, and a sliding tab strip. The Compensation tab is inline-editable."
+      controls={
+        <>
+          <Toggle label="Row selection" checked={selectable} onChange={setSelectable} />
+          {selectable && (
+            <span className="text-xs text-muted-foreground">{selected.length} selected</span>
+          )}
+        </>
+      }
+    >
+      <div className="flex h-[460px] flex-col">
+        <TabbedTable<Person>
+          data={rows}
+          getRowId={(r) => r.id}
+          idColumn="id"
+          tabs={tabs}
+          enableFooter
+          enableColumnVisibility
+          enableRowSelection={selectable}
+          selectedRowIds={selected}
+          onSelectedRowIdsChange={setSelected}
+        />
+      </div>
+    </Section>
+  )
+}
