@@ -94,6 +94,41 @@ describe('ReadOnlyTable (smoke)', () => {
     expect(screen.queryByText('No results found')).not.toBeInTheDocument()
   })
 
+  it('renders a custom loading skeleton instead of the default when provided', () => {
+    const { container } = render(
+      <ReadOnlyTable<Row>
+        data={[]}
+        columns={columns}
+        getRowId={(r) => r.id}
+        isLoading
+        loadingSkeleton={<div data-testid="custom-skeleton">Loading…</div>}
+        measure={measure}
+      />,
+    )
+    expect(screen.getByTestId('custom-skeleton')).toBeInTheDocument()
+    expect(container.querySelector('[data-tgx-skeleton]')).not.toBeInTheDocument()
+  })
+
+  it('passes the computed column widths to a custom skeleton render function', () => {
+    let receivedWidths: number[] | undefined
+    render(
+      <ReadOnlyTable<Row>
+        data={[]}
+        columns={columns}
+        getRowId={(r) => r.id}
+        isLoading
+        loadingSkeleton={(widths) => {
+          receivedWidths = widths
+          return <div data-testid="custom-skeleton-fn">Loading…</div>
+        }}
+        measure={measure}
+      />,
+    )
+    expect(screen.getByTestId('custom-skeleton-fn')).toBeInTheDocument()
+    expect(Array.isArray(receivedWidths)).toBe(true)
+    expect(receivedWidths?.length).toBe(columns.length)
+  })
+
   it('renders the select-all checkbox with an aria-label when selection is enabled', () => {
     render(
       <ReadOnlyTable<Row>

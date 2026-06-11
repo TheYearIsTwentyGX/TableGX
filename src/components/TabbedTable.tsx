@@ -67,6 +67,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     actions,
     emptyMessage,
     isLoading,
+    loadingSkeleton,
     columnVisibilityStorageKeyBase,
     tabIndicatorLayoutId,
     measure,
@@ -394,6 +395,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
                   defaultExpanded={defaultExpanded}
                   emptyMessage={emptyMessage}
                   isLoading={isLoading}
+                  loadingSkeleton={loadingSkeleton}
                   measure={measure}
                   classNames={classNames}
                   pinnedPaneX={pinnedPaneX}

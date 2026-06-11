@@ -152,6 +152,13 @@ export type ColumnGroupDef = {
   columnIds: string[]
 }
 
+/**
+ * Custom loading skeleton: either static markup, or a render function that
+ * receives the computed visible column widths (the same `widths` the built-in
+ * skeleton uses) so a custom skeleton can mirror the grid layout if desired.
+ */
+export type LoadingSkeleton = ReactNode | ((widths: number[]) => ReactNode)
+
 /** Class overrides for every visual region; merged with the defaults via cn(). */
 export type TableClassNames = {
   root?: string
@@ -204,6 +211,13 @@ export type ReadOnlyTableProps<TRow extends TableRowData> = {
   maxHeight?: string
   emptyMessage?: string
   isLoading?: boolean
+  /**
+   * Custom skeleton rendered in the scroll area while `isLoading` is true,
+   * replacing the built-in `TableSkeleton`. Accepts static markup, or a render
+   * function receiving the computed visible column widths so it can mirror the
+   * grid layout. When omitted, the default skeleton is used.
+   */
+  loadingSkeleton?: LoadingSkeleton
   bordered?: boolean
   frozenColumns?: number
   columnFilters?: ColumnFiltersState
@@ -282,6 +296,12 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   actions?: ReactNode
   emptyMessage?: string
   isLoading?: boolean
+  /**
+   * Custom skeleton rendered while `isLoading` is true, replacing the built-in
+   * `TableSkeleton`. Accepts static markup, or a render function receiving the
+   * computed visible column widths. When omitted, the default skeleton is used.
+   */
+  loadingSkeleton?: LoadingSkeleton
   /** Each tab persists column visibility under `${base}:${tab.id}`. */
   columnVisibilityStorageKeyBase?: string
   /** Distinct per mounted TabbedTable so sliding indicators don't cross instances. */

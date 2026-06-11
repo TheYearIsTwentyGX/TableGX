@@ -330,6 +330,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     maxHeight,
     emptyMessage = 'No results found',
     isLoading,
+    loadingSkeleton,
     bordered = true,
     frozenColumns = 0,
     columnFilters: controlledFilters,
@@ -1121,7 +1122,15 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
         onScroll={onHorizontalScroll}
       >
         {isLoading ? (
-          <TableSkeleton widths={skeletonWidths} className={classNames?.skeleton} />
+          loadingSkeleton !== undefined ? (
+            typeof loadingSkeleton === 'function' ? (
+              loadingSkeleton(skeletonWidths)
+            ) : (
+              loadingSkeleton
+            )
+          ) : (
+            <TableSkeleton widths={skeletonWidths} className={classNames?.skeleton} />
+          )
         ) : (
           <div className="relative" style={{ width: contentWidth, minWidth: '100%' }}>
             {/* --- Sticky header block --- */}

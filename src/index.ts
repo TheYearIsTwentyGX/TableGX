@@ -37,6 +37,7 @@ export type {
   EditingState,
   ColumnFilterValue,
   ColumnGroupDef,
+  LoadingSkeleton,
   TableClassNames,
   TabbedTableClassNames,
   AdvancedFeatureProps,
