@@ -10,9 +10,20 @@ type Row = { id: string; name: string; city: string }
 const measure: MeasureTextFn = (text) => text.length * 8
 
 const data: Row[] = [
-  { id: '1', name: 'Bravo', city: 'York' },
+  { id: '1', name: 'Bravo', city: 'Madrid' },
   { id: '2', name: 'Alpha', city: 'Zurich' },
+  { id: '3', name: 'Cairo', city: 'Lima' },
 ]
+
+/** Names in the order they're rendered in the active table's body. */
+function renderedNameOrder(container: HTMLElement): string[] {
+  const text = activeTable(container).textContent ?? ''
+  return (['Alpha', 'Bravo', 'Cairo'] as const)
+    .map((name) => ({ name, index: text.indexOf(name) }))
+    .filter((e) => e.index >= 0)
+    .sort((a, b) => a.index - b.index)
+    .map((e) => e.name)
+}
 
 // Both tabs share the `name` column; only Tab A has `city`.
 const tabs: TabbedTableTab<Row>[] = [
@@ -98,47 +109,60 @@ describe('TabbedTable shared sorting', () => {
     )
   })
 
-  it('keeps a sort on a column another tab lacks without warning, and restores it', async () => {
+  it('orders a tab by a column it lacks, with no header indicator or warning, across a round trip', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      const user = userEvent.setup()
-      const { container, getByRole } = render(
-        <TabbedTable<Row>
-          data={data}
-          getRowId={(r) => r.id}
-          idColumn="id"
-          tabs={tabs}
-          defaultTabId="a"
-          measure={measure}
-        />,
-      )
+      await withElementSize(async () => {
+        const user = userEvent.setup()
+        const { container, getByRole } = render(
+          <TabbedTable<Row>
+            data={data}
+            getRowId={(r) => r.id}
+            idColumn="id"
+            tabs={tabs}
+            defaultTabId="a"
+            measure={measure}
+          />,
+        )
 
-      // Sort Tab A by City — a column Tab B doesn't have.
-      await user.click(within(activeTable(container)).getByRole('button', { name: /^City/ }))
-      expect(
-        within(activeTable(container)).getByRole('button', { name: /^City/ }),
-      ).toHaveAttribute('aria-sort', 'ascending')
-
-      // Tab B renders unsorted (the foreign entry is filtered out) and TanStack
-      // never sees the unknown column id.
-      await user.click(getByRole('button', { name: 'Tab B' }))
-      await waitFor(() =>
-        expect(
-          within(activeTable(container)).getByRole('button', { name: /^Name/ }),
-        ).not.toHaveAttribute('aria-sort'),
-      )
-
-      // The City sort is preserved in the shared state and reappears on Tab A.
-      await user.click(getByRole('button', { name: 'Tab A' }))
-      await waitFor(() =>
+        // Sort Tab A by City (asc) — a column Tab B doesn't have. City asc is
+        // Lima(Cairo) < Madrid(Bravo) < Zurich(Alpha).
+        await user.click(within(activeTable(container)).getByRole('button', { name: /^City/ }))
         expect(
           within(activeTable(container)).getByRole('button', { name: /^City/ }),
-        ).toHaveAttribute('aria-sort', 'ascending'),
-      )
+        ).toHaveAttribute('aria-sort', 'ascending')
+        await waitFor(() =>
+          expect(renderedNameOrder(container)).toEqual(['Cairo', 'Bravo', 'Alpha']),
+        )
 
-      const allLogs = [...errorSpy.mock.calls, ...warnSpy.mock.calls].flat().map(String)
-      expect(allLogs.filter((m) => m.includes('does not exist'))).toEqual([])
+        // Tab B has no City column, so it shows no sort indicator — but its rows
+        // are still ordered by City via the hidden sort-only column.
+        await user.click(getByRole('button', { name: 'Tab B' }))
+        await waitFor(() =>
+          expect(
+            within(activeTable(container)).getByRole('button', { name: /^Name/ }),
+          ).not.toHaveAttribute('aria-sort'),
+        )
+        await waitFor(() =>
+          expect(renderedNameOrder(container)).toEqual(['Cairo', 'Bravo', 'Alpha']),
+        )
+
+        // The City sort is preserved in the shared state: Tab A shows its
+        // indicator again and the same order.
+        await user.click(getByRole('button', { name: 'Tab A' }))
+        await waitFor(() =>
+          expect(
+            within(activeTable(container)).getByRole('button', { name: /^City/ }),
+          ).toHaveAttribute('aria-sort', 'ascending'),
+        )
+        await waitFor(() =>
+          expect(renderedNameOrder(container)).toEqual(['Cairo', 'Bravo', 'Alpha']),
+        )
+
+        const allLogs = [...errorSpy.mock.calls, ...warnSpy.mock.calls].flat().map(String)
+        expect(allLogs.filter((m) => m.includes('does not exist'))).toEqual([])
+      })
     } finally {
       errorSpy.mockRestore()
       warnSpy.mockRestore()

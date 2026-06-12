@@ -1,5 +1,5 @@
 import type { ColumnDef, OnChangeFn, SortingState, VisibilityState } from '@tanstack/react-table'
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { ColumnVisibilityPicker } from '../core/ColumnVisibilityPicker'
 import { describeFilterValue, FilterBadges, type FilterBadgeItem } from '../core/FilterBadges'
 import { TableCore } from '../core/TableCore'
@@ -99,11 +99,14 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
 
   // ----- Shared sorting across tabs (spec §18) -----
   //
-  // One SortingState for the whole tab group, like selection: a sort applied
-  // on any tab carries to every other tab. TanStack ignores sort entries for
-  // columns a tab doesn't have, so disjoint column sets are safe. Seeded from
-  // the initially-active tab's initialSorting (falling back to the first tab
-  // that defines one).
+  // One SortingState for the whole tab group, like selection: a sort applied on
+  // any tab reorders rows on EVERY tab, since all tabs are views over the same
+  // dataset. Sorting is fully shared regardless of which columns each tab shows
+  // — when the sort targets a column the active tab doesn't render, that
+  // column's def is handed to the tab's TableCore as a hidden sort-only column
+  // (see sortOnlyColumns below) so its rows are still ordered. Seeded from the
+  // initially-active tab's initialSorting (falling back to the first tab that
+  // defines one).
 
   const [sharedSorting, setSharedSorting] = useState<SortingState>(() => {
     const initiallyActive = tabs.find(
@@ -119,6 +122,34 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
   const handleSortingChange = useCallback<OnChangeFn<SortingState>>((updater) => {
     setSharedSorting((prev) => (typeof updater === 'function' ? updater(prev) : updater))
   }, [])
+
+  // Leaf column defs referenced by the shared sort that the active tab doesn't
+  // render, drawn from the union of all tabs' leaf columns (first definition
+  // wins for a shared id, since they read the same underlying field). Handed to
+  // the active tab's TableCore as hidden sort-only columns so its rows are
+  // ordered by the foreign column without a visible header or warning.
+  const sortOnlyColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
+    if (!activeTab) return []
+    const ownIds = new Set(
+      activeTab.columns.map((c) => getColumnId(c as ColumnDef<TRow, unknown>)),
+    )
+    const foreignIds = sharedSorting.map((s) => s.id).filter((id) => !ownIds.has(id))
+    if (foreignIds.length === 0) return []
+    const union = new Map<string, ColumnDef<TRow, unknown>>()
+    for (const tab of tabs) {
+      for (const c of tab.columns) {
+        const col = c as ColumnDef<TRow, unknown>
+        const id = getColumnId(col)
+        if (id && !union.has(id)) union.set(id, col)
+      }
+    }
+    const out: ColumnDef<TRow, unknown>[] = []
+    for (const id of foreignIds) {
+      const def = union.get(id)
+      if (def) out.push(def)
+    }
+    return out
+  }, [activeTab, sharedSorting, tabs])
 
   // ----- Per-tab column visibility, persisted under `${base}:${tab.id}` -----
 
@@ -236,6 +267,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             frozenColumns={activeTab.frozenColumns ?? 0}
             controlledSorting={sharedSorting}
             onControlledSortingChange={handleSortingChange}
+            sortOnlyColumns={sortOnlyColumns}
             columnLabel={activeTab.columnLabel ?? ((id) => columnLabelFor(activeTab, id))}
             columnFilters={filtersByTab[activeTab.id] ?? []}
             onColumnFiltersChange={setFiltersForTab(activeTab.id)}

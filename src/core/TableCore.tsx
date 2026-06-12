@@ -31,7 +31,7 @@ import {
   SELECTION_COLUMN_ID,
   SELECTION_COLUMN_WIDTH_PX,
 } from '../constants'
-import { useAutoColumnWidths } from '../hooks/useAutoColumnWidths'
+import { getColumnId, useAutoColumnWidths } from '../hooks/useAutoColumnWidths'
 import { useColumnVirtualization } from '../hooks/useColumnVirtualization'
 import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect'
 import { useLocalStorageState } from '../hooks/useLocalStorageState'
@@ -84,6 +84,12 @@ export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow>
   /** Internal — TabbedTable persists per-tab sorting across tab switches. */
   controlledSorting?: SortingState
   onControlledSortingChange?: OnChangeFn<SortingState>
+  /**
+   * Internal — leaf column defs referenced by the shared sort that this tab
+   * doesn't render. They're registered as hidden, sort-only columns so the
+   * engine can order rows by a column owned by another tab without warning.
+   */
+  sortOnlyColumns?: ColumnDef<TRow, unknown>[]
   /** Internal — TabbedTable renders its own picker / badges. */
   hideBuiltInPicker?: boolean
   hideFilterBadges?: boolean
@@ -98,6 +104,37 @@ function headerLabelOf<TRow extends TableRowData>(
 ): string {
   if (columnLabel) return columnLabel(id)
   return typeof columnDef.header === 'string' ? columnDef.header : id
+}
+
+/**
+ * Strip a column def down to just what the sorting engine needs — its value
+ * accessor and any explicit sort behavior — dropping the header, cell, filter,
+ * footer, and meta. Used for foreign columns referenced by a shared sort that
+ * the current tab doesn't render (see `sortOnlyColumns`).
+ */
+function toSortOnlyColumn<TRow extends TableRowData>(
+  col: ColumnDef<TRow, unknown>,
+  id: string,
+): ColumnDef<TRow, unknown> {
+  const c = col as ColumnDef<TRow, unknown> & {
+    accessorKey?: string
+    accessorFn?: (row: TRow, index: number) => unknown
+    sortingFn?: unknown
+    sortDescFirst?: boolean
+    sortUndefined?: unknown
+  }
+  const out: Record<string, unknown> = {
+    id,
+    enableColumnFilter: false,
+    enableHiding: false,
+    enableResizing: false,
+  }
+  if (c.accessorFn) out.accessorFn = c.accessorFn
+  else out.accessorKey = c.accessorKey ?? id
+  if (c.sortingFn !== undefined) out.sortingFn = c.sortingFn
+  if (c.sortDescFirst !== undefined) out.sortDescFirst = c.sortDescFirst
+  if (c.sortUndefined !== undefined) out.sortUndefined = c.sortUndefined
+  return out as unknown as ColumnDef<TRow, unknown>
 }
 
 // ----- Memoized virtual row -----------------------------------------------
@@ -362,6 +399,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onControlledVisibilityChange,
     controlledSorting,
     onControlledSortingChange,
+    sortOnlyColumns,
     hideBuiltInPicker = false,
     hideFilterBadges = false,
     pinnedPaneX,
@@ -448,8 +486,26 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   // ----- Columns (selection injection) -----
 
+  // Foreign columns referenced by the shared sort that this tab doesn't render,
+  // normalized to hidden sort-only columns. They let the engine order rows by a
+  // column owned by another tab; they're forced invisible below so they never
+  // reach rendering, the frozen-pane split, auto widths, the picker, or footer.
+  const sortOnlyLeafColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
+    if (!sortOnlyColumns || sortOnlyColumns.length === 0) return []
+    const own = new Set(columns.map((c) => getColumnId(c)).filter(Boolean))
+    const seen = new Set<string>()
+    const out: ColumnDef<TRow, unknown>[] = []
+    for (const col of sortOnlyColumns) {
+      const id = getColumnId(col)
+      if (!id || own.has(id) || seen.has(id)) continue
+      seen.add(id)
+      out.push(toSortOnlyColumn(col, id))
+    }
+    return out
+  }, [sortOnlyColumns, columns])
+
   const effectiveColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
-    if (!enableRowSelection) return columns
+    if (!enableRowSelection) return [...columns, ...sortOnlyLeafColumns]
     const selectionColumn: ColumnDef<TRow, unknown> = {
       id: SELECTION_COLUMN_ID,
       header: ({ table }) => {
@@ -490,14 +546,15 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       enableHiding: false,
       enableResizing: false,
     }
-    return [selectionColumn, ...columns]
-  }, [columns, enableRowSelection, isSubmitting])
+    return [selectionColumn, ...columns, ...sortOnlyLeafColumns]
+  }, [columns, sortOnlyLeafColumns, enableRowSelection, isSubmitting])
 
-  // Sorting entries for columns this table doesn't have are stripped before
-  // reaching TanStack, which would otherwise warn about unknown column ids.
-  // This happens when TabbedTable shares one sort across tabs whose column
-  // sets differ — the foreign entries stay in the shared state (so the tab
-  // that owns them keeps its sort) but are invisible to this instance.
+  // Sorting is fully shared across tabs: a sort by any column reorders rows on
+  // every tab, since all tabs are views over one dataset. Columns this tab
+  // doesn't render but the shared sort references are supplied as hidden
+  // sort-only columns (see effectiveColumns), so the engine can order by them
+  // without warning. We still drop any entry whose column is genuinely unknown
+  // here (neither rendered nor sort-only) so TanStack never warns.
   const effectiveSorting = useMemo(() => {
     const ids = new Set(
       effectiveColumns
@@ -506,6 +563,16 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     )
     return sorting.every((s) => ids.has(s.id)) ? sorting : sorting.filter((s) => ids.has(s.id))
   }, [effectiveColumns, sorting])
+
+  // Sort-only columns are forced hidden so they participate only in sorting,
+  // never in the visible/rendered columns, the frozen-pane split, auto widths,
+  // the visibility picker, or footer aggregates.
+  const effectiveVisibility = useMemo<VisibilityState>(() => {
+    if (sortOnlyLeafColumns.length === 0) return visibility
+    const next: VisibilityState = { ...visibility }
+    for (const col of sortOnlyLeafColumns) next[getColumnId(col)] = false
+    return next
+  }, [visibility, sortOnlyLeafColumns])
 
   // ----- Table instance -----
 
@@ -517,7 +584,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     state: {
       sorting: effectiveSorting,
       columnFilters: filters,
-      columnVisibility: visibility,
+      columnVisibility: effectiveVisibility,
       rowSelection,
       expanded: enableExpanding ? expandedState : {},
     },

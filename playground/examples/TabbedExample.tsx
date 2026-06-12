@@ -110,7 +110,7 @@ export function TabbedExample() {
   return (
     <Section
       title="TabbedTable"
-      description="Multiple views over one dataset with shared selection, cross-tab filter intersection, and a sliding tab strip. The Compensation tab is inline-editable."
+      description="Multiple views over one dataset with shared selection, cross-tab filter intersection, fully-shared sorting (sorting by any column — even one only one tab shows, like Salary or Email — reorders the rows on every tab), and a sliding tab strip. The Compensation tab is inline-editable."
       controls={
         <>
           <Toggle label="Row selection" checked={selectable} onChange={setSelectable} />
