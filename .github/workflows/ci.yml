@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Unit tests + typecheck (jsdom)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  perf:
+    name: Real-browser speed benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # GitHub's ubuntu image is not NixOS, so the bundled Playwright Chromium
+      # works here once its system libraries are installed. (On NixOS the bundle
+      # can't resolve its shared libs and vitest.browser.config.ts falls back to
+      # the system `chromium`; `which chromium` finds nothing on this image, so
+      # the config uses the bundled browser installed below.)
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:perf

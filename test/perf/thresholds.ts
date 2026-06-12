@@ -41,9 +41,12 @@ export const SCROLL_UPDATE_BUDGET_MS = 800
  * including the rAF the engine needs to commit + paint the new window. This is
  * wall-clock and HARDWARE-SENSITIVE: it includes paint, which on a GPU-less,
  * software-rendered (swiftshader) headless Chromium — as used here and on most
- * CI — costs ~90ms/step for this large scroll area. The budget keeps generous
- * headroom over that baseline so noise never trips it, while a real regression
- * (virtualization breaking → thousands of cells per frame) blows well past it.
- * On GPU-backed hardware the real number is far lower; recalibrate down there.
+ * CI — costs ~100ms/step for this large scroll area (measured median ~108ms on
+ * the dev container, comparable to a GitHub Actions ubuntu-latest runner). The
+ * budget keeps generous headroom (~3x) over that baseline so the noisier,
+ * shared CI runners never trip it, while a real regression (virtualization
+ * breaking → thousands of cells per frame) costs seconds/step and blows well
+ * past it. On GPU-backed hardware the real number is far lower; recalibrate
+ * down there.
  */
-export const BROWSER_SCROLL_STEP_BUDGET_MS = 250
+export const BROWSER_SCROLL_STEP_BUDGET_MS = 350
