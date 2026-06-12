@@ -2,6 +2,7 @@ import type { ColumnDef, OnChangeFn, SortingState, VisibilityState } from '@tans
 import { useCallback, useId, useMemo, useState } from 'react'
 import { ColumnVisibilityPicker } from '../core/ColumnVisibilityPicker'
 import { describeFilterValue, FilterBadges, type FilterBadgeItem } from '../core/FilterBadges'
+import { SortHierarchyPicker } from '../core/SortHierarchyPicker'
 import { TableCore } from '../core/TableCore'
 import { TabStripShell } from '../core/TabStripShell'
 import { getColumnId } from '../hooks/useAutoColumnWidths'
@@ -34,6 +35,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     selectedRowIds,
     onSelectedRowIdsChange,
     enableColumnVisibility,
+    enableSortHierarchy,
     enableFooter,
     enableExpanding,
     getSubRows,
@@ -85,6 +87,21 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
       return col && typeof col.header === 'string' ? col.header : columnId
     },
     [],
+  )
+
+  // Resolve a readable label from the union of every tab's columns, so sorted
+  // columns that aren't present on the active tab still show a name.
+  const resolveColumnLabel = useCallback(
+    (columnId: string): string => {
+      for (const tab of tabs) {
+        const col = tab.columns.find(
+          (c) => getColumnId(c as ColumnDef<TRow, unknown>) === columnId,
+        )
+        if (col) return columnLabelFor(tab, columnId)
+      }
+      return columnId
+    },
+    [tabs, columnLabelFor],
   )
 
   const badgeItems: FilterBadgeItem[] = activeFilters.map((f) => {
@@ -215,7 +232,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
           })
       : []
 
-  const hasActions = Boolean(actions) || pickerItems.length > 0
+  const hasActions = Boolean(actions) || pickerItems.length > 0 || enableSortHierarchy === true
 
   return (
     <TabStripShell
@@ -235,6 +252,13 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
         hasActions ? (
           <>
             {actions}
+            {enableSortHierarchy === true && (
+              <SortHierarchyPicker
+                sorting={sharedSorting}
+                resolveLabel={resolveColumnLabel}
+                onChange={setSharedSorting}
+              />
+            )}
             {pickerItems.length > 0 && activeTab && (
               <ColumnVisibilityPicker
                 items={pickerItems}

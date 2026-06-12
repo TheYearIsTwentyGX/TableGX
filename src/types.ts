@@ -363,6 +363,12 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   columnVisibilityStorageKeyBase?: string
   /** Distinct per mounted TabbedTable so sliding indicators don't cross instances. */
   tabIndicatorLayoutId?: string
+  /**
+   * Show a toolbar button that opens a popover for managing the shared
+   * multi-column sort hierarchy (flip direction, remove, reorder priority),
+   * including sorts on columns not shown on the active tab. Default off.
+   */
+  enableSortHierarchy?: boolean
   measure?: MeasureTextFn
   classNames?: TabbedTableClassNames
 } & Pick<

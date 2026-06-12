@@ -128,6 +128,8 @@ export function TabbedExample() {
           tabs={tabs}
           enableFooter
           enableColumnVisibility
+          enableMultiSort
+          enableSortHierarchy
           enableRowSelection={selectable}
           selectedRowIds={selected}
           onSelectedRowIdsChange={setSelected}

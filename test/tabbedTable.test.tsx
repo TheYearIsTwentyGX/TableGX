@@ -170,6 +170,121 @@ describe('TabbedTable shared sorting', () => {
   })
 })
 
+describe('TabbedTable sort-hierarchy popover', () => {
+  it('does not render the Sort button unless enabled', async () => {
+    render(
+      <TabbedTable<Row>
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={tabs}
+        defaultTabId="a"
+        measure={measure}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Manage sort order' })).not.toBeInTheDocument()
+  })
+
+  it('shows an empty state when nothing is sorted', async () => {
+    const user = userEvent.setup()
+    render(
+      <TabbedTable<Row>
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={tabs}
+        defaultTabId="a"
+        enableSortHierarchy
+        measure={measure}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Manage sort order' }))
+    expect(await screen.findByText(/No active sort/i)).toBeInTheDocument()
+    // The multi-sort tip is shown even when nothing is sorted yet.
+    expect(screen.getByText(/Shift-click a column header/i)).toBeInTheDocument()
+  })
+
+  it('lists sorted columns in priority order with correct directions', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <TabbedTable<Row>
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={tabs}
+        defaultTabId="a"
+        enableMultiSort
+        enableSortHierarchy
+        measure={measure}
+      />,
+    )
+
+    // Sort by Name (asc), then add City (asc) with a modifier for multi-sort.
+    await user.click(within(activeTable(container)).getByRole('button', { name: /^Name/ }))
+    await user.keyboard('{Shift>}')
+    await user.click(within(activeTable(container)).getByRole('button', { name: /^City/ }))
+    await user.keyboard('{/Shift}')
+
+    await user.click(screen.getByRole('button', { name: 'Manage sort order' }))
+    const items = await screen.findAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(within(items[0]!).getByText('Name')).toBeInTheDocument()
+    expect(within(items[1]!).getByText('City')).toBeInTheDocument()
+    // Name is sorted ascending — its flip button is labeled accordingly.
+    expect(
+      within(items[0]!).getByRole('button', { name: /Name sorted ascending/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('flips a direction, removes a column, and reorders priority', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <TabbedTable<Row>
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={tabs}
+        defaultTabId="a"
+        enableMultiSort
+        enableSortHierarchy
+        measure={measure}
+      />,
+    )
+
+    await user.click(within(activeTable(container)).getByRole('button', { name: /^Name/ }))
+    await user.keyboard('{Shift>}')
+    await user.click(within(activeTable(container)).getByRole('button', { name: /^City/ }))
+    await user.keyboard('{/Shift}')
+
+    await user.click(screen.getByRole('button', { name: 'Manage sort order' }))
+
+    // Flip Name to descending — the header sort indicator follows.
+    await user.click(screen.getByRole('button', { name: /Name sorted ascending/i }))
+    await waitFor(() =>
+      expect(
+        within(activeTable(container)).getByRole('button', { name: /^Name/ }),
+      ).toHaveAttribute('aria-sort', 'descending'),
+    )
+
+    // Reorder: move City earlier so it becomes priority 1.
+    await user.click(screen.getByRole('button', { name: /Move City earlier/i }))
+    await waitFor(() => {
+      const items = screen.getAllByRole('listitem')
+      expect(within(items[0]!).getByText('City')).toBeInTheDocument()
+      expect(within(items[1]!).getByText('Name')).toBeInTheDocument()
+    })
+
+    // Remove Name from the sort — its header indicator clears.
+    await user.click(screen.getByRole('button', { name: /Remove Name from sort/i }))
+    await waitFor(() =>
+      expect(
+        within(activeTable(container)).getByRole('button', { name: /^Name/ }),
+      ).not.toHaveAttribute('aria-sort'),
+    )
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+  })
+})
+
 describe('TabbedTable invalid active tab fallback', () => {
   it('renders the first tab when defaultTabId does not match any tab', async () => {
     await withElementSize(async () => {
