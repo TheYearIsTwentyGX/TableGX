@@ -7,11 +7,11 @@ description: >-
   Use when implementing editable grids, cell action buttons, or column meta.
 type: core
 library: tablegx
-library_version: "2.0.0"
+library_version: "2.1.0"
 sources:
-  - "TableGX:packages/tablegx/README.md"
-  - "TableGX:packages/tablegx/src/types.ts"
-  - "TableGX:packages/tablegx/src/lib/columns.tsx"
+  - "README.md"
+  - "src/types.ts"
+  - "src/lib/columns.tsx"
 ---
 
 # @twentygx/tablegx — Editing & Columns
@@ -60,7 +60,10 @@ const STATE_OPTIONS = ['TX', 'CA', 'NY'].map((s) => ({ label: s, value: s }))
 | `fixedMeasureWidth` | Fixed px width (icon/action columns) |
 | `maxColumnWidth` | Per-column auto-size clamp |
 | `footerAggregate`, `footerFormat`, `footerLabel` | Footer row |
-| `actions` | Declarative cell action buttons |
+| `actions` | Declarative cell action buttons (or custom-rendered controls) |
+| `renderCell(ctx)` | Full control of cell content (non-truncating, flexible) |
+| `onCellClick(ctx, e)` | Make the whole cell clickable, isolated from selection/expand/edit |
+| `disableTruncate` | Opt the value area out of single-line truncation |
 
 Module augmentation: `ColumnMeta` extends `TableColumnMeta`.
 
@@ -92,6 +95,8 @@ Module augmentation: `ColumnMeta` extends `TableColumnMeta`.
 
 Clicks stop propagation before `onClick`. Icon-only buttons require `ariaLabel`.
 
+For anything the declarative button can't express (popover triggers, menus), use a custom action — `{ id, render: (row) => <Control /> }` in the same `actions` array. The slot click-isolates the control automatically (no selection/expand/edit leak).
+
 ### Edit keyboard / commit
 
 - **Enter** commits (Shift+Enter newline in text)
@@ -102,7 +107,26 @@ Clicks stop propagation before `onClick`. Icon-only buttons require `ariaLabel`.
 
 ### Column factories
 
-`textColumn`, `numberColumn`, `booleanColumn`, `selectColumn`, `dateColumn`, `badgeColumn` — each enables filtering with `tgxFilterFn` by default.
+`textColumn`, `numberColumn`, `booleanColumn`, `selectColumn`, `dateColumn`, `badgeColumn`, `customColumn` — each enables filtering with `tgxFilterFn` by default.
+
+### Custom cell rendering
+
+`customColumn(id, header, render, meta?)` (or `meta.renderCell`) takes a typed `CellRenderContext` (`{ row, value, columnId, column, table, isEditing }`) and renders into a non-truncating, horizontally-flexible container — multiple badges, wrapping content, or interactive controls sit side by side instead of being clipped:
+
+```tsx
+import { customColumn, CellOverflowList, cellInteractionProps } from '@twentygx/tablegx'
+
+customColumn<Row>('tags', 'Tags', ({ row }) => (
+  <CellOverflowList>
+    {row.tags.map((t) => <Badge key={t}>{t}</Badge>)}
+  </CellOverflowList>
+), { measureText: (row) => row.tags.join(' ') })
+```
+
+- Custom content has no inferable text — always pair with `measureText` / `fixedMeasureWidth` for auto-sizing.
+- `CellOverflowList` shows as many inline items as fit, collapsing the rest into a `+N` pill (DOM-measured, re-measures on resize).
+- For interactive children inside a custom cell, spread `cellInteractionProps` (or call `isolateCellEvent`) so their clicks don't trigger selection/expand/edit.
+- `meta.onCellClick(ctx, e)` makes the whole cell clickable; on an editable column it does NOT also auto-enter edit.
 
 ## Common Mistakes
 
@@ -127,7 +151,7 @@ Correct:
 
 Both `meta.editable: true` **and** `editableColumnIds` must include the column id.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 ### HIGH onSaveEdit swallows errors
 
@@ -155,7 +179,7 @@ onSaveEdit={async (row, col, val) => {
 
 Returning `false` keeps the editor open for retry.
 
-Source: packages/tablegx/src/types.ts
+Source: src/types.ts
 
 ### HIGH Custom render without width hints
 
@@ -178,6 +202,6 @@ badgeColumn('status', 'Status')
 
 Auto column widths use pre-paint text measurement; custom cells need `measureText` or `fixedMeasureWidth`.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 See also: tablegx-advanced/SKILL.md — editable TabbedTable tabs

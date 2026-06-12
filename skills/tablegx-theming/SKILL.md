@@ -7,10 +7,10 @@ description: >-
   Material/Fluent-style skins, or per-cell conditional classes.
 type: core
 library: tablegx
-library_version: "2.0.0"
+library_version: "2.1.0"
 sources:
-  - "TableGX:packages/tablegx/README.md"
-  - "TableGX:packages/tablegx/src/theme.css"
+  - "README.md"
+  - "src/theme.css"
 ---
 
 # @twentygx/tablegx — Theming
@@ -121,7 +121,7 @@ Correct:
 
 Scrolling rows otherwise bleed through sticky header and pinned columns.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 ### MEDIUM Forking theme.css in node_modules
 
@@ -129,7 +129,7 @@ Wrong: copy/edit `node_modules/@twentygx/tablegx/dist/theme.css`.
 
 Correct: import the package file and override variables in your app stylesheet.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 ### MEDIUM Assuming SSR column widths are final
 
@@ -137,6 +137,6 @@ Wrong: snapshot-testing server HTML expecting measured auto-widths.
 
 Correct: SSR renders fallback min widths; client re-measures in a pre-paint layout effect without visible shift. Pass `measure` prop to stub in tests.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 See also: tablegx-quickstart/SKILL.md — Tailwind @source + theme.css import order

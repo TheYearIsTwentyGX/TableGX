@@ -1,0 +1,31 @@
+{
+  "library_version": "2.1.0",
+  "skills": {
+    "tablegx-advanced": {
+      "sources_sha": {
+        "README.md": "5aa3cdfa4c2443913bc3c642ca611448f47c01e13870671c34a4668e7d9571ab",
+        "src/types.ts": "d54bf0d5de535fcbcb6fd34555d4611bc9626f5ab18e60f70b1e01ad2adafb45",
+        "src/components/TabbedTable.tsx": "e424531d3cbc6ea0d04b426f495d0cda31ae14fa70de7595c92b9f77b77c6952"
+      }
+    },
+    "tablegx-editing": {
+      "sources_sha": {
+        "README.md": "5aa3cdfa4c2443913bc3c642ca611448f47c01e13870671c34a4668e7d9571ab",
+        "src/types.ts": "d54bf0d5de535fcbcb6fd34555d4611bc9626f5ab18e60f70b1e01ad2adafb45",
+        "src/lib/columns.tsx": "526deac3a603f75d18d03bc6d4061867e9e3aa42e858176ed5c6bf369ad82819"
+      }
+    },
+    "tablegx-quickstart": {
+      "sources_sha": {
+        "README.md": "5aa3cdfa4c2443913bc3c642ca611448f47c01e13870671c34a4668e7d9571ab",
+        "src/index.ts": "cc2ae970b3cfffa3eb34fc88bbaa9bd12dc7b2937755086de14ed77cdf16e212"
+      }
+    },
+    "tablegx-theming": {
+      "sources_sha": {
+        "README.md": "5aa3cdfa4c2443913bc3c642ca611448f47c01e13870671c34a4668e7d9571ab",
+        "src/theme.css": "b3e52ae9765e82afdc2418a5613cf0de4e9047f649a29ae4c88c8bf0e75e929e"
+      }
+    }
+  }
+}

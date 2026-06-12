@@ -7,10 +7,10 @@ description: >-
   configuring Tailwind for tablegx, or building a first read-only data grid.
 type: lifecycle
 library: tablegx
-library_version: "2.0.0"
+library_version: "2.1.0"
 sources:
-  - "TableGX:packages/tablegx/README.md"
-  - "TableGX:packages/tablegx/src/index.ts"
+  - "README.md"
+  - "src/index.ts"
 ---
 
 # @twentygx/tablegx — Quick Start
@@ -87,14 +87,17 @@ export function FacilitiesTable({ data }: { data: Row[] }) {
   enableFooter
   bordered
   isLoading={loading}
+  loadingSkeleton={(widths) => <MySkeleton widths={widths} />}
   emptyMessage="No rows"
   toolbar={<MyToolbar />}
 />
 ```
 
+`loadingSkeleton` (on all three components) replaces the built-in skeleton while `isLoading` is true; it accepts static markup or a render fn receiving the computed visible column widths so it can mirror the grid.
+
 ### Plain TanStack ColumnDef
 
-Factory helpers are optional. Any `ColumnDef` works; set `enableColumnFilter: true` and `filterFn: tgxFilterFn` (from `@twentygx/tablegx`) to opt into filter popovers.
+Factory helpers are optional. Any `ColumnDef` works; set `enableColumnFilter: true` and `filterFn: tgxFilterFn` (from `@twentygx/tablegx`) to opt into filter popovers. For arbitrary cell content (badges, popovers), use `customColumn` / `meta.renderCell` plus the exported `CellOverflowList`, `isolateCellEvent`, and `cellInteractionProps` helpers (see tablegx-editing).
 
 ### Exported layout constants
 
@@ -121,7 +124,7 @@ Correct:
 
 Without `@source`, the table renders with missing Tailwind utilities.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 ### CRITICAL Omitting getRowId
 
@@ -139,7 +142,7 @@ Correct:
 
 Stable ids drive selection, virtualization keys, and TabbedTable filter intersection.
 
-Source: packages/tablegx/src/types.ts
+Source: src/types.ts
 
 ### HIGH Wrong package import name
 
@@ -157,6 +160,6 @@ import { ReadOnlyTable, textColumn } from '@twentygx/tablegx'
 
 Published npm name is `@twentygx/tablegx`.
 
-Source: packages/tablegx/package.json
+Source: package.json
 
 See also: tablegx-theming/SKILL.md — override CSS variables after importing theme.css

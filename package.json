@@ -25,7 +25,9 @@
   "files": [
     "dist",
     "src",
-    "skills"
+    "skills",
+    "!skills/_artifacts",
+    "!skills/sync-state.json"
   ],
   "scripts": {
     "build": "tsdown",
@@ -34,6 +36,7 @@
     "test": "vitest run",
     "test:perf": "vitest run --config vitest.browser.config.ts",
     "typecheck": "tsc --noEmit",
+    "check:skills": "node scripts/check-skills.mjs",
     "dev:playground": "vite --config playground/vite.config.ts"
   },
   "keywords": [

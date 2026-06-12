@@ -7,11 +7,11 @@ description: >-
   Use for tabbed views, tree grids, or shared filter/selection across column sets.
 type: core
 library: tablegx
-library_version: "2.0.0"
+library_version: "2.1.0"
 sources:
-  - "TableGX:packages/tablegx/README.md"
-  - "TableGX:packages/tablegx/src/types.ts"
-  - "TableGX:packages/tablegx/src/components/TabbedTable.tsx"
+  - "README.md"
+  - "src/types.ts"
+  - "src/components/TabbedTable.tsx"
 ---
 
 # @twentygx/tablegx — Advanced Features
@@ -95,6 +95,10 @@ columnVisibilityStorageKey="my-table"           // ReadOnlyTable / EditableTable
 columnVisibilityStorageKeyBase="my-tabs"        // TabbedTable → `${base}:${tab.id}`
 ```
 
+### Loading skeleton
+
+`TabbedTable` (like the base tables) accepts `isLoading` plus an optional `loadingSkeleton` — static markup or `(widths) => ReactNode` receiving the computed visible column widths to mirror the grid layout.
+
 ### Dates (timezone-safe)
 
 Date-only strings (`YYYY-MM-DD`) parse at midnight UTC. Use `formatDateSafe` / `parseDateSafe` from `@twentygx/tablegx` for consistency.
@@ -117,7 +121,7 @@ Correct:
 
 `idColumn` must be the column whose values match `getRowId` — it drives cross-tab filter intersection.
 
-Source: packages/tablegx/src/types.ts
+Source: src/types.ts
 
 ### MEDIUM Enabling all advanced props by default
 
@@ -139,7 +143,7 @@ Correct:
 
 Keeps basic tables predictable and avoids unexpected UI chrome.
 
-Source: Table Specs.md §1
+Source: README.md
 
 ### MEDIUM Expecting footer to respect expand state only
 
@@ -147,6 +151,6 @@ Wrong assumption: footer sums only rows visible in the expanded tree UI.
 
 Correct: footer aggregates include all filtered **leaf** rows regardless of expand/collapse toggle.
 
-Source: packages/tablegx/README.md
+Source: README.md
 
 See also: tablegx-editing/SKILL.md — editable tab configuration
