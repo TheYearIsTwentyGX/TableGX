@@ -34,7 +34,7 @@ function useHashRoute() {
 }
 
 function useDarkMode() {
-  const [dark, setDark] = useState(false)
+  const [dark, setDark] = useState(true)
   // The library resolves its design tokens from `:where(.dark)`, and Radix
   // overlays portal to <body> — so the class must live on the document root,
   // not a nested wrapper, or those surfaces stay light.

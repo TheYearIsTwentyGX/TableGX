@@ -14,7 +14,7 @@ import { people, type Person } from '../data'
 import { Pill, Section, Toggle } from '../ui'
 
 export function ReadOnlyExample() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [footer, setFooter] = useState(true)
   const [frozen, setFrozen] = useState(true)
   const [selectable, setSelectable] = useState(false)
