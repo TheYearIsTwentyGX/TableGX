@@ -2,16 +2,41 @@ import type { Column, Header, SortDirection } from '@tanstack/react-table'
 import { flexRender } from '@tanstack/react-table'
 import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
-import { useRef } from 'react'
-import { ABSOLUTE_MIN_COLUMN_WIDTH_PX, HEADER_HEIGHT_PX } from '../constants'
+import { useRef, useState } from 'react'
+import {
+  ABSOLUTE_MIN_COLUMN_WIDTH_PX,
+  HEADER_H_PADDING_PX,
+  HEADER_HEIGHT_PX,
+  HEADER_ICON_GAP_PX,
+} from '../constants'
+import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect'
 import { cn } from '../lib/cn'
 import type { ColumnFilterValue, TableRowData } from '../types'
 import { FilterPopover } from './FilterPopover'
 
-/** Below this width the filter icon is hidden (spec §10.3). */
-const HIDE_FILTER_BELOW_PX = 56
-/** Below this width the sort icon is hidden (spec §10.3). */
-const HIDE_SORT_BELOW_PX = 100
+/**
+ * True when a column lacks room for its header text and icon cluster side by
+ * side, so the icons must overlay the text instead. Pure + exported for tests.
+ * The text is never shrunk to make room — when it doesn't fit, the icons float.
+ */
+export function needsHeaderIconOverlay({
+  columnWidth,
+  textWidth,
+  iconsWidth,
+  padding = HEADER_H_PADDING_PX,
+  gap = HEADER_ICON_GAP_PX,
+}: {
+  columnWidth: number
+  textWidth: number
+  iconsWidth: number
+  padding?: number
+  gap?: number
+}): boolean {
+  // No icons, or no text to overlay → nothing to float.
+  if (iconsWidth <= 0 || textWidth <= 0) return false
+  const available = columnWidth - padding
+  return textWidth + gap + iconsWidth > available
+}
 
 export type HeaderCellProps<TRow extends TableRowData> = {
   header: Header<TRow, unknown>
@@ -50,11 +75,35 @@ function HeaderCellInner<TRow extends TableRowData>({
 }: HeaderCellProps<TRow>) {
   const column = header.column
   const canSort = column.getCanSort()
+  const hasIcons = canSort || filterable
 
   const dragState = useRef<{ startX: number; startWidth: number } | null>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const iconsRef = useRef<HTMLDivElement>(null)
 
-  const showSortIcon = canSort && width >= HIDE_SORT_BELOW_PX
-  const showFilterIcon = filterable && width >= HIDE_FILTER_BELOW_PX
+  // When the header text + icon cluster can't sit side by side, the icons float
+  // over the text (an overlay) instead of being hidden or shrinking the text.
+  // Measured from the rendered DOM so it reacts to the real text/icon widths;
+  // icon widths are read from the affordance children so the overlay's own
+  // padding never feeds back into the decision (which would make it sticky).
+  const [overlay, setOverlay] = useState(false)
+  useIsomorphicLayoutEffect(() => {
+    const textEl = textRef.current
+    const iconsEl = iconsRef.current
+    if (!textEl || !iconsEl) {
+      setOverlay(false)
+      return
+    }
+    const sortEl = iconsEl.querySelector<HTMLElement>('[data-tgx-sort-affordance]')
+    const filterEl = iconsEl.querySelector<HTMLElement>('[data-tgx-filter-affordance]')
+    let iconsWidth = 0
+    if (sortEl) iconsWidth += sortEl.offsetWidth
+    if (filterEl) iconsWidth += filterEl.offsetWidth
+    if (sortEl && filterEl) iconsWidth += HEADER_ICON_GAP_PX
+    setOverlay(
+      needsHeaderIconOverlay({ columnWidth: width, textWidth: textEl.scrollWidth, iconsWidth }),
+    )
+  }, [width, canSort, filterable, sorted, sortedCount, sortIndex])
 
   const toggleSort = canSort ? column.getToggleSortingHandler() : undefined
 
@@ -80,38 +129,50 @@ function HeaderCellInner<TRow extends TableRowData>({
         }
       }}
     >
-      <span className="truncate">
+      <span ref={textRef} className="truncate">
         {header.isPlaceholder
           ? null
           : flexRender(column.columnDef.header, header.getContext())}
       </span>
 
-      {showSortIcon && (
-        <span className="flex shrink-0 items-center" aria-hidden>
-          {sorted === 'asc' ? (
-            <ArrowUpIcon className="size-3.5" />
-          ) : sorted === 'desc' ? (
-            <ArrowDownIcon className="size-3.5" />
-          ) : (
-            <ChevronsUpDownIcon className="size-3.5 opacity-40" />
+      {hasIcons && (
+        <div
+          ref={iconsRef}
+          className={cn(
+            'flex shrink-0 items-center gap-1',
+            overlay
+              ? 'absolute top-0 right-0 z-10 h-full rounded-l-md bg-card/80 pr-3 pl-2 backdrop-blur-sm supports-[backdrop-filter]:bg-card/65'
+              : 'ml-auto',
           )}
-          {sorted && sortedCount > 1 && sortIndex >= 0 && (
-            <span className="ml-0.5 rounded bg-primary/15 px-1 text-[10px] font-semibold text-primary tabular-nums">
-              {sortIndex + 1}
+        >
+          {canSort && (
+            <span data-tgx-sort-affordance className="flex shrink-0 items-center" aria-hidden>
+              {sorted === 'asc' ? (
+                <ArrowUpIcon className="size-3.5" />
+              ) : sorted === 'desc' ? (
+                <ArrowDownIcon className="size-3.5" />
+              ) : (
+                <ChevronsUpDownIcon className="size-3.5 opacity-40" />
+              )}
+              {sorted && sortedCount > 1 && sortIndex >= 0 && (
+                <span className="ml-0.5 rounded bg-primary/15 px-1 text-[10px] font-semibold text-primary tabular-nums">
+                  {sortIndex + 1}
+                </span>
+              )}
             </span>
           )}
-        </span>
-      )}
 
-      {showFilterIcon && (
-        <span className="ml-auto flex shrink-0 items-center">
-          <FilterPopover
-            columnLabel={columnLabel}
-            value={filterValue}
-            getUniqueValues={() => getUniqueValues(column)}
-            onChange={(next) => onFilterChange(column, next)}
-          />
-        </span>
+          {filterable && (
+            <span data-tgx-filter-affordance className="flex shrink-0 items-center">
+              <FilterPopover
+                columnLabel={columnLabel}
+                value={filterValue}
+                getUniqueValues={() => getUniqueValues(column)}
+                onChange={(next) => onFilterChange(column, next)}
+              />
+            </span>
+          )}
+        </div>
       )}
 
       {canResize && (
@@ -120,7 +181,7 @@ function HeaderCellInner<TRow extends TableRowData>({
           aria-orientation="vertical"
           aria-label={`Resize ${columnLabel} column`}
           tabIndex={0}
-          className="group/resize absolute top-0 right-0 flex h-full w-1.5 cursor-col-resize justify-end outline-none"
+          className="group/resize absolute top-0 right-0 z-20 flex h-full w-1.5 cursor-col-resize justify-end outline-none"
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => {

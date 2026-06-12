@@ -29,6 +29,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     columnVisibilityStorageKeyBase,
     tabIndicatorLayoutId,
     measure,
+    includeHeaderInAutosize,
     classNames,
     enableMultiSort,
     enableRowSelection,
@@ -312,6 +313,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             isLoading={isLoading}
             loadingSkeleton={loadingSkeleton}
             measure={measure}
+            includeHeaderInAutosize={includeHeaderInAutosize}
             classNames={classNames}
             pinnedPaneX={pinnedPaneX}
           />

@@ -3,6 +3,7 @@ import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import {
   ABSOLUTE_MIN_COLUMN_WIDTH_PX,
   AUTO_WIDTH_SAFETY_MARGIN_PX,
+  HEADER_ICON_GAP_PX,
   INDENT_STEP_PX,
   MAX_COLUMN_WIDTH_PX,
 } from '../constants'
@@ -24,6 +25,14 @@ const SORT_ICON_ALLOWANCE_PX = 24
 const FILTER_ICON_ALLOWANCE_PX = 28
 /** Allowance for the nested-row disclosure chevron button. */
 const EXPAND_TOGGLE_ALLOWANCE_PX = 28
+/**
+ * Upper bound for a plausible measured icon-affordance width. The affordances
+ * are a couple of small icon buttons, so any reading larger than this is a
+ * layout artifact — a zero-layout/SSR environment or a test that mocks
+ * offsetWidth to a container-sized box — and is ignored so the fixed allowance
+ * stands instead of exploding the column's header floor.
+ */
+const MAX_MEASURED_ICON_WIDTH_PX = 120
 /** Checkbox glyph + gap used by boolean display cells. */
 const BOOLEAN_CHECKBOX_ALLOWANCE_PX = 24
 
@@ -75,6 +84,16 @@ export type AutoWidthOptions<TRow extends TableRowData> = {
   headerFont?: string
   /** Font shorthand for cell value measurement; defaults to the SSR fallback stack. */
   cellFont?: string
+  /**
+   * When true (default) the header label + its sort/filter affordances floor
+   * each column's width. When false, width is driven purely by data-cell
+   * content (the header no longer acts as a width floor).
+   */
+  includeHeaderInAutosize?: boolean
+  /** Measured sort-affordance width (incl. gap); falls back to the fixed allowance. */
+  sortIconWidth?: number
+  /** Measured filter-affordance width (incl. gap); falls back to the fixed allowance. */
+  filterIconWidth?: number
 }
 
 /**
@@ -89,6 +108,9 @@ export function computeAutoWidths<TRow extends TableRowData>({
   measure = measureTextWidth,
   headerFont = HEADER_FONT,
   cellFont = CELL_FONT,
+  includeHeaderInAutosize = true,
+  sortIconWidth = SORT_ICON_ALLOWANCE_PX,
+  filterIconWidth = FILTER_ICON_ALLOWANCE_PX,
 }: AutoWidthOptions<TRow>): Map<string, number> {
   const widths = new Map<string, number>()
 
@@ -105,13 +127,16 @@ export function computeAutoWidths<TRow extends TableRowData>({
     const id = getColumnId(col)
     const meta = (col.meta ?? {}) as TableColumnMeta
 
-    // --- Header width: the real per-column minimum. ---
+    // --- Header floor: the per-column minimum contributed by the header. ---
+    // When includeHeaderInAutosize is false the header no longer floors the
+    // width — only the hard ABSOLUTE_MIN survives so width is content-driven.
     const headerLabel = typeof col.header === 'string' ? col.header : ''
     let headerWidth = CELL_H_PADDING_PX
     if (headerLabel) headerWidth += measure(headerLabel, headerFont) + AUTO_WIDTH_SAFETY_MARGIN_PX
-    if (col.enableSorting !== false) headerWidth += SORT_ICON_ALLOWANCE_PX
-    if (col.enableColumnFilter === true) headerWidth += FILTER_ICON_ALLOWANCE_PX
+    if (col.enableSorting !== false) headerWidth += sortIconWidth
+    if (col.enableColumnFilter === true) headerWidth += filterIconWidth
     headerWidth = Math.max(headerWidth, ABSOLUTE_MIN_COLUMN_WIDTH_PX)
+    const headerFloor = includeHeaderInAutosize ? headerWidth : ABSOLUTE_MIN_COLUMN_WIDTH_PX
 
     // --- Content width. ---
     let contentWidth: number
@@ -143,9 +168,10 @@ export function computeAutoWidths<TRow extends TableRowData>({
       contentWidth += EXPAND_TOGGLE_ALLOWANCE_PX + maxDepth * INDENT_STEP_PX
     }
 
-    // Clamp to [measured header width, meta.maxColumnWidth ?? system max].
-    const upper = Math.max(headerWidth, meta.maxColumnWidth ?? MAX_COLUMN_WIDTH_PX)
-    const width = Math.min(Math.max(contentWidth, headerWidth), upper)
+    // Clamp to [header floor, meta.maxColumnWidth ?? system max]. The floor is
+    // the header contribution (default) or the hard min (header excluded).
+    const upper = Math.max(headerFloor, meta.maxColumnWidth ?? MAX_COLUMN_WIDTH_PX)
+    const width = Math.min(Math.max(contentWidth, headerFloor), upper)
     widths.set(id, Math.ceil(width))
   }
 
@@ -160,15 +186,36 @@ function mapsEqual(a: Map<string, number> | null, b: Map<string, number>): boole
   return true
 }
 
+type ResolvedHeaderMetrics = {
+  headerFont: string
+  cellFont: string
+  sortIconWidth?: number
+  filterIconWidth?: number
+}
+
 /**
- * Reads the font actually painted in the rendered header/body cells so text is
- * measured in the consumer's inherited font, not the hardcoded SSR fallback.
+ * Reads the font actually painted in the rendered header/body cells (so text is
+ * measured in the consumer's inherited font, not the hardcoded SSR fallback)
+ * and the real rendered widths of the sort/filter affordances, so the header
+ * floor reflects the actual icons instead of fixed approximations. Icon widths
+ * are left undefined when nothing is rendered yet (SSR/first paint or jsdom),
+ * letting computeAutoWidths fall back to the fixed allowances.
  */
-function resolveFonts(container: HTMLElement | null): { headerFont: string; cellFont: string } {
+function resolveHeaderMetrics(container: HTMLElement | null): ResolvedHeaderMetrics {
   if (!container) return { headerFont: HEADER_FONT, cellFont: CELL_FONT }
+  const measured = (selector: string): number | undefined => {
+    const el = container.querySelector(selector) as HTMLElement | null
+    const w = el?.offsetWidth ?? 0
+    // Ignore non-layout (0) and implausibly large (artifact) readings; the
+    // fixed allowance covers those cases.
+    if (w <= 0 || w > MAX_MEASURED_ICON_WIDTH_PX) return undefined
+    return w + HEADER_ICON_GAP_PX
+  }
   return {
     headerFont: fontFromElement(container.querySelector('[data-tgx-header]'), HEADER_FONT),
     cellFont: fontFromElement(container.querySelector('[data-tgx-cell]'), CELL_FONT),
+    sortIconWidth: measured('[data-tgx-sort-affordance]'),
+    filterIconWidth: measured('[data-tgx-filter-affordance]'),
   }
 }
 
@@ -193,8 +240,8 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
   const recompute = useCallback(() => {
     const opts = latest.current
     if (!opts.measure && !canMeasureText()) return
-    const fonts = resolveFonts(containerRef?.current ?? null)
-    const next = computeAutoWidths({ ...opts, ...fonts })
+    const metrics = resolveHeaderMetrics(containerRef?.current ?? null)
+    const next = computeAutoWidths({ ...opts, ...metrics })
     setAutoWidths((prev) => (mapsEqual(prev, next) ? prev : next))
   }, [containerRef])
 
@@ -207,6 +254,7 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
     options.enableExpanding,
     options.getSubRows,
     options.measure,
+    options.includeHeaderInAutosize,
   ])
 
   useEffect(() => {

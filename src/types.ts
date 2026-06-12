@@ -224,6 +224,13 @@ export type ReadOnlyTableProps<TRow extends TableRowData> = {
   onColumnFiltersChange?: Dispatch<SetStateAction<ColumnFiltersState>>
   initialSorting?: SortingState
   measure?: MeasureTextFn
+  /**
+   * When true (default), the header label plus its sort/filter affordances act
+   * as a floor on each column's auto-sized width. Set false to drive width
+   * purely from data-cell content (the header may then clip and its icons fall
+   * back to an overlay). Not a user-facing toggle — a build-time prop.
+   */
+  includeHeaderInAutosize?: boolean
   /** Human label for a column id (used by filter badges and the visibility picker). */
   columnLabel?: (columnId: string) => string
   classNames?: TableClassNames
@@ -304,6 +311,8 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   isLoading?: boolean
   loadingSkeleton?: LoadingSkeleton
   measure?: MeasureTextFn
+  /** Floor auto-width on the header label + icons (default true); false sizes from data only. */
+  includeHeaderInAutosize?: boolean
   columnLabel?: (columnId: string) => string
   enableMultiSort?: boolean
   enableRowSelection?: boolean
@@ -370,6 +379,12 @@ export type TabbedTableProps<TRow extends TableRowData> = {
    */
   enableSortHierarchy?: boolean
   measure?: MeasureTextFn
+  /**
+   * Forwarded to every tab's table. When true (default) the header label and
+   * its icons floor each column's auto-sized width; false sizes purely from
+   * data-cell content. Build-time prop, not a user-facing toggle.
+   */
+  includeHeaderInAutosize?: boolean
   classNames?: TabbedTableClassNames
 } & Pick<
   AdvancedFeatureProps<TRow>,

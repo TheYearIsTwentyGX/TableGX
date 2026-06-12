@@ -144,6 +144,47 @@ describe('computeAutoWidths', () => {
     expect(seen).toContain('header-font')
     expect(seen).toContain('cell-font')
   })
+
+  it('drops the header floor when includeHeaderInAutosize is false', () => {
+    const longHeader = col('tiny', 'A Very Long Header Title') // 24 chars
+    const withHeader = computeAutoWidths<Row>({ columns: [longHeader], data, measure })
+    const withoutHeader = computeAutoWidths<Row>({
+      columns: [longHeader],
+      data,
+      measure,
+      includeHeaderInAutosize: false,
+    })
+    // include=true: pad 24 + 24*8=192 + margin 4 + sort 24 = 244 floors the column.
+    expect(withHeader.get('tiny')).toBe(244)
+    // include=false: header no longer floors → tiny content 'x'/'y' (8) + pad 24 +
+    // margin 4 = 36, clamped up to the absolute minimum.
+    expect(withoutHeader.get('tiny')).toBe(ABSOLUTE_MIN_COLUMN_WIDTH_PX)
+  })
+
+  it('sizes from data content (not the header) when the header is excluded', () => {
+    const wide: Row[] = [{ id: '1', name: 'x', tiny: 'x', big: 'B'.repeat(20) }]
+    const widths = computeAutoWidths<Row>({
+      columns: [col('big', 'A Very Long Header Title', { enableSorting: false })],
+      data: wide,
+      measure,
+      includeHeaderInAutosize: false,
+    })
+    // content "B"*20 = 160 + pad 24 + margin 4 = 188; the long header is ignored.
+    expect(widths.get('big')).toBe(20 * 8 + 24 + AUTO_WIDTH_SAFETY_MARGIN_PX)
+  })
+
+  it('uses the provided sort/filter icon widths for the header floor', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [col('name', 'Name', { enableSorting: true, enableColumnFilter: true })],
+      data,
+      measure,
+      sortIconWidth: 40,
+      filterIconWidth: 50,
+    })
+    // header floor = pad 24 + "Name" 32 + margin 4 + sort 40 + filter 50 = 150,
+    // which beats the content width "Beta Beta Beta" (112 + 24 + 4 = 140).
+    expect(widths.get('name')).toBe(150)
+  })
 })
 
 describe('useAutoColumnWidths', () => {

@@ -30,6 +30,12 @@ export const INDENT_STEP_PX = 20
 /** System-wide max width for auto-sized columns (per-column override via meta.maxColumnWidth). */
 export const MAX_COLUMN_WIDTH_PX = 480
 
+/** Horizontal header padding (px-3 each side) used by overlay-fit math. */
+export const HEADER_H_PADDING_PX = 24
+
+/** Flex gap between header text and its icon cluster (gap-1). */
+export const HEADER_ICON_GAP_PX = 4
+
 /** Id of the injected row-selection checkbox column. */
 export const SELECTION_COLUMN_ID = '__tgx_select__'
 

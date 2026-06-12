@@ -156,6 +156,7 @@ export function independentTable<TRow extends TableRowData>(
         isLoading={config.isLoading}
         loadingSkeleton={config.loadingSkeleton}
         measure={config.measure ?? args.measure}
+        includeHeaderInAutosize={config.includeHeaderInAutosize}
         classNames={args.classNames}
       />
     ),

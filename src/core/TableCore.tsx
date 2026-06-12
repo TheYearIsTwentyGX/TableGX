@@ -374,6 +374,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onColumnFiltersChange,
     initialSorting,
     measure,
+    includeHeaderInAutosize,
     columnLabel,
     classNames,
     enableMultiSort = false,
@@ -621,6 +622,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       getSubRows,
       enableExpanding,
       measure,
+      includeHeaderInAutosize,
     },
     scrollRef,
   )
