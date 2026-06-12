@@ -1,3 +1,4 @@
+import { commands } from '@vitest/browser/context'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { ReadOnlyTable } from '../../src/components/ReadOnlyTable'
@@ -116,6 +117,14 @@ test('ReadOnlyTable 1000x50 stays smooth under programmatic scrolling', async ()
     `[perf] scroll step ms — median ${medianStep.toFixed(1)}, ` +
       `min ${minStep.toFixed(1)}, max ${maxStep.toFixed(1)}`,
   )
+  // Surface the numbers in CI: the browser console above is not forwarded to
+  // stdout, so push them to Node via a custom command that writes to the perf
+  // job's stdout and the GitHub Actions job summary.
+  await commands.reportPerf('ReadOnlyTable', {
+    median: medianStep,
+    min: minStep,
+    max: maxStep,
+  })
 
   // Park the table at a known non-origin position and let it commit, so the
   // window-shift assertions compare against a genuinely scrolled state (not a
@@ -192,6 +201,12 @@ test('TabbedTable 1000x50 active tab stays smooth under programmatic scrolling',
     `[perf] tabbed scroll step ms — median ${medianStep.toFixed(1)}, ` +
       `min ${minStep.toFixed(1)}, max ${maxStep.toFixed(1)}`,
   )
+  // Surface the numbers in CI (see the ReadOnlyTable bench for why).
+  await commands.reportPerf('TabbedTable (active tab)', {
+    median: medianStep,
+    min: minStep,
+    max: maxStep,
+  })
 
   // Park the table at a known non-origin position and let it commit.
   scroller.scrollTop = Math.round(maxTop / 2)
