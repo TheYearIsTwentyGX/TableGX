@@ -2,6 +2,12 @@
 export { ReadOnlyTable } from './components/ReadOnlyTable'
 export { EditableTable } from './components/EditableTable'
 export { TabbedTable } from './components/TabbedTable'
+export {
+  IndependentTabbedTable,
+  independentTable,
+  type IndependentTab,
+  type IndependentTabbedTableProps,
+} from './components/IndependentTabbedTable'
 
 // Layout constants
 export {
@@ -50,6 +56,10 @@ export type {
   EditableTab,
   TabbedTableTab,
   TabbedTableProps,
+  IndependentTabBase,
+  ReadOnlyIndependentTab,
+  EditableIndependentTab,
+  IndependentTabConfig,
 } from './types'
 
 // Column factory helpers

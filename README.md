@@ -1,6 +1,6 @@
 # tablegx
 
-High-performance, type-safe React data tables: **`ReadOnlyTable`**, **`EditableTable`**, and **`TabbedTable`**, all layered over one virtualized engine.
+High-performance, type-safe React data tables: **`ReadOnlyTable`**, **`EditableTable`**, **`TabbedTable`**, and **`IndependentTabbedTable`**, all layered over one virtualized engine.
 
 - **Fast by construction** — row virtualization (TanStack Virtual), manual column virtualization for the scrollable pane, DOM-free text measurement ([@chenglou/pretext](https://github.com/chenglou/pretext)) so auto column widths are computed *before paint* with zero layout shift, and no `setTimeout`/`requestAnimationFrame` timing hacks anywhere.
 - **Feature-complete** — sorting (single + shift-click multi with priority badges), per-column filter popovers (text search + faceted checklist), removable filter badges, frozen columns (split pinned/scroll panes; auto-sized pinned width caps at 50% of the viewport until you resize a pinned column, then the pane can grow wider), row selection with parent/child/indeterminate semantics, nested rows, inline editing, declarative cell action buttons, footer aggregates, column visibility persistence, column resizing, loading/empty/submitting states.
@@ -96,6 +96,32 @@ import { TabbedTable } from '@twentygx/tablegx'
 ```
 
 Filters set on any tab restrict every tab to the intersection of passing rows; the shared badge strip shows each filter with its originating tab. Selection and sorting are shared across tabs — a sort applied on one tab carries to every tab, and sort entries for columns a tab doesn't have are simply ignored there. The shared sort is seeded from the initially-active tab's `initialSorting` (falling back to the first tab that defines one). During the tab slide animation, the frozen pane stays visually static (counter-translated).
+
+### Independent tabbed tables
+
+When each tab is a **completely separate table** — its own data, row shape, identity, columns, and independent sorting/filtering/selection/visibility — use `IndependentTabbedTable`. Tabs share only the tab-strip shell and slide animation; nothing crosses between them (no `idColumn`, no cross-tab filter intersection). Build each tab with the `independentTable<TRow>()` factory, which erases the row type so heterogeneous tabs can live in one array:
+
+```tsx
+import { IndependentTabbedTable, independentTable } from '@twentygx/tablegx'
+import type { IndependentTab } from '@twentygx/tablegx'
+
+const tabs: IndependentTab[] = [
+  independentTable<Person>({
+    id: 'people', label: 'People', data: people, getRowId: (r) => r.id,
+    columns: personColumns, enableRowSelection: true,
+    enableColumnVisibility: true, columnVisibilityStorageKey: 'app-people',
+  }),
+  independentTable<Invoice>({
+    id: 'invoices', label: 'Invoices', data: invoices, getRowId: (r) => r.id,
+    columns: invoiceColumns, editable: true, editableColumnIds: ['amount'],
+    onSaveEdit: saveInvoice,
+  }),
+]
+
+<IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+```
+
+Per-tab sorting, filters, selection, and column visibility are lifted by tab `id`, so each tab's state survives switching away and back. Chrome (filter badges, column picker, loading/empty states) reflects only the active tab. Column visibility persists under a full `columnVisibilityStorageKey` per tab (not a shared base). Because frozen columns aren't shared between tabs, the frozen pane slides out together with the scrolling pane during the tab transition (unlike `TabbedTable`, where the shared frozen pane stays visually static).
 
 ## Column metadata (`meta`)
 

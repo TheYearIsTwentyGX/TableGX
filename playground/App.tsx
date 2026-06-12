@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { EditableExample } from './examples/EditableExample'
+import { IndependentTabbedExample } from './examples/IndependentTabbedExample'
 import { ReadOnlyExample } from './examples/ReadOnlyExample'
 import { TabbedExample } from './examples/TabbedExample'
 
@@ -13,6 +14,11 @@ const pages: Page[] = [
   { path: '/read-only', label: 'ReadOnlyTable', render: () => <ReadOnlyExample /> },
   { path: '/editable', label: 'EditableTable', render: () => <EditableExample /> },
   { path: '/tabbed', label: 'TabbedTable', render: () => <TabbedExample /> },
+  {
+    path: '/independent-tabbed',
+    label: 'IndependentTabbedTable',
+    render: () => <IndependentTabbedExample />,
+  },
 ]
 
 const DEFAULT_PATH = pages[0]!.path

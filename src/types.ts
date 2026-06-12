@@ -278,6 +278,63 @@ export type EditableTab<TRow extends TableRowData> = CommonTab<TRow> & {
 
 export type TabbedTableTab<TRow extends TableRowData> = ReadOnlyTab<TRow> | EditableTab<TRow>
 
+// --- IndependentTabbedTable (separate tables per tab) ---
+
+/**
+ * Shared config for one independent tab. Unlike `TabbedTableTab`, each tab owns
+ * its **entire** dataset and identity — there is no shared row identity across
+ * tabs, so the row shape may differ from tab to tab. Build these through the
+ * typed `independentTable()` factory so each tab stays fully type-checked at the
+ * point of definition even when row shapes differ across tabs.
+ */
+export type IndependentTabBase<TRow extends TableRowData> = {
+  /** Stable tab key. */
+  id: string
+  /** Button text. */
+  label: ReactNode
+  /** This tab's own rows. */
+  data: TRow[]
+  /** This tab's own row identity. */
+  getRowId: GetRowId<TRow>
+  /** This tab's column set. */
+  columns: ColumnDef<TRow, unknown>[]
+  frozenColumns?: number
+  initialSorting?: SortingState
+  emptyMessage?: string
+  isLoading?: boolean
+  loadingSkeleton?: LoadingSkeleton
+  measure?: MeasureTextFn
+  columnLabel?: (columnId: string) => string
+  enableMultiSort?: boolean
+  enableRowSelection?: boolean
+  enableColumnVisibility?: boolean
+  /** Full localStorage key for this tab's column visibility (not a base). */
+  columnVisibilityStorageKey?: string
+  enableFooter?: boolean
+  enableExpanding?: boolean
+  getSubRows?: (row: TRow) => TRow[] | undefined
+  defaultExpanded?: boolean | Record<string, boolean>
+}
+
+export type ReadOnlyIndependentTab<TRow extends TableRowData> = IndependentTabBase<TRow> & {
+  editable?: false
+}
+
+export type EditableIndependentTab<TRow extends TableRowData> = IndependentTabBase<TRow> & {
+  editable: true
+  editableColumnIds: string[]
+  onSaveEdit: SaveEditFn<TRow>
+  columnGroups?: ColumnGroupDef[]
+  singleClickEdit?: boolean
+  getCellClassName?: (row: TRow, columnId: string) => string | undefined
+  isSubmitting?: boolean
+}
+
+/** A single independent tab's typed config (read-only or editable). */
+export type IndependentTabConfig<TRow extends TableRowData> =
+  | ReadOnlyIndependentTab<TRow>
+  | EditableIndependentTab<TRow>
+
 export type TabbedTableProps<TRow extends TableRowData> = {
   data: TRow[]
   getRowId: GetRowId<TRow>

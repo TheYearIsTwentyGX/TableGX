@@ -146,6 +146,41 @@ describe('TabbedTable shared sorting', () => {
   })
 })
 
+describe('TabbedTable invalid active tab fallback', () => {
+  it('renders the first tab when defaultTabId does not match any tab', async () => {
+    await withElementSize(async () => {
+      const { container } = render(
+        <TabbedTable<Row>
+          data={data}
+          getRowId={(r) => r.id}
+          idColumn="id"
+          tabs={tabs}
+          defaultTabId="does-not-exist"
+          measure={measure}
+        />,
+      )
+      // A panel must still render — the first tab's content, not a blank shell.
+      expect(await within(activeTable(container)).findByText('Bravo')).toBeInTheDocument()
+    })
+  })
+
+  it('renders the first tab when controlled activeTabId is stale', async () => {
+    await withElementSize(async () => {
+      const { container } = render(
+        <TabbedTable<Row>
+          data={data}
+          getRowId={(r) => r.id}
+          idColumn="id"
+          tabs={tabs}
+          activeTabId="ghost"
+          measure={measure}
+        />,
+      )
+      expect(await within(activeTable(container)).findByText('Bravo')).toBeInTheDocument()
+    })
+  })
+})
+
 describe('TabbedTable frozen column hiding', () => {
   type FRow = { id: string; code: string; name: string; city: string }
 

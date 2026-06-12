@@ -2,16 +2,18 @@
 name: tablegx-advanced
 description: >-
   TabbedTable multi-view tables, shared cross-tab filters and row selection,
-  idColumn, nested rows (enableExpanding, getSubRows), footer aggregates on
-  filtered leaves, column visibility persistence, frozen columns during tab slide.
-  Use for tabbed views, tree grids, or shared filter/selection across column sets.
+  IndependentTabbedTable (fully separate per-tab tables), idColumn, nested rows
+  (enableExpanding, getSubRows), footer aggregates on filtered leaves, column
+  visibility persistence, frozen columns during tab slide. Use for tabbed views,
+  tree grids, or shared/independent filter/selection across column sets.
 type: core
 library: tablegx
-library_version: "2.1.0"
+library_version: "2.2.0"
 sources:
   - "README.md"
   - "src/types.ts"
   - "src/components/TabbedTable.tsx"
+  - "src/components/IndependentTabbedTable.tsx"
 ---
 
 # @twentygx/tablegx — Advanced Features
@@ -57,6 +59,51 @@ const tabs: TabbedTableTab<Row>[] = [
 ```
 
 **Shared state across tabs:** filters intersect all tabs; filter badges show originating tab label; selection and sorting are shared (sort entries for columns a tab lacks are ignored on that tab).
+
+## Setup — IndependentTabbedTable
+
+Use when each tab is a **completely separate table** — its own data, row shape, identity, columns, and independent sorting/filtering/selection/visibility. Tabs share only the tab-strip shell and slide animation; nothing crosses between them. `TabbedTable` (above) is for multiple views over **one** dataset; reach for `IndependentTabbedTable` when the rows differ per tab.
+
+```tsx
+import {
+  IndependentTabbedTable,
+  independentTable,
+  textColumn,
+  numberColumn,
+} from '@twentygx/tablegx'
+import type { IndependentTab } from '@twentygx/tablegx'
+
+type Person = { id: string; name: string }
+type Invoice = { id: string; amount: number }
+
+// `independentTable<TRow>()` erases TRow so heterogeneous tabs share one array.
+const tabs: IndependentTab[] = [
+  independentTable<Person>({
+    id: 'people',
+    label: 'People',
+    data: people,
+    getRowId: (r) => r.id,
+    columns: [textColumn('name', 'Name')],
+    enableRowSelection: true,
+    enableColumnVisibility: true,
+    columnVisibilityStorageKey: 'app-people', // full key, NOT a base
+  }),
+  independentTable<Invoice>({
+    id: 'invoices',
+    label: 'Invoices',
+    data: invoices,
+    getRowId: (r) => r.id,
+    columns: [numberColumn('amount', 'Amount', { editable: true })],
+    editable: true,                 // this tab is independently editable
+    editableColumnIds: ['amount'],
+    onSaveEdit: async (row, col, val) => { await save(row, col, val); return true },
+  }),
+]
+
+<IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+```
+
+**Per-tab independence:** each tab keeps its own sorting, column filters, row selection, and column visibility, lifted by tab `id` so state survives tab switches. Chrome (filter badges, column picker, loading/empty states) reflects only the active tab. There is no `idColumn` and no cross-tab intersection — that concept is exclusive to `TabbedTable`. Column visibility persistence uses a full `columnVisibilityStorageKey` per tab (not a shared base). Frozen columns aren't shared across tabs, so the frozen pane slides out with the scrolling pane during the transition (`TabbedTable` instead keeps its shared frozen pane visually static).
 
 ## Core Patterns
 

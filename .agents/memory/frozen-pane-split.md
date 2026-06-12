@@ -24,3 +24,15 @@ only the selection column and `enableHiding: false` columns are excluded. In
 TabbedTable visibility is per-tab (persisted under `${base}:${tab.id}`) while
 selection and sorting are shared, so toggling a frozen column on one tab must not
 touch shared state.
+
+## Frozen pane behavior during the tab slide differs by component
+
+The tab-slide shell hands each panel a `pinnedPaneX` = negated slide-x. TableCore
+applies it (`x: pinnedPaneX`) to counter-translate the pinned pane so it stays
+visually static while the rest slides. **TabbedTable** uses this (shared frozen
+columns must look continuous across tab switches). **IndependentTabbedTable** must
+NOT — it passes no `pinnedPaneX`, so the pinned pane slides out with the panel.
+
+**Why:** in the independent variant each tab is a separate table with its own
+(possibly different) frozen columns, so a static pane would be wrong — there is
+nothing shared to hold still. Don't "fix" this to match TabbedTable.
