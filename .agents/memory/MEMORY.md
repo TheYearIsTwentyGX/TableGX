@@ -1,2 +1,3 @@
 - [Dark mode class placement](dark-mode-tokens.md) — toggle `.dark` on `<html>`, not a nested div, or `<body>` + Radix portals stay light.
 - [Frozen pane split is identity-based](frozen-pane-split.md) — the frozen pane is the visible intersection of a canonical frozen id set, never a positional slice of visible columns.
+- [Playwright on NixOS](playwright-nixos-chromium.md) — browser-mode tests must use the Nix system Chromium via provider-factory `launchOptions.executablePath`; bundled one can't find libs.

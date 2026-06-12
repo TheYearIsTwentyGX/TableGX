@@ -20,7 +20,8 @@ A high-performance, type-safe React data-table library: ReadOnlyTable, EditableT
 - **Package manager:** npm
 - **Build:** `npm run build` (tsdown → ESM bundle + d.ts + theme.css)
 - **Dev (watch):** `npm run dev`
-- **Test:** `npm test` (Vitest, jsdom)
+- **Test:** `npm test` (Vitest, jsdom) — includes the jsdom virtualizer perf guard
+- **Perf benchmark (real browser):** `npm run test:perf` (Vitest browser mode + Playwright/Chromium; NOT part of `npm test`)
 - **Typecheck:** `npm run typecheck` (tsc --noEmit)
 
 ## Notes
