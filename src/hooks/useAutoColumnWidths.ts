@@ -1,11 +1,18 @@
 import type { ColumnDef } from '@tanstack/react-table'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   ABSOLUTE_MIN_COLUMN_WIDTH_PX,
+  AUTO_WIDTH_SAFETY_MARGIN_PX,
   INDENT_STEP_PX,
   MAX_COLUMN_WIDTH_PX,
 } from '../constants'
-import { canMeasureText, CELL_FONT, HEADER_FONT, measureTextWidth } from '../lib/measure'
+import {
+  canMeasureText,
+  CELL_FONT,
+  fontFromElement,
+  HEADER_FONT,
+  measureTextWidth,
+} from '../lib/measure'
 import { flattenWithDepth } from '../lib/rows'
 import type { MeasureTextFn, TableColumnMeta, TableRowData } from '../types'
 
@@ -64,6 +71,10 @@ export type AutoWidthOptions<TRow extends TableRowData> = {
   getSubRows?: (row: TRow) => TRow[] | undefined
   enableExpanding?: boolean
   measure?: MeasureTextFn
+  /** Font shorthand for header label measurement; defaults to the SSR fallback stack. */
+  headerFont?: string
+  /** Font shorthand for cell value measurement; defaults to the SSR fallback stack. */
+  cellFont?: string
 }
 
 /**
@@ -76,6 +87,8 @@ export function computeAutoWidths<TRow extends TableRowData>({
   getSubRows,
   enableExpanding,
   measure = measureTextWidth,
+  headerFont = HEADER_FONT,
+  cellFont = CELL_FONT,
 }: AutoWidthOptions<TRow>): Map<string, number> {
   const widths = new Map<string, number>()
 
@@ -95,7 +108,7 @@ export function computeAutoWidths<TRow extends TableRowData>({
     // --- Header width: the real per-column minimum. ---
     const headerLabel = typeof col.header === 'string' ? col.header : ''
     let headerWidth = CELL_H_PADDING_PX
-    if (headerLabel) headerWidth += measure(headerLabel, HEADER_FONT)
+    if (headerLabel) headerWidth += measure(headerLabel, headerFont) + AUTO_WIDTH_SAFETY_MARGIN_PX
     if (col.enableSorting !== false) headerWidth += SORT_ICON_ALLOWANCE_PX
     if (col.enableColumnFilter === true) headerWidth += FILTER_ICON_ALLOWANCE_PX
     headerWidth = Math.max(headerWidth, ABSOLUTE_MIN_COLUMN_WIDTH_PX)
@@ -107,8 +120,9 @@ export function computeAutoWidths<TRow extends TableRowData>({
     } else if (meta.inputType === 'boolean' && !meta.measureText) {
       contentWidth =
         BOOLEAN_CHECKBOX_ALLOWANCE_PX +
-        Math.max(measure('Yes', CELL_FONT), measure('No', CELL_FONT)) +
-        CELL_H_PADDING_PX
+        Math.max(measure('Yes', cellFont), measure('No', cellFont)) +
+        CELL_H_PADDING_PX +
+        AUTO_WIDTH_SAFETY_MARGIN_PX
     } else {
       let maxText = 0
       for (const index of indices) {
@@ -118,10 +132,11 @@ export function computeAutoWidths<TRow extends TableRowData>({
           ? meta.measureText(entry.row)
           : String(getColumnValue(c, entry.row, index) ?? '')
         if (!text) continue
-        const w = measure(text, CELL_FONT)
+        const w = measure(text, cellFont)
         if (w > maxText) maxText = w
       }
       contentWidth = maxText + CELL_H_PADDING_PX
+      if (maxText > 0) contentWidth += AUTO_WIDTH_SAFETY_MARGIN_PX
     }
 
     if (id === disclosureColumnId) {
@@ -146,12 +161,28 @@ function mapsEqual(a: Map<string, number> | null, b: Map<string, number>): boole
 }
 
 /**
+ * Reads the font actually painted in the rendered header/body cells so text is
+ * measured in the consumer's inherited font, not the hardcoded SSR fallback.
+ */
+function resolveFonts(container: HTMLElement | null): { headerFont: string; cellFont: string } {
+  if (!container) return { headerFont: HEADER_FONT, cellFont: CELL_FONT }
+  return {
+    headerFont: fontFromElement(container.querySelector('[data-tgx-header]'), HEADER_FONT),
+    cellFont: fontFromElement(container.querySelector('[data-tgx-cell]'), CELL_FONT),
+  }
+}
+
+/**
  * Pre-paint auto column widths. Widths resolve in a layout effect (before the
  * browser paints) so there is never a visible layout shift; during SSR the
- * caller falls back to MIN_COLUMN_WIDTH_PX.
+ * caller falls back to MIN_COLUMN_WIDTH_PX. When `containerRef` is supplied the
+ * measurement font is derived from the rendered cells, and widths recompute once
+ * the document's fonts finish loading so late-swapped web fonts do not leave
+ * stale, too-narrow columns.
  */
 export function useAutoColumnWidths<TRow extends TableRowData>(
   options: AutoWidthOptions<TRow>,
+  containerRef?: RefObject<HTMLElement | null>,
 ): Map<string, number> | null {
   const [autoWidths, setAutoWidths] = useState<Map<string, number> | null>(null)
   const latest = useRef(options)
@@ -159,12 +190,35 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
 
   const columnsKey = options.columns.map(getColumnId).join('\u0000')
 
-  useLayoutEffect(() => {
+  const recompute = useCallback(() => {
     const opts = latest.current
     if (!opts.measure && !canMeasureText()) return
-    const next = computeAutoWidths(opts)
+    const fonts = resolveFonts(containerRef?.current ?? null)
+    const next = computeAutoWidths({ ...opts, ...fonts })
     setAutoWidths((prev) => (mapsEqual(prev, next) ? prev : next))
-  }, [options.data, columnsKey, options.enableExpanding, options.getSubRows, options.measure])
+  }, [containerRef])
+
+  useLayoutEffect(() => {
+    recompute()
+  }, [
+    recompute,
+    options.data,
+    columnsKey,
+    options.enableExpanding,
+    options.getSubRows,
+    options.measure,
+  ])
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !document.fonts?.ready) return
+    let cancelled = false
+    document.fonts.ready.then(() => {
+      if (!cancelled) recompute()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [recompute, options.data, columnsKey])
 
   return autoWidths
 }

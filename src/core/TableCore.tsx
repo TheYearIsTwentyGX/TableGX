@@ -613,13 +613,17 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   // ----- Auto + manual column widths -----
 
-  const autoWidths = useAutoColumnWidths({
-    columns,
-    data,
-    getSubRows,
-    enableExpanding,
-    measure,
-  })
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const autoWidths = useAutoColumnWidths(
+    {
+      columns,
+      data,
+      getSubRows,
+      enableExpanding,
+      measure,
+    },
+    scrollRef,
+  )
   const [manualWidths, setManualWidths] = useState<Record<string, number>>({})
   /** After the user resizes any pinned (non-selection) column, stop shrinking sibling pinned autos to hold total at 50% — otherwise the pane stays capped until one manual column alone reaches half the viewport. */
   const [pinnedUserSized, setPinnedUserSized] = useState(false)
@@ -635,7 +639,6 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   // ----- Pane split + viewport tracking -----
 
-  const scrollRef = useRef<HTMLDivElement | null>(null)
   const [viewportWidth, setViewportWidth] = useState(0)
 
   useIsomorphicLayoutEffect(() => {

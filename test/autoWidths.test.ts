@@ -1,10 +1,12 @@
+import { renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import {
   ABSOLUTE_MIN_COLUMN_WIDTH_PX,
+  AUTO_WIDTH_SAFETY_MARGIN_PX,
   INDENT_STEP_PX,
   MAX_COLUMN_WIDTH_PX,
 } from '../src/constants'
-import { computeAutoWidths } from '../src/hooks/useAutoColumnWidths'
+import { computeAutoWidths, useAutoColumnWidths } from '../src/hooks/useAutoColumnWidths'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { MeasureTextFn, TableRowData } from '../src/types'
 
@@ -28,9 +30,9 @@ describe('computeAutoWidths', () => {
       data,
       measure,
     })
-    // Content "Beta Beta Beta" (14 chars * 8 = 112) + padding 24 = 136;
-    // header "Name" (32) + padding 24 + sort allowance 24 = 80.
-    expect(widths.get('name')).toBe(136)
+    // Content "Beta Beta Beta" (14 chars * 8 = 112) + padding 24 + margin 4 = 140;
+    // header "Name" (32) + padding 24 + sort allowance 24 + margin 4 = 84.
+    expect(widths.get('name')).toBe(140)
   })
 
   it('clamps to maxColumnWidth but never below the header width', () => {
@@ -39,9 +41,9 @@ describe('computeAutoWidths', () => {
       data,
       measure,
     })
-    // Header: "Big Column" 10*8 + padding 24 + sort 24 = 128 > maxColumnWidth →
+    // Header: "Big Column" 10*8 + padding 24 + sort 24 + margin 4 = 132 > maxColumnWidth →
     // the header width wins as the floor.
-    expect(widths.get('big')).toBe(128)
+    expect(widths.get('big')).toBe(132)
   })
 
   it('clamps to the system max by default', () => {
@@ -59,7 +61,8 @@ describe('computeAutoWidths', () => {
       data,
       measure,
     })
-    // 96 + padding 24 = 120 (header floor is ABSOLUTE_MIN = 48).
+    // 96 + padding 24 = 120 (header floor is ABSOLUTE_MIN = 48). No safety margin
+    // is added to an explicit fixedMeasureWidth — the consumer sized it deliberately.
     expect(widths.get('big')).toBe(120)
   })
 
@@ -83,8 +86,8 @@ describe('computeAutoWidths', () => {
       data,
       measure,
     })
-    // "y-expanded-value" = 16 chars * 8 = 128 + 24 padding = 152.
-    expect(widths.get('tiny')).toBe(152)
+    // "y-expanded-value" = 16 chars * 8 = 128 + 24 padding + 4 margin = 156.
+    expect(widths.get('tiny')).toBe(156)
   })
 
   it('adds disclosure + depth indent to the first column when expanding', () => {
@@ -111,5 +114,65 @@ describe('computeAutoWidths', () => {
       measure,
     })
     expect(expanding.get('name')! - flat.get('name')!).toBe(28 + 1 * INDENT_STEP_PX)
+  })
+
+  it('adds the safety margin so the final glyph cannot clip', () => {
+    const withMargin = computeAutoWidths<Row>({
+      columns: [col('name', 'Name', { enableSorting: false })],
+      data: [{ id: '1', name: 'Mar', tiny: 'x', big: 'b' }],
+      measure,
+    })
+    // "Mar" 3*8 = 24 content vs "Name" 32 header (header wins) + 24 padding + 4 margin.
+    expect(withMargin.get('name')).toBe(32 + 24 + AUTO_WIDTH_SAFETY_MARGIN_PX)
+    // The margin is the only slack: removing it would leave exactly the measured width.
+    expect(withMargin.get('name')! - AUTO_WIDTH_SAFETY_MARGIN_PX).toBe(56)
+  })
+
+  it('measures with the injected header/cell fonts', () => {
+    const seen: string[] = []
+    const tracking: MeasureTextFn = (text, font) => {
+      seen.push(font)
+      return text.length * 8
+    }
+    computeAutoWidths<Row>({
+      columns: [col('name', 'Name')],
+      data,
+      measure: tracking,
+      headerFont: 'header-font',
+      cellFont: 'cell-font',
+    })
+    expect(seen).toContain('header-font')
+    expect(seen).toContain('cell-font')
+  })
+})
+
+describe('useAutoColumnWidths', () => {
+  it('recomputes widths after the document fonts finish loading', async () => {
+    let resolveReady: () => void = () => {}
+    const ready = new Promise<void>((resolve) => {
+      resolveReady = resolve
+    })
+    const docFonts = document as unknown as { fonts?: unknown }
+    const original = docFonts.fonts
+    docFonts.fonts = { ready }
+
+    let calls = 0
+    const counting: MeasureTextFn = (text) => {
+      calls += 1
+      return text.length * 8
+    }
+
+    try {
+      renderHook(() =>
+        useAutoColumnWidths<Row>({ columns: [col('name', 'Name')], data, measure: counting }),
+      )
+      const afterMount = calls
+      expect(afterMount).toBeGreaterThan(0)
+
+      resolveReady()
+      await waitFor(() => expect(calls).toBeGreaterThan(afterMount))
+    } finally {
+      docFonts.fonts = original
+    }
   })
 })

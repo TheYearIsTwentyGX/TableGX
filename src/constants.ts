@@ -11,6 +11,13 @@ export const MIN_COLUMN_WIDTH_PX = 160
 export const ABSOLUTE_MIN_COLUMN_WIDTH_PX = 48
 
 /**
+ * Slack added to each auto-sized column's measured text width so sub-pixel
+ * differences (rounding, browser zoom, letter-spacing, font metric mismatches)
+ * cannot clip the final glyph of a header label or cell value.
+ */
+export const AUTO_WIDTH_SAFETY_MARGIN_PX = 4
+
+/**
  * Auto-sized frozen (pinned) columns are scaled so their combined width does not
  * exceed this fraction of the viewport until the user resizes a pinned data column;
  * after that, pinned columns use their effective widths and the pane may grow wider.

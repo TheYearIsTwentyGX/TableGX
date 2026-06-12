@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { EditableExample } from './examples/EditableExample'
 import { IndependentTabbedExample } from './examples/IndependentTabbedExample'
+import { MetricsExample } from './examples/MetricsExample'
 import { ReadOnlyExample } from './examples/ReadOnlyExample'
 import { TabbedExample } from './examples/TabbedExample'
 
@@ -12,6 +13,7 @@ type Page = {
 
 const pages: Page[] = [
   { path: '/read-only', label: 'ReadOnlyTable', render: () => <ReadOnlyExample /> },
+  { path: '/metrics', label: 'Quality metrics', render: () => <MetricsExample /> },
   { path: '/editable', label: 'EditableTable', render: () => <EditableExample /> },
   { path: '/tabbed', label: 'TabbedTable', render: () => <TabbedExample /> },
   {
