@@ -10,7 +10,7 @@ import {
   textColumn,
   type ColumnDef,
 } from 'tablegx'
-import { people, type Person } from '../data'
+import { people, STATUS_OPTIONS, type Person } from '../data'
 import { Pill, Section, Toggle } from '../ui'
 
 export function ReadOnlyExample() {
@@ -20,6 +20,10 @@ export function ReadOnlyExample() {
   const [selectable, setSelectable] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [clicked, setClicked] = useState<string | null>(null)
+  // Default true: header label + sort/filter icons floor each column's width.
+  // Toggle off to size columns purely from data — long headers then clip and
+  // their icons fall back to an overlay (see the narrow "Status" column).
+  const [headerFloor, setHeaderFloor] = useState(true)
 
   const columns = useMemo<ColumnDef<Person, unknown>[]>(
     () => [
@@ -61,6 +65,11 @@ export function ReadOnlyExample() {
         footerFormat: (v) => `$${Math.round(v).toLocaleString()}`,
       }),
       dateColumn('startDate', 'Start date'),
+      // Deliberately narrow column: a small `maxColumnWidth` clamps the width
+      // below the header label + its sort/filter icons. With the header width
+      // floor on (default) the floor wins and the column stays wide; turn the
+      // floor off and this clamp takes effect, so the icons overlay the text.
+      selectColumn('status', 'Status', STATUS_OPTIONS, { maxColumnWidth: 56 }),
     ],
     [],
   )
@@ -68,12 +77,13 @@ export function ReadOnlyExample() {
   return (
     <Section
       title="ReadOnlyTable"
-      description="Virtualized display grid. The Skills column is a custom, non-truncating cell that collapses extra tags into a '+N'. Click a Name to fire its onCellClick — isolated from row selection."
+      description="Virtualized display grid. The Skills column is a custom, non-truncating cell that collapses extra tags into a '+N'. Click a Name to fire its onCellClick — isolated from row selection. Toggle the header width floor to watch columns resize from data alone — the narrow Status column then shows the sort/filter icon overlay."
       controls={
         <>
           <Toggle label="Loading skeleton" checked={loading} onChange={setLoading} />
           <Toggle label="Footer aggregates" checked={footer} onChange={setFooter} />
           <Toggle label="Frozen first column" checked={frozen} onChange={setFrozen} />
+          <Toggle label="Header width floor" checked={headerFloor} onChange={setHeaderFloor} />
           <Toggle label="Row selection" checked={selectable} onChange={setSelectable} />
           {selectable && (
             <span className="text-xs text-muted-foreground">{selected.length} selected</span>
@@ -92,6 +102,7 @@ export function ReadOnlyExample() {
           isLoading={loading}
           enableFooter={footer}
           frozenColumns={frozen ? 1 : 0}
+          includeHeaderInAutosize={headerFloor}
           enableColumnVisibility
           enableRowSelection={selectable}
           selectedRowIds={selected}
