@@ -231,3 +231,30 @@
 :where(.tgx-sliding) :where(.tgx-scrollbar)::-webkit-scrollbar {
   display: none;
 }
+
+/* The TabbedTable strip scrolls horizontally when there are more tabs than
+   fit, but per the styling guide it must not show a visible scrollbar. We hide
+   it the same way the mid-slide suppression does. The themed thumb/track colors
+   below are kept (mirroring `tgx-scrollbar`) so that anywhere a scrollbar could
+   still surface — e.g. a consumer override that re-enables it — it inherits the
+   library's appearance rather than the browser default. (It does not reuse the
+   `tgx-scrollbar` class so the strip isn't mistaken for a virtualized body
+   scroll container.) */
+:where(.tgx-tab-scroll) {
+  scrollbar-width: none;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
+}
+
+:where(.tgx-tab-scroll)::-webkit-scrollbar {
+  display: none;
+  height: 8px;
+}
+
+:where(.tgx-tab-scroll)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:where(.tgx-tab-scroll)::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  border-radius: 9999px;
+}

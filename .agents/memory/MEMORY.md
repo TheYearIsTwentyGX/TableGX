@@ -4,3 +4,4 @@
 - [Playwright on NixOS](playwright-nixos-chromium.md) — browser-mode tests must use the Nix system Chromium via provider-factory `launchOptions.executablePath`; bundled one can't find libs.
 - [TanStack sort direction](tanstack-sort-direction.md) — number/date columns sort descending-first on click; text columns ascending-first. Assert accordingly in tests.
 - [Auto-width icon measurement](autowidth-icon-measurement.md) — jsdom test harness mocks offsetWidth to container size on the prototype; cap measured icon widths or the header floor explodes & breaks the column-virtualization perf guard.
+- [Perf harness scroll container](perf-harness-scroll-container.md) — perf guards grab the first `.tgx-scrollbar`; new scrollable strips above the body must use a different class or virtualization assertions break.

@@ -183,6 +183,8 @@ export type TabbedTableClassNames = TableClassNames & {
   activeTab?: string
   inactiveTab?: string
   tabIndicator?: string
+  /** The Excel-style step arrows shown when the tab strip overflows. */
+  tabScrollButton?: string
   panel?: string
 }
 
