@@ -8,7 +8,7 @@ description: >-
   tree grids, or shared/independent filter/selection across column sets.
 type: core
 library: tablegx
-library_version: "2.2.0"
+library_version: "2.3.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -58,7 +58,9 @@ const tabs: TabbedTableTab<Row>[] = [
 />
 ```
 
-**Shared state across tabs:** filters intersect all tabs; filter badges show originating tab label; selection and sorting are shared (sort entries for columns a tab lacks are ignored on that tab).
+**Shared state across tabs:** filters intersect all tabs; filter badges show originating tab label; selection is shared. **Sorting is fully shared** — sorting by any column reorders rows on *every* tab, including tabs that don't render that column (its values still drive the order there; only the active tab's own columns show a sort indicator).
+
+**`enableSortHierarchy`** (default off) adds a toolbar button that opens a popover for managing the shared multi-column sort: reorder priority, flip each column's direction, or remove a column. Pair with `enableMultiSort` (shift-click headers) for the full multi-sort workflow. Columns that are sorted but not present on the active tab still resolve a readable label, drawn from the union of all tabs' columns.
 
 ## Setup — IndependentTabbedTable
 
@@ -145,6 +147,14 @@ columnVisibilityStorageKeyBase="my-tabs"        // TabbedTable → `${base}:${ta
 ### Loading skeleton
 
 `TabbedTable` (like the base tables) accepts `isLoading` plus an optional `loadingSkeleton` — static markup or `(widths) => ReactNode` receiving the computed visible column widths to mirror the grid layout.
+
+### Auto-size header floor
+
+`includeHeaderInAutosize` (default true; on `ReadOnlyTable`, `TabbedTable`, and per `IndependentTab`) makes the header label plus its sort/filter icons a floor on each column's auto-sized width. Set false to size columns purely from data-cell content — a too-narrow header then truncates and its icons fall back to a floating right-aligned overlay instead of being hidden. Build-time prop, not a user-facing toggle.
+
+### Many tabs
+
+When the tabs overflow their container the tab strip scrolls horizontally (no visible scrollbar); the active tab is kept in view. No prop required.
 
 ### Dates (timezone-safe)
 

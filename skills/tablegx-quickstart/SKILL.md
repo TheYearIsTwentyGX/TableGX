@@ -7,7 +7,7 @@ description: >-
   configuring Tailwind for tablegx, or building a first read-only data grid.
 type: lifecycle
 library: tablegx
-library_version: "2.1.0"
+library_version: "2.3.0"
 sources:
   - "README.md"
   - "src/index.ts"
@@ -94,6 +94,10 @@ export function FacilitiesTable({ data }: { data: Row[] }) {
 ```
 
 `loadingSkeleton` (on all three components) replaces the built-in skeleton while `isLoading` is true; it accepts static markup or a render fn receiving the computed visible column widths so it can mirror the grid.
+
+### Header width floor
+
+`includeHeaderInAutosize` (default true; also on `TabbedTable` and per `IndependentTab`) lets the header label plus its sort/filter icons floor each column's auto-sized width. Set false to size columns from data only — a too-narrow header then truncates and its icons float over the text as a right-aligned overlay rather than disappearing. Build-time prop, not a user-facing toggle.
 
 ### Plain TanStack ColumnDef
 
