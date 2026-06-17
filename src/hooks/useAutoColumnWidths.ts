@@ -140,7 +140,19 @@ export function computeAutoWidths<TRow extends TableRowData>({
 
     // --- Content width. ---
     let contentWidth: number
-    if (meta.fixedMeasureWidth !== undefined) {
+    if (meta.measureWidth) {
+      // Consumer-controlled exact content width: evaluate across the sampled
+      // rows and take the widest. No safety margin — the consumer owns the
+      // number; only cell padding is added.
+      let maxWidth = 0
+      for (const index of indices) {
+        const entry = flat[index]
+        if (!entry) continue
+        const w = meta.measureWidth(entry.row)
+        if (w > maxWidth) maxWidth = w
+      }
+      contentWidth = maxWidth + CELL_H_PADDING_PX
+    } else if (meta.fixedMeasureWidth !== undefined) {
       contentWidth = meta.fixedMeasureWidth + CELL_H_PADDING_PX
     } else if (meta.inputType === 'boolean' && !meta.measureText) {
       contentWidth =

@@ -75,6 +75,79 @@ describe('computeAutoWidths', () => {
     expect(widths.get('tiny')!).toBeGreaterThanOrEqual(ABSOLUTE_MIN_COLUMN_WIDTH_PX)
   })
 
+  it('honors meta.measureWidth over both measureText and fixedMeasureWidth', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [
+        col('tiny', '', {
+          enableSorting: false,
+          meta: {
+            measureWidth: () => 100,
+            // Both lower-precedence hints would yield a different width.
+            measureText: () => 'B'.repeat(50),
+            fixedMeasureWidth: 300,
+          },
+        }),
+      ],
+      data,
+      measure,
+    })
+    // measureWidth 100 + padding 24 = 124. No safety margin; the other two
+    // sizing hints are ignored entirely.
+    expect(widths.get('tiny')).toBe(124)
+  })
+
+  it('takes the max measureWidth across the sampled rows', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [
+        col('tiny', '', {
+          enableSorting: false,
+          meta: { measureWidth: (row: TableRowData) => (row.id === '2' ? 200 : 50) },
+        }),
+      ],
+      data,
+      measure,
+    })
+    // Widest sampled row = 200 + padding 24 = 224.
+    expect(widths.get('tiny')).toBe(224)
+  })
+
+  it('adds padding but no safety margin to measureWidth', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [
+        col('tiny', '', { enableSorting: false, meta: { measureWidth: () => 96 } }),
+      ],
+      data,
+      measure,
+    })
+    // 96 + padding 24 = 120; the +4 text safety margin is NOT applied.
+    expect(widths.get('tiny')).toBe(120)
+    expect(widths.get('tiny')! - AUTO_WIDTH_SAFETY_MARGIN_PX).toBe(116)
+  })
+
+  it('clamps measureWidth to maxColumnWidth and the header floor', () => {
+    const clamped = computeAutoWidths<Row>({
+      columns: [
+        col('tiny', '', {
+          enableSorting: false,
+          meta: { measureWidth: () => 1000, maxColumnWidth: 150 },
+        }),
+      ],
+      data,
+      measure,
+    })
+    // 1000 + 24 = 1024 content clamps down to maxColumnWidth 150.
+    expect(clamped.get('tiny')).toBe(150)
+
+    const floored = computeAutoWidths<Row>({
+      columns: [col('name', 'A Very Long Header Title', { meta: { measureWidth: () => 10 } })],
+      data,
+      measure,
+    })
+    // content 10 + 24 = 34 is below the header floor (pad 24 + 24*8 header +
+    // margin 4 + sort 24 = 244), so the header floor wins.
+    expect(floored.get('name')).toBe(244)
+  })
+
   it('honors meta.measureText over the accessor value', () => {
     const widths = computeAutoWidths<Row>({
       columns: [

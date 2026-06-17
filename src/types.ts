@@ -86,6 +86,17 @@ export type TableColumnMeta = {
   measureText?: (row: TableRowData) => string
   /** Fixed content width (px, excluding cell chrome/padding) used instead of measuring. */
   fixedMeasureWidth?: number
+  /**
+   * Returns the exact content width (px, excluding cell chrome/padding) for this
+   * column's cell on a given row. Use when a custom cell's width is not a
+   * function of any text — a sparkline, a variable set of chips, an image grid —
+   * so neither `measureText` nor `fixedMeasureWidth` fits. Takes precedence over
+   * both: auto-sizing evaluates it across the same sampled rows and takes the
+   * widest. The returned number is treated as the exact content width — cell
+   * padding is still added, but no text safety margin is applied, so the
+   * consumer owns the value.
+   */
+  measureWidth?: (row: TableRowData) => number
   /** Per-column max-width clamp (px) for auto-sizing. Defaults to the system max. */
   maxColumnWidth?: number
 
@@ -102,8 +113,9 @@ export type TableColumnMeta = {
    * Opt this column's value area out of single-line truncation, giving the
    * column's `cell` renderer full layout control (e.g. multiple badges, wrapping
    * content, interactive controls). Defaults to false (truncated single line).
-   * When using custom content, set `measureText` or `fixedMeasureWidth` so
-   * auto-sizing can size the column — the raw value is not meaningful here.
+   * When using custom content, set `measureText`, `fixedMeasureWidth`, or
+   * `measureWidth` so auto-sizing can size the column — the raw value is not
+   * meaningful here.
    */
   disableTruncate?: boolean
   /**
@@ -111,8 +123,8 @@ export type TableColumnMeta = {
    * TanStack `cell`. The output is rendered in a non-truncating,
    * horizontally-flexible container so multiple inline elements sit side by
    * side instead of being clipped. Because custom content has no inferable
-   * text, pair this with `measureText` / `fixedMeasureWidth` / `maxColumnWidth`
-   * for correct auto-sizing.
+   * text, pair this with `measureText` / `fixedMeasureWidth` / `measureWidth` /
+   * `maxColumnWidth` for correct auto-sizing.
    */
   renderCell?: (ctx: CellRenderContext) => ReactNode
   /**
