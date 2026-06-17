@@ -19,6 +19,7 @@ export type ColumnVisibilityItem = {
 type ColumnVisibilityPickerProps = {
   items: ColumnVisibilityItem[]
   onToggle: (id: string, visible: boolean) => void
+  onSetAll: (visible: boolean) => void
   className?: string
 }
 
@@ -26,9 +27,12 @@ type ColumnVisibilityPickerProps = {
 export function ColumnVisibilityPicker({
   items,
   onToggle,
+  onSetAll,
   className,
 }: ColumnVisibilityPickerProps) {
   const hiddenCount = items.filter((i) => !i.visible).length
+  const allVisible = hiddenCount === 0
+  const allHidden = hiddenCount === items.length
   if (items.length === 0) return null
   return (
     <DropdownMenu>
@@ -45,6 +49,28 @@ export function ColumnVisibilityPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+        <div className="flex gap-1 px-2 py-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 flex-1 text-xs"
+            disabled={allVisible}
+            onClick={() => onSetAll(true)}
+          >
+            Show all
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 flex-1 text-xs"
+            disabled={allHidden}
+            onClick={() => onSetAll(false)}
+          >
+            Hide all
+          </Button>
+        </div>
         <DropdownMenuSeparator />
         <div className="tgx-scrollbar max-h-72 overflow-y-auto">
           {items.map((item) => (

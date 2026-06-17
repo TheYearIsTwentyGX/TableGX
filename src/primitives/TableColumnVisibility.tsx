@@ -10,9 +10,14 @@ export type TableColumnVisibilityProps = {
  * nothing when the active tab exposes no hideable columns.
  */
 export function TableColumnVisibility({ className }: TableColumnVisibilityProps) {
-  const { pickerItems, togglePickerItem } = useTableStore()
+  const { pickerItems, togglePickerItem, setAllPickerItems } = useTableStore()
   if (pickerItems.length === 0) return null
   return (
-    <ColumnVisibilityPicker items={pickerItems} onToggle={togglePickerItem} className={className} />
+    <ColumnVisibilityPicker
+      items={pickerItems}
+      onToggle={togglePickerItem}
+      onSetAll={setAllPickerItems}
+      className={className}
+    />
   )
 }

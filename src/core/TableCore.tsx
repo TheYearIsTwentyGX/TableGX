@@ -1229,6 +1229,11 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
               <ColumnVisibilityPicker
                 items={pickerItems}
                 onToggle={(id, visible) => table.getColumn(id)?.toggleVisibility(visible)}
+                onSetAll={(visible) => {
+                  for (const item of pickerItems) {
+                    table.getColumn(item.id)?.toggleVisibility(visible)
+                  }
+                }}
               />
             )}
             {showTopRecordCount && (

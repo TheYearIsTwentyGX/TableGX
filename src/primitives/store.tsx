@@ -283,6 +283,20 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [activeTab, setVisibility],
   )
 
+  const setAllPickerItems = useCallback(
+    (visible: boolean) => {
+      if (!activeTab) return
+      const ids = pickerItems.map((i) => i.id)
+      if (ids.length === 0) return
+      setVisibility(activeTab)((prev) => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = visible
+        return next
+      })
+    },
+    [activeTab, setVisibility, pickerItems],
+  )
+
   const sortControl =
     enableSortHierarchy && mode === 'shared'
       ? {
@@ -310,6 +324,7 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     clearAllFilters,
     pickerItems,
     togglePickerItem,
+    setAllPickerItems,
     sortControl,
     recordCount,
   }

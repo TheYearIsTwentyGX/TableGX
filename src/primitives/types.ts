@@ -131,6 +131,8 @@ export type TableStore = {
   clearAllFilters: () => void
   pickerItems: ColumnVisibilityItem[]
   togglePickerItem: (id: string, visible: boolean) => void
+  /** Set every column currently in the picker to a single visibility. */
+  setAllPickerItems: (visible: boolean) => void
   sortControl: {
     sorting: SortingState
     resolveLabel: (columnId: string) => string
