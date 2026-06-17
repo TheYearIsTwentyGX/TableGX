@@ -3,20 +3,32 @@ import {
   booleanColumn,
   CellOverflowList,
   customColumn,
-  EditableTable,
+  dateColumn,
   numberColumn,
   selectColumn,
+  TableGX,
   textColumn,
   type CellAction,
   type ColumnDef,
 } from 'tablegx'
-import { makePeople, ROLE_OPTIONS, skillPool, STATUS_OPTIONS, type Person } from '../data'
+import {
+  DEPARTMENT_OPTIONS,
+  makePeople,
+  ROLE_OPTIONS,
+  skillPool,
+  STATUS_OPTIONS,
+  type Person,
+} from '../data'
 import { Pill, PopoverPanel, Section, Toggle } from '../ui'
 
-export function EditableExample() {
-  const [rows, setRows] = useState<Person[]>(() => makePeople(40))
+export function TableExample() {
+  const [rows, setRows] = useState<Person[]>(() => makePeople(120))
+  const [editable, setEditable] = useState(false)
   const [singleClick, setSingleClick] = useState(false)
-  const [lastEvent, setLastEvent] = useState('Edit a cell or use a row action…')
+  const [loading, setLoading] = useState(false)
+  const [selectable, setSelectable] = useState(true)
+  const [selected, setSelected] = useState<string[]>([])
+  const [lastEvent, setLastEvent] = useState('Toggle "Editable" and edit a cell…')
   // Open state for the "add skill" popover, anchored at the click coordinates
   // surfaced by the Skills cell's `onCellClick`.
   const [adding, setAdding] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -36,22 +48,27 @@ export function EditableExample() {
     },
   }
 
+  // One column set serves both modes. The `editable: true` flags only take
+  // effect while the `editable` prop below is on; with it off the same table is
+  // a plain read-only grid.
   const columns = useMemo<ColumnDef<Person, unknown>[]>(
     () => [
       textColumn('name', 'Name', { editable: true }),
+      textColumn('email', 'Email'),
       selectColumn('role', 'Role', ROLE_OPTIONS, { editable: true }),
+      selectColumn('department', 'Department', DEPARTMENT_OPTIONS),
       selectColumn('status', 'Status', STATUS_OPTIONS, { editable: true }),
       numberColumn('salary', 'Salary', {
         editable: true,
-        footerAggregate: 'sum',
-        footerLabel: 'Total ',
+        footerAggregate: 'avg',
+        footerLabel: 'Avg ',
         footerFormat: (v) => `$${Math.round(v).toLocaleString()}`,
       }),
+      dateColumn('startDate', 'Start date'),
       booleanColumn('active', 'Active', { editable: true }),
-      // Custom cell with interactive children. Each tag's ✕ uses
-      // `cellInteractionProps` (via Pill) so removing a tag does NOT trigger
-      // the cell's own `onCellClick` or enter inline edit. Clicking empty space
-      // in the cell fires onCellClick, which opens an "add skill" popover.
+      // Custom, non-truncating cell: inline tags collapsing extras into "+N".
+      // Each tag's ✕ removes it (isolated from edit/selection); clicking empty
+      // space opens a popover to add skills.
       customColumn<Person>(
         'skills',
         'Skills',
@@ -81,6 +98,7 @@ export function EditableExample() {
         },
         {
           maxColumnWidth: 240,
+          measureText: (row) => ((row.skills as string[]) ?? []).join('  '),
           onCellClick: (ctx, event) =>
             setAdding({ id: String(ctx.row.id), x: event.clientX, y: event.clientY }),
         },
@@ -106,24 +124,38 @@ export function EditableExample() {
 
   return (
     <Section
-      title="EditableTable"
-      description="Inline editing with optimistic commit. Double-click (or single-click when toggled) a cell to edit; the delete action shows a confirm dialog. In the Skills cell, the ✕ removes a tag (isolated from edit) and clicking empty space opens a popover to add skills."
+      title="Table — read-only ↔ editable"
+      description="One TableGX table whose `editable` boolean flips inline editing on and off live. Flipping it does NOT remount the table, so your scroll position and row selection are preserved — scroll down, select a few rows, then toggle Editable on/off and watch your place stay put. When editable, double-click (or single-click when toggled) a cell to edit; the delete action confirms first; in Skills, ✕ removes a tag and clicking empty space adds one."
       controls={
         <>
+          <Toggle label="Editable" checked={editable} onChange={setEditable} />
           <Toggle label="Single-click edit" checked={singleClick} onChange={setSingleClick} />
+          <Toggle label="Row selection" checked={selectable} onChange={setSelectable} />
+          <Toggle label="Loading skeleton" checked={loading} onChange={setLoading} />
+          {selectable && (
+            <span className="text-xs text-muted-foreground">{selected.length} selected</span>
+          )}
           <span className="text-xs text-muted-foreground">{lastEvent}</span>
         </>
       }
     >
       <div className="flex h-[420px] flex-col">
-        <EditableTable<Person>
+        <TableGX<Person>
+          variant="table"
           data={rows}
           columns={columns}
           getRowId={(r) => r.id}
+          editable={editable}
           editableColumnIds={['name', 'role', 'status', 'salary', 'active']}
           singleClickEdit={singleClick}
+          isLoading={loading}
           enableFooter
           frozenColumns={1}
+          enableColumnVisibility
+          enableRowSelection={selectable}
+          selectedRowIds={selected}
+          onSelectedRowIdsChange={setSelected}
+          initialSorting={[{ id: 'name', desc: false }]}
           onSaveEdit={async (row, columnId, value) => {
             setRows((prev) =>
               prev.map((r) => (r.id === row.id ? { ...r, [columnId]: value } : r)),
