@@ -249,6 +249,8 @@ const RowCellChunk = React.memo(RowCellChunkInner) as typeof RowCellChunkInner
 
 type VirtualRowProps<TRow extends TableRowData> = RowCellContext<TRow> & {
   top: number
+  /** When false, the row sits in normal document flow (row virtualization off). */
+  virtualized: boolean
   pinnedWidth: number
   /** Inclusive chunk range covering the current virtual column window. */
   chunkFrom: number
@@ -267,6 +269,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
   const {
     row,
     top,
+    virtualized,
     pinnedCount,
     pinnedWidth,
     chunkFrom,
@@ -324,10 +327,14 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
       data-tgx-row={row.id}
       data-selected={isSelected ? '' : undefined}
       className={cn(
-        'group absolute top-0 left-0 flex w-full border-b border-border bg-card transition-colors hover:bg-(--tgx-row-hover-bg) data-[selected]:bg-(--tgx-row-selected-bg) hover:data-[selected]:bg-(--tgx-row-selected-hover-bg)',
+        'group flex w-full border-b border-border bg-card transition-colors hover:bg-(--tgx-row-hover-bg) data-[selected]:bg-(--tgx-row-selected-bg) hover:data-[selected]:bg-(--tgx-row-selected-hover-bg)',
+        virtualized ? 'absolute top-0 left-0' : 'relative',
         bodyRowClassName,
       )}
-      style={{ height: ROW_HEIGHT_PX, transform: `translateY(${top}px)` }}
+      style={{
+        height: ROW_HEIGHT_PX,
+        transform: virtualized ? `translateY(${top}px)` : undefined,
+      }}
     >
       {pinnedCount > 0 && (
         <motion.div
@@ -394,6 +401,8 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onSelectedRowIdsChange,
     enableColumnVisibility = false,
     columnVisibilityStorageKey,
+    enableRowVirtualization = true,
+    enableColumnVirtualization = true,
     enableFooter = false,
     enableRecordCount = false,
     recordCountPosition = 'top',
@@ -1153,9 +1162,15 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // Chunk-aligned column window. Body cells render in CHUNK_COLUMNS-sized
   // chunks so sliding the window reuses memoized chunks; header and footer
   // render the same aligned window so they reveal in lockstep with the body.
-  const hasScrollWindow = colRange.end >= colRange.start
-  const chunkFrom = hasScrollWindow ? Math.floor(colRange.start / CHUNK_COLUMNS) : 0
-  const chunkTo = hasScrollWindow ? Math.floor(colRange.end / CHUNK_COLUMNS) : -1
+  // With column virtualization off, drive the window across every scrollable
+  // column (full start→end) so all chunks render; the chunk/offset math below
+  // and the pinned-pane handling are otherwise unchanged.
+  const effectiveColRange = enableColumnVirtualization
+    ? colRange
+    : { start: 0, end: scrollColumns.length - 1 }
+  const hasScrollWindow = effectiveColRange.end >= effectiveColRange.start
+  const chunkFrom = hasScrollWindow ? Math.floor(effectiveColRange.start / CHUNK_COLUMNS) : 0
+  const chunkTo = hasScrollWindow ? Math.floor(effectiveColRange.end / CHUNK_COLUMNS) : -1
   const visibleScrollStart = chunkFrom * CHUNK_COLUMNS
   const visibleScrollEnd = hasScrollWindow
     ? Math.min(scrollColumns.length - 1, chunkTo * CHUNK_COLUMNS + CHUNK_COLUMNS - 1)
@@ -1355,6 +1370,42 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
               >
                 {emptyMessage}
               </div>
+            ) : !enableRowVirtualization ? (
+              <div style={{ position: 'relative' }}>
+                {rows.map((row) => (
+                  <VirtualRow<TRow>
+                    key={row.id}
+                    row={row}
+                    top={0}
+                    virtualized={false}
+                    pinnedCount={pinnedCount}
+                    pinnedWidth={pinnedWidth}
+                    chunkFrom={chunkFrom}
+                    chunkTo={chunkTo}
+                    chunkLeftOf={chunkLeftOf}
+                    columnsKey={visibleColumnIdsKey}
+                    widthOf={widthOf}
+                    pinnedWidthOf={pinnedWidthOf}
+                    expandColumnId={expandColumnId}
+                    editing={editing !== null && editing.rowId === row.id ? editing : null}
+                    editorsDisabled={editorsDisabled}
+                    isSubmitting={isSubmitting}
+                    singleClickEdit={singleClickEdit}
+                    isSelected={row.getIsSelected()}
+                    isSomeSelected={row.getIsSomeSelected()}
+                    isExpanded={row.getIsExpanded()}
+                    canEditColumn={canEditColumn}
+                    onBeginEdit={beginEdit}
+                    onCommitEdit={commitEditForCell}
+                    onCancelEdit={cancelEdit}
+                    onDirectBooleanSave={directBooleanSave}
+                    getCellClassName={getCellClassName}
+                    bodyRowClassName={classNames?.bodyRow}
+                    bodyCellClassName={classNames?.bodyCell}
+                    pinnedPaneX={pinnedPaneX}
+                  />
+                ))}
+              </div>
             ) : (
               <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
                 {rowVirtualizer.getVirtualItems().map((vi) => {
@@ -1365,6 +1416,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                       key={row.id}
                       row={row}
                       top={vi.start - headerOffset}
+                      virtualized
                       pinnedCount={pinnedCount}
                       pinnedWidth={pinnedWidth}
                       chunkFrom={chunkFrom}

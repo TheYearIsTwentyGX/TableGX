@@ -226,6 +226,21 @@ export type AdvancedFeatureProps<TRow> = {
   onSelectedRowIdsChange?: (ids: string[]) => void
   enableColumnVisibility?: boolean
   columnVisibilityStorageKey?: string
+  /**
+   * Row virtualization. On by default. Set false to render every row in normal
+   * document flow instead of a sliding virtual window — useful for small tables
+   * where you want browser find-in-page (Ctrl+F), printing, screen-reader access
+   * to all rows, or simpler DOM snapshots. This is a "small table" escape hatch
+   * and may be slow on large datasets.
+   */
+  enableRowVirtualization?: boolean
+  /**
+   * Column virtualization of the scrollable pane. On by default. Set false to
+   * render every scrollable column at once instead of a sliding horizontal
+   * window. Frozen/pinned columns are never virtualized either way. Same
+   * "small table" escape hatch caveat as {@link enableRowVirtualization}.
+   */
+  enableColumnVirtualization?: boolean
   enableFooter?: boolean
   /**
    * Show an opt-in count of the table's rows. Off by default. When a filter
@@ -375,6 +390,10 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   enableColumnVisibility?: boolean
   /** Full localStorage key for this tab's column visibility (not a base). */
   columnVisibilityStorageKey?: string
+  /** Row virtualization for this tab (default true). See {@link AdvancedFeatureProps.enableRowVirtualization}. */
+  enableRowVirtualization?: boolean
+  /** Column virtualization for this tab (default true). See {@link AdvancedFeatureProps.enableColumnVirtualization}. */
+  enableColumnVirtualization?: boolean
   enableFooter?: boolean
   /** Show an opt-in row count for this tab (see {@link AdvancedFeatureProps.enableRecordCount}). */
   enableRecordCount?: boolean
@@ -455,6 +474,8 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'selectedRowIds'
   | 'onSelectedRowIdsChange'
   | 'enableColumnVisibility'
+  | 'enableRowVirtualization'
+  | 'enableColumnVirtualization'
   | 'enableFooter'
   | 'enableRecordCount'
   | 'recordCountPosition'

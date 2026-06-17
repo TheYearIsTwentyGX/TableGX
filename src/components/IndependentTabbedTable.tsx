@@ -125,6 +125,8 @@ export function independentTable<TRow extends TableRowData>(
         selectedRowIds={args.selectedRowIds}
         onSelectedRowIdsChange={args.onSelectedRowIdsChange}
         enableColumnVisibility={false}
+        enableRowVirtualization={config.enableRowVirtualization}
+        enableColumnVirtualization={config.enableColumnVirtualization}
         enableFooter={config.enableFooter}
         enableRecordCount={config.enableRecordCount}
         recordCountPosition={config.recordCountPosition}

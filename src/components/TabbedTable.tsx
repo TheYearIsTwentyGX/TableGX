@@ -42,6 +42,8 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     selectedRowIds,
     onSelectedRowIdsChange,
     enableColumnVisibility,
+    enableRowVirtualization,
+    enableColumnVirtualization,
     enableSortHierarchy,
     enableFooter,
     enableRecordCount,
@@ -179,6 +181,8 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             selectedRowIds={args.selectedRowIds}
             onSelectedRowIdsChange={args.onSelectedRowIdsChange}
             enableColumnVisibility={false}
+            enableRowVirtualization={enableRowVirtualization}
+            enableColumnVirtualization={enableColumnVirtualization}
             enableFooter={enableFooter}
             enableRecordCount={enableRecordCount}
             recordCountPosition={recordCountPosition}
