@@ -242,3 +242,72 @@ describe('ReadOnlyTable (smoke)', () => {
     })
   })
 })
+
+describe('ReadOnlyTable column picker show-all / hide-all', () => {
+  type PRow = { id: string; code: string; name: string; city: string }
+
+  const pData: PRow[] = [
+    { id: '1', code: 'C1', name: 'Bravo', city: 'York' },
+    { id: '2', code: 'C2', name: 'Alpha', city: 'Zurich' },
+  ]
+
+  // `code` is locked (enableHiding: false); name and city are hideable.
+  const pColumns = [
+    { ...textColumn<PRow>('code', 'Code'), enableHiding: false },
+    textColumn<PRow>('name', 'Name'),
+    textColumn<PRow>('city', 'City'),
+  ]
+
+  it('reveals/hides every hideable column with correct extreme states, leaving locked columns untouched', async () => {
+    await withElementSize(async () => {
+      const user = userEvent.setup()
+      render(
+        <ReadOnlyTable<PRow>
+          data={pData}
+          columns={pColumns}
+          getRowId={(r) => r.id}
+          enableColumnVisibility
+          measure={measure}
+        />,
+      )
+
+      // All three columns render initially.
+      expect(await screen.findByText('Bravo')).toBeInTheDocument()
+      expect(screen.getByText('York')).toBeInTheDocument()
+      expect(screen.getByText('C1')).toBeInTheDocument()
+
+      // Open the picker. Everything visible → "Show all" disabled, "Hide all" enabled.
+      await user.click(screen.getByRole('button', { name: /Columns/ }))
+      const showAll = await screen.findByRole('button', { name: 'Show all' })
+      const hideAll = await screen.findByRole('button', { name: 'Hide all' })
+      expect(showAll).toBeDisabled()
+      expect(hideAll).toBeEnabled()
+      // Only hideable columns are listed (Code is locked out of the picker).
+      expect(screen.getByRole('menuitemcheckbox', { name: 'Name' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitemcheckbox', { name: 'City' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitemcheckbox', { name: 'Code' })).not.toBeInTheDocument()
+
+      // Hide all hideable columns.
+      await user.click(hideAll)
+      await waitFor(() => {
+        expect(screen.queryByText('Bravo')).not.toBeInTheDocument()
+        expect(screen.queryByText('York')).not.toBeInTheDocument()
+      })
+      // The locked Code column is untouched.
+      expect(screen.getByText('C1')).toBeInTheDocument()
+
+      // Now everything hidden → "Hide all" disabled, "Show all" enabled.
+      expect(screen.getByRole('button', { name: 'Hide all' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Show all' })).toBeEnabled()
+
+      // Show all reveals the hideable columns again.
+      await user.click(screen.getByRole('button', { name: 'Show all' }))
+      await waitFor(() => {
+        expect(screen.queryByText('Bravo')).toBeInTheDocument()
+        expect(screen.queryByText('York')).toBeInTheDocument()
+      })
+      expect(screen.getByRole('button', { name: 'Show all' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Hide all' })).toBeEnabled()
+    })
+  })
+})
