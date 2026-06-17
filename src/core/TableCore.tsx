@@ -808,6 +808,12 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const isSubmittingRef = useRef(isSubmitting)
   isSubmittingRef.current = isSubmitting
 
+  // Flipping `editable` off (e.g. via the TableGX live toggle) must not leave an
+  // editor stranded open over a now read-only cell. Cancel any in-progress edit.
+  useEffect(() => {
+    if (!editable) setEditing(null)
+  }, [editable])
+
   const canEditColumn = useCallback(
     (columnId: string, meta: { editable?: boolean } | undefined): boolean => {
       if (!editable) return false

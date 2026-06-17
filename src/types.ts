@@ -286,6 +286,20 @@ export type EditableTableExtraProps<TRow extends TableRowData> = {
 export type EditableTableProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow> &
   EditableTableExtraProps<TRow>
 
+/**
+ * Props for `TableGX`'s single-table variant. Unifies read-only and editable
+ * into one surface: a state-controlled `editable` boolean flips the table
+ * between display-only and inline-editing live (no remount). Because the
+ * discriminated union can't enforce the editable-only props against a runtime
+ * boolean, they are optional here and `TableGX` warns in development when
+ * `editable` is true but a required one (`onSaveEdit`, `editableColumnIds`) is
+ * missing.
+ */
+export type TableGXTableProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow> & {
+  /** Toggle inline editing on/off live. Defaults to read-only (`false`). */
+  editable?: boolean
+} & Partial<EditableTableExtraProps<TRow>>
+
 // --- TabbedTable (spec §18) ---
 
 export type CommonTab<TRow extends TableRowData> = {

@@ -2,6 +2,13 @@
 export { ReadOnlyTable } from './components/ReadOnlyTable'
 export { EditableTable } from './components/EditableTable'
 export { TabbedTable } from './components/TabbedTable'
+export { TableGX } from './components/TableGX'
+export type {
+  TableGXProps,
+  TableGXTableVariantProps,
+  TableGXTabbedVariantProps,
+  TableGXIndependentVariantProps,
+} from './components/TableGX'
 export {
   IndependentTabbedTable,
   independentTable,
@@ -86,6 +93,7 @@ export type {
   ReadOnlyTableProps,
   EditableTableProps,
   EditableTableExtraProps,
+  TableGXTableProps,
   SaveEditFn,
   CommonTab,
   ReadOnlyTab,

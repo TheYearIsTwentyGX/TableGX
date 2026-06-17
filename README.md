@@ -30,6 +30,37 @@ Tailwind CSS v4 is a peer of the styling story: the package ships *untranspiled*
 
 `theme.css` declares every token with zero-specificity `:where(...)` selectors, so any `--background`, `--primary`, etc. you define in your own `:root` / `.dark` blocks win automatically. Dark mode follows the standard `.dark` class convention.
 
+## `TableGX` — the recommended entry point
+
+`TableGX` is the single component most apps should reach for. It's a thin **preset facade** over the compound primitives + shared headless store: one import covers every table mode, chosen with a discriminated `variant` prop. Each variant exposes exactly the props that mode supports (full autocomplete, no nonsensical cross-variant combinations).
+
+```tsx
+import { TableGX, textColumn } from '@twentygx/tablegx'
+
+// One table — read-only or editable, flipped live from your own state.
+const [editable, setEditable] = useState(false)
+
+<TableGX<Facility>
+  variant="table"
+  data={facilities}
+  columns={columns}
+  getRowId={(r) => r.id}
+  editable={editable}              // toggle inline editing on/off live (no remount)
+  editableColumnIds={['dba', 'beds']}
+  onSaveEdit={save}
+/>
+
+// Shared-dataset tabs (cross-tab filter intersection + shared selection/sort).
+<TableGX<Facility> variant="tabbed" data={facilities} getRowId={(r) => r.id} idColumn="id" tabs={tabs} />
+
+// Fully independent per-tab tables.
+<TableGX variant="independent" tabs={independentTabs} />
+```
+
+Driving `editable` from React state flips a single table between display-only and inline-editing with no remount (scroll position and selection are preserved); flipping it off mid-edit cancels any in-progress edit so no editor is left stranded. When `editable` is true but `onSaveEdit` / `editableColumnIds` are missing, `TableGX` warns in development.
+
+Need to rearrange the chrome (move the toolbar, split the tab strip, etc.)? Drop down to the primitives — `TableGX.Provider`, `TableGX.Container`, `TableGX.TabStrip`, `TableGX.Panels`, `TableGX.Body`, `TableGX.Toolbar`, … (the same family as the standalone `Table` namespace). The focused components below (`ReadOnlyTable`, `EditableTable`, `TabbedTable`, `IndependentTabbedTable`) remain exported and supported.
+
 ## Quick start
 
 ```tsx
