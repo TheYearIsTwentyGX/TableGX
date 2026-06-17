@@ -1,4 +1,4 @@
-import { commands } from '@vitest/browser/context'
+import { commands } from 'vitest/browser'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { ReadOnlyTable } from '../../src/components/ReadOnlyTable'
