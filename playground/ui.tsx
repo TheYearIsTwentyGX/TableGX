@@ -51,6 +51,35 @@ export function Toggle({
   )
 }
 
+export function Select<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: { label: string; value: T }[]
+  onChange: (next: T) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-foreground select-none">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground shadow-sm"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 /**
  * A small inline tag used inside custom cells. When `onRemove` is provided it
  * renders an interactive ✕ button that uses `cellInteractionProps` /

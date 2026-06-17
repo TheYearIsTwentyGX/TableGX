@@ -18,7 +18,9 @@ import {
   STATUS_OPTIONS,
   type Person,
 } from '../data'
-import { Pill, Section, Toggle } from '../ui'
+import { Pill, Section, Select, Toggle } from '../ui'
+
+type RecordCountChoice = 'off' | 'top' | 'bottom'
 
 // --- Completely serious, business-critical extra fields ---
 type FunPerson = Person & {
@@ -132,6 +134,7 @@ export function TabbedExample() {
   const [rows, setRows] = useState<FunPerson[]>(() => makeFunPeople(120))
   const [selectable, setSelectable] = useState(true)
   const [selected, setSelected] = useState<string[]>([])
+  const [recordCount, setRecordCount] = useState<RecordCountChoice>('top')
 
   const overviewColumns = useMemo<ColumnDef<FunPerson, unknown>[]>(
     () => [
@@ -316,6 +319,16 @@ export function TabbedExample() {
       description="Multiple views over one dataset with shared selection, cross-tab filter intersection, fully-shared sorting (sorting by any column — even one only one tab shows, like Salary or Email — reorders the rows on every tab), and a sliding tab strip. There are more tabs than fit, so the strip scrolls horizontally (wheel / trackpad / keyboard) while the filter badges and action buttons keep their place. The Compensation tab is inline-editable."
       controls={
         <>
+          <Select<RecordCountChoice>
+            label="Record count"
+            value={recordCount}
+            onChange={setRecordCount}
+            options={[
+              { label: 'Off', value: 'off' },
+              { label: 'Top (toolbar)', value: 'top' },
+              { label: 'Bottom (status bar)', value: 'bottom' },
+            ]}
+          />
           <Toggle label="Row selection" checked={selectable} onChange={setSelectable} />
           {selectable && (
             <span className="text-xs text-muted-foreground">{selected.length} selected</span>
@@ -333,6 +346,8 @@ export function TabbedExample() {
           enableColumnVisibility
           enableMultiSort
           enableSortHierarchy
+          enableRecordCount={recordCount !== 'off'}
+          recordCountPosition={recordCount === 'off' ? undefined : recordCount}
           enableRowSelection={selectable}
           selectedRowIds={selected}
           onSelectedRowIdsChange={setSelected}

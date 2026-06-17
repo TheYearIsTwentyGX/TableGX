@@ -47,9 +47,11 @@ import type {
   ColumnGroupDef,
   EditingState,
   ReadOnlyTableProps,
+  RecordCountInfo,
   SaveEditFn,
   TableRowData,
 } from '../types'
+import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
 import { BodyCell } from './BodyCell'
 import type { EditNavigation } from './CellEditors'
 import { ColumnVisibilityPicker } from './ColumnVisibilityPicker'
@@ -93,6 +95,15 @@ export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow>
   /** Internal — TabbedTable renders its own picker / badges. */
   hideBuiltInPicker?: boolean
   hideFilterBadges?: boolean
+  /**
+   * Internal — when false the top-placed record count is not drawn in this
+   * table's toolbar. The tabbed shells set this so the count lives in the tab
+   * strip instead of forcing a second toolbar row beneath it (paired with
+   * {@link onRecordCountChange}). Default true.
+   */
+  recordCountInToolbar?: boolean
+  /** Internal — reports the computed leaf counts up so a tab strip can render them. */
+  onRecordCountChange?: (info: RecordCountInfo | null) => void
   /** Internal — negated tab-slide x offset keeping the pinned pane static (spec §18.5). */
   pinnedPaneX?: MotionValue<number>
 }
@@ -384,6 +395,11 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     enableColumnVisibility = false,
     columnVisibilityStorageKey,
     enableFooter = false,
+    enableRecordCount = false,
+    recordCountPosition = 'top',
+    recordCountLabel,
+    recordCountInToolbar = true,
+    onRecordCountChange,
     enableExpanding = false,
     getSubRows,
     expanded: controlledExpanded,
@@ -936,6 +952,36 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enableFooter, filteredRowModel, scrollColumnIdsKey, pinnedCount])
 
+  // ----- Record count (opt-in; filtered leaf rows vs. total, spec parity with footer) -----
+
+  const recordCounts = useMemo(() => {
+    if (!enableRecordCount) return null
+    const filtered = filteredRowModel.flatRows.filter((r) => r.subRows.length === 0).length
+    const total = table
+      .getCoreRowModel()
+      .flatRows.filter((r) => r.subRows.length === 0).length
+    return { filtered, total, isFiltered: filtered < total }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enableRecordCount, filteredRowModel, data])
+
+  const recordCountContent = useMemo<React.ReactNode>(
+    () => (recordCounts ? formatRecordCount(recordCounts, recordCountLabel) : null),
+    [recordCounts, recordCountLabel],
+  )
+
+  // Report the computed counts up so a tab strip can render them in its own
+  // chrome (top placement in the tabbed shells) instead of a separate toolbar
+  // row. Keyed on the primitive values so a new filtered-row-model reference
+  // from an unrelated change (e.g. sorting) doesn't churn the consumer.
+  useEffect(() => {
+    onRecordCountChange?.(recordCounts)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onRecordCountChange, recordCounts?.filtered, recordCounts?.total, recordCounts?.isFiltered])
+
+  const showTopRecordCount =
+    recordCounts !== null && recordCountPosition === 'top' && recordCountInToolbar
+  const showBottomRecordCount = recordCounts !== null && recordCountPosition === 'bottom'
+
   // ----- Filter badges -----
 
   const badgeItems = useMemo<FilterBadgeItem[]>(() => {
@@ -1119,7 +1165,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const showRightEdge = viewportWidth > 0 && contentWidth < viewportWidth
 
   const hasToolbarRow =
-    Boolean(toolbar) || pickerItems.length > 0 || (enableExpanding && !isLoading)
+    Boolean(toolbar) ||
+    pickerItems.length > 0 ||
+    (enableExpanding && !isLoading) ||
+    showTopRecordCount
 
   const skeletonWidths = useMemo(() => {
     if (!isLoading) return []
@@ -1133,7 +1182,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     <div
       data-tgx-table=""
       className={cn(
-        'flex min-h-0 min-w-0 flex-col overflow-hidden bg-card text-card-foreground',
+        'relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-card text-card-foreground',
         bordered && 'rounded-md border border-border',
         !maxHeight && 'flex-1',
         classNames?.root,
@@ -1175,6 +1224,14 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                 items={pickerItems}
                 onToggle={(id, visible) => table.getColumn(id)?.toggleVisibility(visible)}
               />
+            )}
+            {showTopRecordCount && (
+              <span
+                data-tgx-record-count=""
+                className={cn(RECORD_COUNT_CLASS, classNames?.recordCount)}
+              >
+                {recordCountContent}
+              </span>
             )}
           </div>
         </div>
@@ -1371,6 +1428,18 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
           </div>
         )}
       </div>
+
+      {showBottomRecordCount && (
+        <div
+          data-tgx-record-count=""
+          className={cn(
+            'pointer-events-none absolute right-2 bottom-2 z-30 px-1 text-xs text-muted-foreground tabular-nums',
+            classNames?.recordCount,
+          )}
+        >
+          {recordCountContent}
+        </div>
+      )}
     </div>
   )
 }

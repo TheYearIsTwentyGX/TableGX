@@ -13,10 +13,13 @@ import { TabStripShell } from '../core/TabStripShell'
 import { getColumnId } from '../hooks/useAutoColumnWidths'
 import { cn } from '../lib/cn'
 import { isEmptyFilterValue } from '../lib/filtering'
+import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
 import type {
   ColumnFilterValue,
   IndependentTabConfig,
   MeasureTextFn,
+  RecordCountInfo,
+  RecordCountLabel,
   TabbedTableClassNames,
   TableRowData,
 } from '../types'
@@ -36,6 +39,10 @@ type IndependentTabRenderArgs = {
   onSelectedRowIdsChange: (ids: string[]) => void
   measure?: MeasureTextFn
   classNames?: TabbedTableClassNames
+  /** When false, the panel suppresses its own top count so the strip shows it. */
+  recordCountInToolbar?: boolean
+  /** Lifts the panel's computed leaf counts up to the tab strip. */
+  onRecordCountChange?: (info: RecordCountInfo | null) => void
 }
 
 /**
@@ -58,6 +65,10 @@ export type IndependentTab = {
     filters: ColumnFiltersState,
     clearColumn: (columnId: string) => void,
   ) => FilterBadgeItem[]
+  /** True when this tab's record count is enabled and placed at the top (tab strip). */
+  showsTopRecordCount: boolean
+  /** Consumer label override, surfaced so the strip can format the lifted count. */
+  recordCountLabel?: RecordCountLabel
   /** Render this tab's table panel. */
   render: (args: IndependentTabRenderArgs) => ReactNode
 }
@@ -84,6 +95,8 @@ export function independentTable<TRow extends TableRowData>(
   const enableColumnVisibility = config.enableColumnVisibility === true
   const enableRowSelection = config.enableRowSelection === true
   const usesColumnGroups = config.editable === true && Boolean(config.columnGroups)
+  const showsTopRecordCount =
+    config.enableRecordCount === true && (config.recordCountPosition ?? 'top') === 'top'
 
   return {
     id: config.id,
@@ -92,6 +105,8 @@ export function independentTable<TRow extends TableRowData>(
     enableColumnVisibility,
     enableRowSelection,
     columnVisibilityStorageKey: config.columnVisibilityStorageKey,
+    showsTopRecordCount,
+    recordCountLabel: config.recordCountLabel,
 
     getPickerItems: (visibility) => {
       // The picker is unavailable with grouped editable headers (matches TabbedTable).
@@ -149,6 +164,11 @@ export function independentTable<TRow extends TableRowData>(
         onSelectedRowIdsChange={args.onSelectedRowIdsChange}
         enableColumnVisibility={false}
         enableFooter={config.enableFooter}
+        enableRecordCount={config.enableRecordCount}
+        recordCountPosition={config.recordCountPosition}
+        recordCountLabel={config.recordCountLabel}
+        recordCountInToolbar={args.recordCountInToolbar}
+        onRecordCountChange={args.onRecordCountChange}
         enableExpanding={config.enableExpanding}
         getSubRows={config.getSubRows}
         defaultExpanded={config.defaultExpanded}
@@ -305,7 +325,13 @@ export function IndependentTabbedTable({
     ? activeTab.getFilterBadges(activeFilters, clearColumnFilter(activeTab.id))
     : []
   const pickerItems = activeTab ? activeTab.getPickerItems(activeVisibility) : []
-  const hasActions = Boolean(actions) || pickerItems.length > 0
+
+  // Top-placed counts render in the tab strip; the active panel reports its
+  // leaf counts up via onRecordCountChange (see independentTable render).
+  const showTopRecordCount = activeTab?.showsTopRecordCount === true
+  const [recordCountInfo, setRecordCountInfo] = useState<RecordCountInfo | null>(null)
+
+  const hasActions = Boolean(actions) || pickerItems.length > 0 || showTopRecordCount
 
   return (
     <TabStripShell
@@ -333,6 +359,14 @@ export function IndependentTabbedTable({
                 }}
               />
             )}
+            {showTopRecordCount && recordCountInfo && (
+              <span
+                data-tgx-record-count=""
+                className={cn(RECORD_COUNT_CLASS, classNames?.recordCount)}
+              >
+                {formatRecordCount(recordCountInfo, activeTab?.recordCountLabel)}
+              </span>
+            )}
           </>
         ) : undefined
       }
@@ -351,6 +385,8 @@ export function IndependentTabbedTable({
               onSelectedRowIdsChange: selectionHandlerFor(activeTab.id),
               measure,
               classNames,
+              recordCountInToolbar: showTopRecordCount ? false : undefined,
+              onRecordCountChange: showTopRecordCount ? setRecordCountInfo : undefined,
             })
           : null
       }

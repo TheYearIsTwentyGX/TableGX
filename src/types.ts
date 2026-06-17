@@ -159,6 +159,22 @@ export type ColumnGroupDef = {
  */
 export type LoadingSkeleton = ReactNode | ((widths: number[]) => ReactNode)
 
+/** Where an opt-in record count renders relative to the table body. */
+export type RecordCountPosition = 'top' | 'bottom'
+
+/** Leaf-row counts handed to a record-count label override. */
+export type RecordCountInfo = {
+  /** Leaf rows after the active filters are applied. */
+  filtered: number
+  /** Total leaf rows ignoring filters. */
+  total: number
+  /** True only when the active filters narrow the set (`filtered < total`). */
+  isFiltered: boolean
+}
+
+/** Override for the record-count display text/markup. */
+export type RecordCountLabel = (info: RecordCountInfo) => ReactNode
+
 /** Class overrides for every visual region; merged with the defaults via cn(). */
 export type TableClassNames = {
   root?: string
@@ -173,6 +189,8 @@ export type TableClassNames = {
   footerCell?: string
   empty?: string
   skeleton?: string
+  /** The opt-in record-count region (top toolbar/tab-strip count or bottom floated corner annotation). */
+  recordCount?: string
 }
 
 /** Class overrides for the TabbedTable chrome. */
@@ -197,6 +215,16 @@ export type AdvancedFeatureProps<TRow> = {
   enableColumnVisibility?: boolean
   columnVisibilityStorageKey?: string
   enableFooter?: boolean
+  /**
+   * Show an opt-in count of the table's rows. Off by default. When a filter
+   * narrows the set it reads "Showing X of Y" (filtered leaf rows vs. total
+   * leaf rows); otherwise a single total (e.g. "1,234 rows").
+   */
+  enableRecordCount?: boolean
+  /** Where the record count renders: `'top'` (right of the toolbar, after the Columns button) or `'bottom'` (annotation floated at the table's bottom-right corner). Default `'top'`. */
+  recordCountPosition?: RecordCountPosition
+  /** Override the record-count text/markup; receives the filtered/total leaf counts. */
+  recordCountLabel?: RecordCountLabel
   // Nested rows
   enableExpanding?: boolean
   getSubRows?: (row: TRow) => TRow[] | undefined
@@ -322,6 +350,12 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   /** Full localStorage key for this tab's column visibility (not a base). */
   columnVisibilityStorageKey?: string
   enableFooter?: boolean
+  /** Show an opt-in row count for this tab (see {@link AdvancedFeatureProps.enableRecordCount}). */
+  enableRecordCount?: boolean
+  /** Where this tab's record count renders: `'top'` or `'bottom'`. Default `'top'`. */
+  recordCountPosition?: RecordCountPosition
+  /** Override this tab's record-count text/markup. */
+  recordCountLabel?: RecordCountLabel
   enableExpanding?: boolean
   getSubRows?: (row: TRow) => TRow[] | undefined
   defaultExpanded?: boolean | Record<string, boolean>
@@ -396,5 +430,8 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'onSelectedRowIdsChange'
   | 'enableColumnVisibility'
   | 'enableFooter'
+  | 'enableRecordCount'
+  | 'recordCountPosition'
+  | 'recordCountLabel'
 > &
   Pick<AdvancedFeatureProps<TRow>, 'enableExpanding' | 'getSubRows' | 'defaultExpanded'>

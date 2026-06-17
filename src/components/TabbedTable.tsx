@@ -8,7 +8,13 @@ import { TabStripShell } from '../core/TabStripShell'
 import { getColumnId } from '../hooks/useAutoColumnWidths'
 import { useSharedTabFilters } from '../hooks/useSharedTabFilters'
 import { cn } from '../lib/cn'
-import type { TabbedTableProps, TabbedTableTab, TableRowData } from '../types'
+import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
+import type {
+  RecordCountInfo,
+  TabbedTableProps,
+  TabbedTableTab,
+  TableRowData,
+} from '../types'
 
 /**
  * Multiple table views (tabs) over the same rows, with cross-tab filter
@@ -38,6 +44,9 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableColumnVisibility,
     enableSortHierarchy,
     enableFooter,
+    enableRecordCount,
+    recordCountPosition,
+    recordCountLabel,
     enableExpanding,
     getSubRows,
     defaultExpanded,
@@ -233,7 +242,17 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
           })
       : []
 
-  const hasActions = Boolean(actions) || pickerItems.length > 0 || enableSortHierarchy === true
+  // Top-placed counts live in the tab strip (not a second toolbar row), so the
+  // active panel reports its leaf counts up via onRecordCountChange.
+  const showTopRecordCount =
+    enableRecordCount === true && (recordCountPosition ?? 'top') === 'top'
+  const [recordCountInfo, setRecordCountInfo] = useState<RecordCountInfo | null>(null)
+
+  const hasActions =
+    Boolean(actions) ||
+    pickerItems.length > 0 ||
+    enableSortHierarchy === true ||
+    showTopRecordCount
 
   return (
     <TabStripShell
@@ -267,6 +286,14 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
                   makeVisibilityHandler(activeTab)((prev) => ({ ...prev, [id]: visible }))
                 }}
               />
+            )}
+            {showTopRecordCount && recordCountInfo && (
+              <span
+                data-tgx-record-count=""
+                className={cn(RECORD_COUNT_CLASS, classNames?.recordCount)}
+              >
+                {formatRecordCount(recordCountInfo, recordCountLabel)}
+              </span>
             )}
           </>
         ) : undefined
@@ -306,6 +333,11 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             onSelectedRowIdsChange={handleSelectedChange}
             enableColumnVisibility={false}
             enableFooter={enableFooter}
+            enableRecordCount={enableRecordCount}
+            recordCountPosition={recordCountPosition}
+            recordCountLabel={recordCountLabel}
+            recordCountInToolbar={showTopRecordCount ? false : undefined}
+            onRecordCountChange={showTopRecordCount ? setRecordCountInfo : undefined}
             enableExpanding={enableExpanding}
             getSubRows={getSubRows}
             defaultExpanded={defaultExpanded}
