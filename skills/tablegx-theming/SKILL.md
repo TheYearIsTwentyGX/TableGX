@@ -53,12 +53,15 @@ Available on `ReadOnlyTable`, `EditableTable`, and `TabbedTable` (extra tab slot
     bodyRow: 'transition-colors',
     bodyCell: 'tabular-nums',
     footerCell: 'font-medium',
+    recordCount: 'text-xs text-muted-foreground',
   }}
   ...
 />
 ```
 
-TabbedTable adds: `container`, `tabStrip`, `tab`, `activeTab`, `inactiveTab`, `tabIndicator`, `panel`.
+Full base slot set: `root`, `toolbar`, `filterBadges`, `headerRow`, `headerCell`, `groupHeaderCell`, `bodyRow`, `bodyCell`, `footerRow`, `footerCell`, `empty`, `skeleton`, `recordCount` (the opt-in record-count region — top strip count or bottom corner annotation).
+
+TabbedTable adds: `container`, `tabStrip`, `tab`, `activeTab`, `inactiveTab`, `tabIndicator`, `tabScrollButton` (the Excel-style step arrows shown when the tab strip overflows), `panel`.
 
 Caller classes merge with defaults via `tailwind-merge` (caller wins).
 

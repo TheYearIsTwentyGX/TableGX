@@ -58,6 +58,7 @@ const STATE_OPTIONS = ['TX', 'CA', 'NY'].map((s) => ({ label: s, value: s }))
 | `editable`, `inputType`, `selectOptions` | Inline editing |
 | `measureText(row)` | Auto-width string for custom/non-text cells |
 | `fixedMeasureWidth` | Fixed px width (icon/action columns) |
+| `measureWidth(row)` | Exact per-row content width (px) when width isn't a function of any text (sparkline, chips, image grid); takes precedence over the other two |
 | `maxColumnWidth` | Per-column auto-size clamp |
 | `footerAggregate`, `footerFormat`, `footerLabel` | Footer row |
 | `actions` | Declarative cell action buttons (or custom-rendered controls) |

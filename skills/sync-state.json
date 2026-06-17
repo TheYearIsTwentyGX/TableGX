@@ -3,28 +3,28 @@
   "skills": {
     "tablegx-advanced": {
       "sources_sha": {
-        "README.md": "6e3c9f3a077852f9423ead80a1935999cf430451bd060e49a1dc5b6fc7508a27",
-        "src/types.ts": "02469ed187e013ca8654353408131a23590dabc6e5ce92bdeef6e698c6187075",
-        "src/components/TabbedTable.tsx": "7f9ffb9e38599312084612a780c2e6db2ea36ce9e22024d2a2afe1432403f0f9",
-        "src/components/IndependentTabbedTable.tsx": "28081f67f56115967a4fb184ff810f271c16717118d70b4cc52f0d675180a53d"
+        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
+        "src/types.ts": "abc84359e6ebb769452c86859ad006fb7455ea74757d391e1ce61caba08d76cc",
+        "src/components/TabbedTable.tsx": "dcd11987a5ff7632d3143c193f83d2daf094f8c85accf4e44a2941c3f0477e5e",
+        "src/components/IndependentTabbedTable.tsx": "0906364236e99e09f24bc67005234df16bfae6acd2a62ba12a093b6056e4d2d8"
       }
     },
     "tablegx-editing": {
       "sources_sha": {
-        "README.md": "6e3c9f3a077852f9423ead80a1935999cf430451bd060e49a1dc5b6fc7508a27",
-        "src/types.ts": "02469ed187e013ca8654353408131a23590dabc6e5ce92bdeef6e698c6187075",
+        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
+        "src/types.ts": "abc84359e6ebb769452c86859ad006fb7455ea74757d391e1ce61caba08d76cc",
         "src/lib/columns.tsx": "526deac3a603f75d18d03bc6d4061867e9e3aa42e858176ed5c6bf369ad82819"
       }
     },
     "tablegx-quickstart": {
       "sources_sha": {
-        "README.md": "6e3c9f3a077852f9423ead80a1935999cf430451bd060e49a1dc5b6fc7508a27",
-        "src/index.ts": "c1b03ed87fef083713773e9d23e6044277504b7811f6cef2702a26adc1daca3d"
+        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
+        "src/index.ts": "62385d19b3707e9544715f59b2eb3ee4b71d2ae01e85c734088684e4d1d2faea"
       }
     },
     "tablegx-theming": {
       "sources_sha": {
-        "README.md": "6e3c9f3a077852f9423ead80a1935999cf430451bd060e49a1dc5b6fc7508a27",
+        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
         "src/theme.css": "db38535a77210df8d7f5e7ee1d72021101ea4cbf397092d7f49c8414bec05340"
       }
     }

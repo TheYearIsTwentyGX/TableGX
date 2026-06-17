@@ -18,6 +18,17 @@ sources:
 
 # @twentygx/tablegx — Advanced Features
 
+## TableGX variants
+
+`TableGX` is the unified entry point; the tabbed/independent modes are selected with a `variant` prop and forward to the components documented below:
+
+```tsx
+<TableGX<Row> variant="tabbed" data={data} getRowId={(r) => r.id} idColumn="id" tabs={tabs} />
+<TableGX variant="independent" tabs={independentTabs} defaultTabId="people" />
+```
+
+`variant="tabbed"` accepts the same props as `TabbedTable`; `variant="independent"` the same as `IndependentTabbedTable`. The standalone components stay exported. See tablegx-quickstart for the `variant="table"` (single read-only/editable) mode.
+
 ## Setup — TabbedTable
 
 ```tsx
@@ -102,8 +113,15 @@ const tabs: IndependentTab[] = [
   }),
 ]
 
-<IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+<IndependentTabbedTable
+  tabs={tabs}
+  defaultTabId="people"        // uncontrolled initial tab
+  // activeTabId / onActiveTabChange  → control the active tab from your own state
+  // actions={<RefreshButton />} → right-aligned tab-strip controls
+/>
 ```
+
+The active tab can be uncontrolled (`defaultTabId`) or controlled (`activeTabId` + `onActiveTabChange`); `actions` renders right-aligned controls in the tab strip. `TabbedTable` exposes the same `activeTabId` / `defaultTabId` / `onActiveTabChange` / `actions` controls.
 
 **Per-tab independence:** each tab keeps its own sorting, column filters, row selection, and column visibility, lifted by tab `id` so state survives tab switches. Chrome (filter badges, column picker, loading/empty states) reflects only the active tab. There is no `idColumn` and no cross-tab intersection — that concept is exclusive to `TabbedTable`. Column visibility persistence uses a full `columnVisibilityStorageKey` per tab (not a shared base). Frozen columns aren't shared across tabs, so the frozen pane slides out with the scrolling pane during the transition (`TabbedTable` instead keeps its shared frozen pane visually static).
 
@@ -146,7 +164,31 @@ columnVisibilityStorageKeyBase="my-tabs"        // TabbedTable → `${base}:${ta
 
 ### Loading skeleton
 
-`TabbedTable` (like the base tables) accepts `isLoading` plus an optional `loadingSkeleton` — static markup or `(widths) => ReactNode` receiving the computed visible column widths to mirror the grid layout.
+`TabbedTable` (like the base tables) accepts `isLoading` plus an optional `loadingSkeleton` — static markup or `(widths) => ReactNode` receiving the computed visible column widths to mirror the grid layout. Each `IndependentTab` carries its own `isLoading` / `loadingSkeleton`.
+
+### Record count
+
+`enableRecordCount` (on the base tables, `TabbedTable`, and per `IndependentTab`) shows an opt-in count: "Showing X of Y" when filters narrow the leaf set, else a single total. `recordCountPosition` is `'top'` (default) or `'bottom'`; `recordCountLabel(info)` overrides the text. On `TabbedTable` a top count renders in the tab strip.
+
+### Selection count
+
+Row selection is shared on `TabbedTable` (per-tab on `IndependentTabbedTable`). Read the current count from the `selectedRowIds` array you pass to `selectedRowIds` / `onSelectedRowIdsChange` — there is no separate selection-count prop.
+
+### Headless compound primitives
+
+`TabbedTable`, `IndependentTabbedTable`, and `TableGX` are preset facades over a shared headless store. For fully custom chrome layouts, compose the slots yourself:
+
+```tsx
+import {
+  TableProvider, useTableStore,
+  TableContainer, TableTabStrip, TablePanels, TableBody,
+  TableToolbar, TableFilterBadges, TableSortControl,
+  TableColumnVisibility, TableRecordCount,
+} from '@twentygx/tablegx'
+// or via the namespaces: Table.Provider / Table.TabStrip / …  and  TableGX.Provider / TableGX.TabStrip / …
+```
+
+`TableProvider` (`mode: 'shared' | 'independent'`) owns all cross-cutting state; `useTableStore()` reads it (throws outside a provider). The slot components render the tab strip, panels, toolbar, filter badges, sort-hierarchy control, column-visibility picker, and record count, each wired to the store. The facades above are the recommended path — reach for the raw primitives only when you need to rearrange the chrome.
 
 ### Auto-size header floor
 
