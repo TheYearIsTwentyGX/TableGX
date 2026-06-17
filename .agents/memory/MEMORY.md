@@ -7,3 +7,4 @@
 - [Perf harness scroll container](perf-harness-scroll-container.md) — perf guards grab the first `.tgx-scrollbar`; new scrollable strips above the body must use a different class or virtualization assertions break.
 - [TableCore column-prop identity](tablecore-column-identity.md) — fresh array props (e.g. sortOnlyColumns) per render remount every cell; cache by content + share an EMPTY constant, else captured-node tests fail.
 - [TableGX facade composition](tablegx-facade.md) — TableGX delegates tabbed/independent to existing components (they ARE the primitive composition) & renders TableCore directly for table; toggling editable off must cancel the open editor.
+- [rowHeight modes](row-height-modes.md) — unset default must be byte-identical (cn/twMerge preserves order); 'auto' forces column-virt off; virtualized auto measures via offsetHeight, which the jsdom harness mocks.

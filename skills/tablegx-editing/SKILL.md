@@ -106,6 +106,12 @@ For anything the declarative button can't express (popover triggers, menus), use
 - **Tab / Shift+Tab** commits and moves to adjacent editable cell
 - `singleClickEdit`: boolean cells use interactive checkboxes directly
 
+### Row height
+
+`rowHeight` (`number | 'auto' | (row) => number`, default fixed 56px) is a shared table prop that applies to `EditableTable` too. Use `'auto'` when edited values need to wrap to multiple lines (cells top-align and wrap, with 56px as the floor); a number or `(row) => number` sets explicit per-row heights with no measurement. See tablegx-advanced/SKILL.md → Row height for the full behavior and virtualization tradeoffs.
+
+Source: src/types.ts
+
 ### Column factories
 
 `textColumn`, `numberColumn`, `booleanColumn`, `selectColumn`, `dateColumn`, `badgeColumn`, `customColumn` — each enables filtering with `tgxFilterFn` by default.

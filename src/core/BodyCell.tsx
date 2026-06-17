@@ -36,6 +36,18 @@ export type BodyCellProps<TRow extends TableRowData> = {
    */
   stateKey?: unknown
   className?: string
+  /**
+   * Resolved pixel height for this cell's row. Defaults to the fixed 56px row
+   * height; an explicit `rowHeight` number/function feeds the per-row value.
+   * Ignored when {@link autoHeight} is set.
+   */
+  rowHeightPx?: number
+  /**
+   * Content-driven height mode (`rowHeight: 'auto'`): the cell wraps its text
+   * and grows vertically, with `rowHeightPx`/56px acting as a minimum floor
+   * instead of a fixed height.
+   */
+  autoHeight?: boolean
 }
 
 /** Single body cell renderer implementing the spec §6 decision order. */
@@ -54,6 +66,8 @@ function BodyCellInner<TRow extends TableRowData>({
   onDirectBooleanSave,
   showExpandControl,
   className,
+  rowHeightPx = ROW_HEIGHT_PX,
+  autoHeight = false,
 }: BodyCellProps<TRow>) {
   const meta = (cell.column.columnDef.meta ?? {}) as TableColumnMeta
   const row = cell.row
@@ -165,7 +179,7 @@ function BodyCellInner<TRow extends TableRowData>({
     )
   } else {
     content = (
-      <span className="min-w-0 flex-1 truncate">
+      <span className={cn('min-w-0 flex-1', autoHeight ? 'break-words' : 'truncate')}>
         {flexRender(cell.column.columnDef.cell, cell.getContext())}
       </span>
     )
@@ -176,10 +190,11 @@ function BodyCellInner<TRow extends TableRowData>({
       data-tgx-cell={cell.column.id}
       className={cn(
         'group/cell flex items-center gap-1 overflow-hidden px-3 text-sm',
+        autoHeight && 'shrink-0 items-start py-3',
         !isEditing && (hasCellClick || canEdit) && 'cursor-pointer',
         className,
       )}
-      style={{ width, height: ROW_HEIGHT_PX }}
+      style={autoHeight ? { width, minHeight: rowHeightPx } : { width, height: rowHeightPx }}
       {...clickProps}
     >
       {showExpandControl && (

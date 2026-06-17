@@ -218,6 +218,18 @@ export type TabbedTableClassNames = TableClassNames & {
   panel?: string
 }
 
+/**
+ * Body row height.
+ *
+ * - unset (default): fixed 56px rows — identical behavior and performance to
+ *   prior versions.
+ * - `number`: a uniform fixed pixel height for every row.
+ * - `(row) => number`: an explicit per-row pixel height.
+ * - `'auto'`: content-driven height — cells wrap instead of clipping to a single
+ *   line, with the fixed 56px height acting as a minimum floor.
+ */
+export type RowHeight<TRow> = number | 'auto' | ((row: TRow) => number)
+
 /** Shared advanced features — everything defaults off (spec §23). */
 export type AdvancedFeatureProps<TRow> = {
   enableMultiSort?: boolean
@@ -241,6 +253,19 @@ export type AdvancedFeatureProps<TRow> = {
    * "small table" escape hatch caveat as {@link enableRowVirtualization}.
    */
   enableColumnVirtualization?: boolean
+  /**
+   * Body row height. Default (unset) keeps fixed 56px rows — identical behavior
+   * and performance to prior versions.
+   *
+   * - `number` / `(row) => number`: explicit fixed/per-row pixel heights. These
+   *   feed the row virtualizer directly (no DOM measurement), so virtualization
+   *   stays fully performant in both the virtualized and non-virtualized paths.
+   * - `'auto'`: rows grow to fit their content (cells wrap instead of clipping
+   *   to a single line) with a 56px minimum floor. Auto rows render every
+   *   scrollable column (column virtualization does not apply); row
+   *   virtualization is supported via dynamic measurement.
+   */
+  rowHeight?: RowHeight<TRow>
   enableFooter?: boolean
   /**
    * Show an opt-in count of the table's rows. Off by default. When a filter
@@ -394,6 +419,8 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   enableRowVirtualization?: boolean
   /** Column virtualization for this tab (default true). See {@link AdvancedFeatureProps.enableColumnVirtualization}. */
   enableColumnVirtualization?: boolean
+  /** Body row height for this tab (default fixed 56px). See {@link AdvancedFeatureProps.rowHeight}. */
+  rowHeight?: RowHeight<TRow>
   enableFooter?: boolean
   /** Show an opt-in row count for this tab (see {@link AdvancedFeatureProps.enableRecordCount}). */
   enableRecordCount?: boolean
@@ -476,6 +503,7 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'enableColumnVisibility'
   | 'enableRowVirtualization'
   | 'enableColumnVirtualization'
+  | 'rowHeight'
   | 'enableFooter'
   | 'enableRecordCount'
   | 'recordCountPosition'

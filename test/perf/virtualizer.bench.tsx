@@ -143,6 +143,79 @@ test('ReadOnlyTable 1000x50 stays smooth under programmatic scrolling', async ()
   expect(medianStep).toBeLessThan(BROWSER_SCROLL_STEP_BUDGET_MS)
 })
 
+test("ReadOnlyTable 1000x50 rowHeight='auto' stays bounded + smooth under scrolling", async () => {
+  root.render(
+    <ReadOnlyTable
+      data={data}
+      columns={columns}
+      getRowId={(r) => r.id}
+      measure={perfMeasure}
+      rowHeight="auto"
+    />,
+  )
+
+  // Auto height measures each row via the ref; give it two frames to mount,
+  // measure, and re-commit the settled window before sampling.
+  await nextFrame()
+  await nextFrame()
+
+  const scroller = getScrollContainer(host)
+
+  // Even with content-driven heights + per-row measurement, the row window
+  // stays bounded. (Columns are intentionally all-rendered in auto mode, so we
+  // assert only the row count cap here, not a column window.)
+  expect(countRenderedRows(host)).toBeGreaterThan(0)
+  expect(countRenderedRows(host)).toBeLessThanOrEqual(MAX_RENDERED_ROWS)
+  expect(countRenderedCells(host)).toBeLessThanOrEqual(MAX_RENDERED_CELLS)
+
+  const rowsBefore = renderedRowIds(host)
+
+  const STEPS = 40
+  const WARMUP = 6
+  const maxTop = scroller.scrollHeight - scroller.clientHeight
+  const maxLeft = scroller.scrollWidth - scroller.clientWidth
+  const times: number[] = []
+
+  for (let i = 1; i <= STEPS; i++) {
+    const top = Math.round((maxTop * i) / STEPS)
+    const left = Math.round((maxLeft * ((i % 7) + 1)) / 8)
+    const start = performance.now()
+    scroller.scrollTop = top
+    scroller.scrollLeft = left
+    await nextFrame()
+    if (i > WARMUP) times.push(performance.now() - start)
+  }
+
+  const sorted = [...times].sort((a, b) => a - b)
+  const medianStep = median(times)
+  const minStep = sorted[0] ?? 0
+  const maxStep = sorted[sorted.length - 1] ?? 0
+  // eslint-disable-next-line no-console
+  console.log(
+    `[perf] auto-height scroll step ms — median ${medianStep.toFixed(1)}, ` +
+      `min ${minStep.toFixed(1)}, max ${maxStep.toFixed(1)}`,
+  )
+  await commands.reportPerf("ReadOnlyTable (rowHeight='auto')", {
+    median: medianStep,
+    min: minStep,
+    max: maxStep,
+  })
+
+  // Park at a known non-origin position and let it commit.
+  scroller.scrollTop = Math.round(maxTop / 2)
+  scroller.scrollLeft = Math.round(maxLeft / 2)
+  await nextFrame()
+  await nextFrame()
+
+  // The row window moved and stayed bounded throughout. (No column-window
+  // assertion: auto mode renders every column, so the column set never shifts.)
+  expect(setsDiffer(rowsBefore, renderedRowIds(host))).toBe(true)
+  expect(countRenderedRows(host)).toBeLessThanOrEqual(MAX_RENDERED_ROWS)
+  expect(countRenderedCells(host)).toBeLessThanOrEqual(MAX_RENDERED_CELLS)
+
+  expect(medianStep).toBeLessThan(BROWSER_SCROLL_STEP_BUDGET_MS)
+})
+
 // Two tabs over the same rows; the active tab still mounts the full 1000x50
 // grid, so the scroll bench measures the same engine through the tab wrapper.
 const tabbedTabs: TabbedTableTab<PerfRow>[] = [

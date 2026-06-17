@@ -44,6 +44,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableColumnVisibility,
     enableRowVirtualization,
     enableColumnVirtualization,
+    rowHeight,
     enableSortHierarchy,
     enableFooter,
     enableRecordCount,
@@ -183,6 +184,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             enableColumnVisibility={false}
             enableRowVirtualization={enableRowVirtualization}
             enableColumnVirtualization={enableColumnVirtualization}
+            rowHeight={rowHeight}
             enableFooter={enableFooter}
             enableRecordCount={enableRecordCount}
             recordCountPosition={recordCountPosition}
@@ -215,6 +217,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableColumnVisibility,
     columnLabelFor,
     enableMultiSort,
+    rowHeight,
     enableFooter,
     enableRecordCount,
     recordCountPosition,

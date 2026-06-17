@@ -184,6 +184,10 @@ type RowCellContext<TRow extends TableRowData> = {
   onDirectBooleanSave: (cell: Cell<TRow, unknown>, value: boolean) => void
   getCellClassName?: (row: TRow, columnId: string) => string | undefined
   bodyCellClassName?: string
+  /** Content-driven row height (`rowHeight: 'auto'`): cells wrap + grow. */
+  autoHeight: boolean
+  /** Resolved fixed pixel height for this row (ignored when `autoHeight`). */
+  rowHeightPx: number
 }
 
 type RowCellChunkProps<TRow extends TableRowData> = RowCellContext<TRow> & {
@@ -221,18 +225,26 @@ function renderBodyCell<TRow extends TableRowData>(
       onDirectBooleanSave={ctx.onDirectBooleanSave}
       showExpandControl={columnId === ctx.expandColumnId}
       stateKey={stateKey}
+      autoHeight={ctx.autoHeight}
+      rowHeightPx={ctx.rowHeightPx}
       className={cn(ctx.bodyCellClassName, ctx.getCellClassName?.(ctx.row.original, columnId))}
     />
   )
 }
 
 function RowCellChunkInner<TRow extends TableRowData>(props: RowCellChunkProps<TRow>) {
-  const { row, chunk, left, pinnedCount, expandColumnId, isExpanded } = props
+  const { row, chunk, left, pinnedCount, expandColumnId, isExpanded, autoHeight } = props
   const cells = row.getVisibleCells()
   const from = pinnedCount + chunk * CHUNK_COLUMNS
   const slice = cells.slice(from, from + CHUNK_COLUMNS)
+  // Auto height renders every chunk in normal flow (column virtualization is
+  // off in this mode) so the in-flow cells can drive the row's height. Fixed
+  // height keeps the absolute, height-locked chunk that inherits the row's box.
   return (
-    <div className="absolute top-0 bottom-0 flex" style={{ left }}>
+    <div
+      className={autoHeight ? 'flex shrink-0' : 'absolute top-0 bottom-0 flex'}
+      style={autoHeight ? undefined : { left }}
+    >
       {slice.map((cell) =>
         renderBodyCell(
           cell,
@@ -263,6 +275,13 @@ type VirtualRowProps<TRow extends TableRowData> = RowCellContext<TRow> & {
   isExpanded: boolean
   bodyRowClassName?: string
   pinnedPaneX?: MotionValue<number>
+  /**
+   * Row-virtualizer measurement ref, supplied only for virtualized auto-height
+   * rows so TanStack measures each row's real (content-driven) height.
+   */
+  measureRef?: (el: HTMLElement | null) => void
+  /** Virtual index for `data-index` (paired with {@link measureRef}). */
+  dataIndex?: number
 }
 
 function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>) {
@@ -282,6 +301,10 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
     isExpanded,
     bodyRowClassName,
     pinnedPaneX,
+    autoHeight,
+    rowHeightPx,
+    measureRef,
+    dataIndex,
   } = props
 
   const cells = row.getVisibleCells()
@@ -318,6 +341,8 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
         onDirectBooleanSave={props.onDirectBooleanSave}
         getCellClassName={props.getCellClassName}
         bodyCellClassName={props.bodyCellClassName}
+        autoHeight={autoHeight}
+        rowHeightPx={rowHeightPx}
       />,
     )
   }
@@ -325,6 +350,8 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
   return (
     <div
       data-tgx-row={row.id}
+      data-index={autoHeight && virtualized ? dataIndex : undefined}
+      ref={autoHeight && virtualized ? measureRef : undefined}
       data-selected={isSelected ? '' : undefined}
       className={cn(
         'group flex w-full border-b border-border bg-card transition-colors hover:bg-(--tgx-row-hover-bg) data-[selected]:bg-(--tgx-row-selected-bg) hover:data-[selected]:bg-(--tgx-row-selected-hover-bg)',
@@ -332,7 +359,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
         bodyRowClassName,
       )}
       style={{
-        height: ROW_HEIGHT_PX,
+        ...(autoHeight ? { minHeight: ROW_HEIGHT_PX } : { height: rowHeightPx }),
         transform: virtualized ? `translateY(${top}px)` : undefined,
       }}
     >
@@ -403,6 +430,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     columnVisibilityStorageKey,
     enableRowVirtualization = true,
     enableColumnVirtualization = true,
+    rowHeight,
     enableFooter = false,
     enableRecordCount = false,
     recordCountPosition = 'top',
@@ -790,10 +818,37 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const rows = table.getRowModel().rows
   const headerOffset = HEADER_HEIGHT_PX + (columnGroups ? GROUP_HEADER_HEIGHT_PX : 0)
 
+  // ----- Row height -----
+  //
+  // Unset → fixed 56px rows (byte-for-byte identical to prior versions).
+  // number / (row)=>number → explicit per-row pixel heights fed straight to the
+  //   virtualizer (no DOM measurement). 'auto' → content-driven height: rows
+  //   render in normal flow so wrapped cells size them, with a 56px floor, and
+  //   (when virtualized) TanStack measures each row's real height.
+  const autoRowHeight = rowHeight === 'auto'
+  const explicitRowHeight = useMemo<((row: Row<TRow>) => number) | null>(() => {
+    if (typeof rowHeight === 'number') {
+      const h = Math.max(1, Math.round(rowHeight))
+      return () => h
+    }
+    if (typeof rowHeight === 'function') {
+      const fn = rowHeight
+      return (row) => Math.max(1, Math.round(fn(row.original)))
+    }
+    return null
+  }, [rowHeight])
+  const resolveRowHeight = useCallback(
+    (row: Row<TRow>): number => (explicitRowHeight ? explicitRowHeight(row) : ROW_HEIGHT_PX),
+    [explicitRowHeight],
+  )
+
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT_PX,
+    estimateSize: (index) => {
+      const row = rows[index]
+      return explicitRowHeight && row ? explicitRowHeight(row) : ROW_HEIGHT_PX
+    },
     overscan: ROW_OVERSCAN,
     getItemKey: (index) => rows[index]?.id ?? index,
     scrollMargin: headerOffset,
@@ -1165,9 +1220,13 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // With column virtualization off, drive the window across every scrollable
   // column (full start→end) so all chunks render; the chunk/offset math below
   // and the pinned-pane handling are otherwise unchanged.
-  const effectiveColRange = enableColumnVirtualization
-    ? colRange
-    : { start: 0, end: scrollColumns.length - 1 }
+  // Auto height also forces the full column window: its body cells render in
+  // normal flow (no absolute left offset), so every chunk from 0 must render to
+  // lay out contiguously and let content drive the row height.
+  const effectiveColRange =
+    enableColumnVirtualization && !autoRowHeight
+      ? colRange
+      : { start: 0, end: scrollColumns.length - 1 }
   const hasScrollWindow = effectiveColRange.end >= effectiveColRange.start
   const chunkFrom = hasScrollWindow ? Math.floor(effectiveColRange.start / CHUNK_COLUMNS) : 0
   const chunkTo = hasScrollWindow ? Math.floor(effectiveColRange.end / CHUNK_COLUMNS) : -1
@@ -1284,7 +1343,11 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
               loadingSkeleton
             )
           ) : (
-            <TableSkeleton widths={skeletonWidths} className={classNames?.skeleton} />
+            <TableSkeleton
+              widths={skeletonWidths}
+              rowHeight={typeof rowHeight === 'number' ? Math.max(1, Math.round(rowHeight)) : undefined}
+              className={classNames?.skeleton}
+            />
           )
         ) : (
           <div className="relative" style={{ width: contentWidth, minWidth: '100%' }}>
@@ -1403,6 +1466,8 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                     bodyRowClassName={classNames?.bodyRow}
                     bodyCellClassName={classNames?.bodyCell}
                     pinnedPaneX={pinnedPaneX}
+                    autoHeight={autoRowHeight}
+                    rowHeightPx={resolveRowHeight(row)}
                   />
                 ))}
               </div>
@@ -1442,6 +1507,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                       bodyRowClassName={classNames?.bodyRow}
                       bodyCellClassName={classNames?.bodyCell}
                       pinnedPaneX={pinnedPaneX}
+                      autoHeight={autoRowHeight}
+                      rowHeightPx={resolveRowHeight(row)}
+                      measureRef={autoRowHeight ? rowVirtualizer.measureElement : undefined}
+                      dataIndex={vi.index}
                     />
                   )
                 })}

@@ -127,6 +127,23 @@ The active tab can be uncontrolled (`defaultTabId`) or controlled (`activeTabId`
 
 ## Core Patterns
 
+### Row height
+
+Body rows are a fixed **56px** by default. `rowHeight` overrides that:
+
+```tsx
+<ReadOnlyTable rowHeight={72} ... />                               // uniform fixed pixel height
+<ReadOnlyTable rowHeight={(row) => (row.featured ? 96 : 56)} ... /> // per-row pixel height
+<ReadOnlyTable rowHeight="auto" ... />                            // content-driven (wraps), 56px floor
+```
+
+- **number / `(row) => number`** — explicit pixel heights fed straight to the virtualizer; **no DOM measurement**. Cells stay single-line/truncated. Works with both row and column virtualization on.
+- **`'auto'`** — rows grow to fit wrapped content, with 56px as a minimum floor; cells top-align and wrap (`break-words`) instead of truncating. Heights are measured per row, so **column virtualization is turned off in this mode** (every column renders so content can drive the height); **row virtualization still applies**. Best for narrower tables.
+- Leaving `rowHeight` unset is byte-for-byte the previous fixed-56px behavior.
+- Available on `ReadOnlyTable`, `EditableTable`, `TableGX` (`variant="table"`), and `TabbedTable` (applies to every tab). On `IndependentTabbedTable` set it **per tab** in the tab config. A uniform numeric `rowHeight` also drives the loading skeleton's row height.
+
+Source: src/types.ts
+
 ### Nested rows
 
 ```tsx

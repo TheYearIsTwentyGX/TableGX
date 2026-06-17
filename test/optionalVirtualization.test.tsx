@@ -124,3 +124,158 @@ describe('optional row/column virtualization', () => {
     expect(renderedColumnIds(container).size).toBe(COL_COUNT)
   })
 })
+
+function renderedRowEls(root: ParentNode): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('[data-tgx-row]'))
+}
+
+describe('row height', () => {
+  it('default (unset): rows + cells stay locked at the fixed 56px height', () => {
+    mountViewport()
+    const { container } = render(
+      <ReadOnlyTable
+        data={data}
+        columns={columns}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+      />,
+    )
+    const rows = renderedRowEls(container)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.style.height).toBe('56px')
+      expect(row.style.minHeight).toBe('')
+      // Default path never opts into measurement.
+      expect(row.getAttribute('data-index')).toBeNull()
+    }
+    const cell = container.querySelector<HTMLElement>('[data-tgx-cell]')!
+    expect(cell.style.height).toBe('56px')
+    expect(cell.style.minHeight).toBe('')
+  })
+
+  it('rowHeight={number}: every rendered row + cell uses that fixed pixel height, no measurement', () => {
+    mountViewport()
+    const { container } = render(
+      <ReadOnlyTable
+        data={data}
+        columns={columns}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+        rowHeight={80}
+      />,
+    )
+    const rows = renderedRowEls(container)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.style.height).toBe('80px')
+      expect(row.style.minHeight).toBe('')
+      expect(row.getAttribute('data-index')).toBeNull()
+    }
+    const cells = Array.from(container.querySelectorAll<HTMLElement>('[data-tgx-cell]'))
+    for (const cell of cells) expect(cell.style.height).toBe('80px')
+    // Still row-virtualized: a taller row height means even fewer rows fit.
+    expect(countRenderedRows(container)).toBeLessThan(ROW_COUNT)
+    expect(countRenderedRows(container)).toBeLessThanOrEqual(MAX_RENDERED_ROWS)
+  })
+
+  it('rowHeight={(row)=>n}: each row uses its own resolved pixel height', () => {
+    mountViewport()
+    const heightFor = (r: PerfRow) => (Number(r.id) % 2 === 0 ? 48 : 96)
+    const { container } = render(
+      <ReadOnlyTable
+        data={data}
+        columns={columns}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+        rowHeight={heightFor}
+      />,
+    )
+    const rows = renderedRowEls(container)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      const id = row.getAttribute('data-tgx-row')!
+      expect(row.style.height).toBe(`${heightFor({ id } as PerfRow)}px`)
+    }
+    const heights = new Set(rows.map((r) => r.style.height))
+    expect(heights.has('48px')).toBe(true)
+    expect(heights.has('96px')).toBe(true)
+  })
+
+  it("rowHeight='auto' (non-virtualized): content-driven height with a 56px floor; all columns render", () => {
+    mountViewport()
+    const { container } = render(
+      <ReadOnlyTable
+        data={data}
+        columns={columns}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+        rowHeight="auto"
+        enableRowVirtualization={false}
+      />,
+    )
+    const rows = renderedRowEls(container)
+    expect(rows.length).toBe(ROW_COUNT)
+    for (const row of rows) {
+      // A min-height floor that content can grow past, not a locked height.
+      expect(row.style.minHeight).toBe('56px')
+      expect(row.style.height).toBe('')
+    }
+    // Auto renders every chunk in flow, so the full column set is in the DOM.
+    expect(renderedColumnIds(container).size).toBe(COL_COUNT)
+    const cell = container.querySelector<HTMLElement>('[data-tgx-cell]')!
+    expect(cell.style.minHeight).toBe('56px')
+    expect(cell.style.height).toBe('')
+    // Top-aligned, wrapping cell (no single-line truncation).
+    expect(cell.className).toContain('items-start')
+  })
+
+  it("rowHeight='auto' (virtualized): keeps a bounded row window and wires up measurement", () => {
+    mountViewport()
+    const { container } = render(
+      <ReadOnlyTable
+        data={data}
+        columns={columns}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+        rowHeight="auto"
+      />,
+    )
+    // Row virtualization still bounds the DOM in auto mode.
+    expect(countRenderedRows(container)).toBeGreaterThan(0)
+    expect(countRenderedRows(container)).toBeLessThan(ROW_COUNT)
+    expect(countRenderedRows(container)).toBeLessThanOrEqual(MAX_RENDERED_ROWS)
+    const rows = renderedRowEls(container)
+    for (const row of rows) {
+      // Each rendered row is registered for TanStack height measurement.
+      expect(row.getAttribute('data-index')).not.toBeNull()
+      expect(row.style.minHeight).toBe('56px')
+      expect(row.style.height).toBe('')
+    }
+    // Column virtualization is forced off in auto mode.
+    expect(renderedColumnIds(container).size).toBe(COL_COUNT)
+  })
+
+  it('TabbedTable forwards rowHeight to the active tab', () => {
+    mountViewport()
+    const tabs: TabbedTableTab<PerfRow>[] = [{ id: 'all', label: 'All', columns }]
+    const { container } = render(
+      <TabbedTable
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={tabs}
+        defaultTabId="all"
+        measure={perfMeasure}
+        rowHeight={72}
+      />,
+    )
+    const rows = renderedRowEls(container)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(row.style.height).toBe('72px')
+  })
+})

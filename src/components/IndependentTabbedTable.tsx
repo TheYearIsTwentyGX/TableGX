@@ -127,6 +127,7 @@ export function independentTable<TRow extends TableRowData>(
         enableColumnVisibility={false}
         enableRowVirtualization={config.enableRowVirtualization}
         enableColumnVirtualization={config.enableColumnVirtualization}
+        rowHeight={config.rowHeight}
         enableFooter={config.enableFooter}
         enableRecordCount={config.enableRecordCount}
         recordCountPosition={config.recordCountPosition}
