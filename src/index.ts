@@ -9,6 +9,39 @@ export {
   type IndependentTabbedTableProps,
 } from './components/IndependentTabbedTable'
 
+// Compound table primitives (headless store + slot components)
+export {
+  Table,
+  TableProvider,
+  useTableStore,
+  TableContainer,
+  TableTabStrip,
+  TablePanels,
+  TableBody,
+  TableToolbar,
+  TableFilterBadges,
+  TableSortControl,
+  TableColumnVisibility,
+  TableRecordCount,
+} from './primitives'
+export type {
+  TableProviderProps,
+  TableContainerProps,
+  TableTabStripProps,
+  TableToolbarProps,
+  TableFilterBadgesProps,
+  TableSortControlProps,
+  TableColumnVisibilityProps,
+  TableRecordCountProps,
+  TableMode,
+  TableBodyRenderArgs,
+  TableTabModel,
+  TableProviderConfig,
+  TableStore,
+  FilterChromeApi,
+  SharedFilterSource,
+} from './primitives'
+
 // Layout constants
 export {
   ROW_HEIGHT_PX,

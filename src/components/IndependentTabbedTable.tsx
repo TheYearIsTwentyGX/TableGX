@@ -1,76 +1,38 @@
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  OnChangeFn,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/react-table'
-import { useCallback, useId, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
-import { ColumnVisibilityPicker, type ColumnVisibilityItem } from '../core/ColumnVisibilityPicker'
-import { describeFilterValue, FilterBadges, type FilterBadgeItem } from '../core/FilterBadges'
+import type { ColumnDef, VisibilityState } from '@tanstack/react-table'
+import type { ReactNode } from 'react'
+import { type ColumnVisibilityItem } from '../core/ColumnVisibilityPicker'
+import { describeFilterValue, type FilterBadgeItem } from '../core/FilterBadges'
 import { TableCore } from '../core/TableCore'
-import { TabStripShell } from '../core/TabStripShell'
 import { getColumnId } from '../hooks/useAutoColumnWidths'
-import { cn } from '../lib/cn'
 import { isEmptyFilterValue } from '../lib/filtering'
-import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
+import {
+  Table,
+  type FilterChromeApi,
+  type TableBodyRenderArgs,
+  type TableTabModel,
+} from '../primitives'
 import type {
   ColumnFilterValue,
   IndependentTabConfig,
   MeasureTextFn,
-  RecordCountInfo,
-  RecordCountLabel,
   TabbedTableClassNames,
   TableRowData,
 } from '../types'
 
 /**
- * Generic-erased state + handlers the host lifts for each tab (kept outside the
- * per-tab generic so a heterogeneous `IndependentTab[]` can be stored together).
- */
-type IndependentTabRenderArgs = {
-  sorting: SortingState
-  onSortingChange: OnChangeFn<SortingState>
-  columnFilters: ColumnFiltersState
-  onColumnFiltersChange: Dispatch<SetStateAction<ColumnFiltersState>>
-  visibility: VisibilityState
-  onVisibilityChange: OnChangeFn<VisibilityState>
-  selectedRowIds: string[] | undefined
-  onSelectedRowIdsChange: (ids: string[]) => void
-  measure?: MeasureTextFn
-  classNames?: TabbedTableClassNames
-  /** When false, the panel suppresses its own top count so the strip shows it. */
-  recordCountInToolbar?: boolean
-  /** Lifts the panel's computed leaf counts up to the tab strip. */
-  onRecordCountChange?: (info: RecordCountInfo | null) => void
-}
-
-/**
  * A type-erased independent tab descriptor produced by {@link independentTable}.
  * The concrete row type is captured inside the closures, so tabs with different
- * row shapes can be held together in a single `IndependentTab[]`.
+ * row shapes can be held together in a single `IndependentTab[]`. Compatible
+ * with the headless store's {@link TableTabModel} (extends it with a per-tab
+ * filter-badge builder, since independent tabs surface their own filters).
  */
-export type IndependentTab = {
-  id: string
-  label: ReactNode
-  initialSorting?: SortingState
+export type IndependentTab = TableTabModel & {
   enableColumnVisibility: boolean
-  enableRowSelection: boolean
-  /** Full localStorage key for this tab's column visibility, if any. */
-  columnVisibilityStorageKey?: string
-  /** Column-picker rows for the current visibility (empty when not applicable). */
-  getPickerItems: (visibility: VisibilityState) => ColumnVisibilityItem[]
   /** Active-filter badge descriptors for the current filters. */
   getFilterBadges: (
-    filters: ColumnFiltersState,
+    filters: { id: string; value: unknown }[],
     clearColumn: (columnId: string) => void,
   ) => FilterBadgeItem[]
-  /** True when this tab's record count is enabled and placed at the top (tab strip). */
-  showsTopRecordCount: boolean
-  /** Consumer label override, surfaced so the strip can format the lifted count. */
-  recordCountLabel?: RecordCountLabel
-  /** Render this tab's table panel. */
-  render: (args: IndependentTabRenderArgs) => ReactNode
 }
 
 function columnLabelOf<TRow extends TableRowData>(
@@ -108,7 +70,7 @@ export function independentTable<TRow extends TableRowData>(
     showsTopRecordCount,
     recordCountLabel: config.recordCountLabel,
 
-    getPickerItems: (visibility) => {
+    getPickerItems: (visibility: VisibilityState): ColumnVisibilityItem[] => {
       // The picker is unavailable with grouped editable headers (matches TabbedTable).
       if (!enableColumnVisibility || usesColumnGroups) return []
       return config.columns
@@ -135,7 +97,7 @@ export function independentTable<TRow extends TableRowData>(
           onClear: () => clearColumn(f.id),
         })),
 
-    render: (args) => (
+    render: (args: TableBodyRenderArgs) => (
       <TableCore<TRow>
         data={config.data}
         columns={config.columns}
@@ -200,32 +162,19 @@ export type IndependentTabbedTableProps = {
   classNames?: TabbedTableClassNames
 }
 
-function readStoredVisibility(tabs: IndependentTab[]): Record<string, VisibilityState> {
-  const out: Record<string, VisibilityState> = {}
-  if (typeof window === 'undefined') return out
-  for (const tab of tabs) {
-    const key = tab.columnVisibilityStorageKey
-    if (!key) continue
-    try {
-      const raw = window.localStorage.getItem(key)
-      if (raw) out[tab.id] = JSON.parse(raw) as VisibilityState
-    } catch {
-      // best-effort restore
-    }
-  }
-  return out
-}
-
 /**
  * A tabbed container where each tab is a **completely independent table** — its
  * own data, row shape, identity, sorting, filtering, selection, and column
  * visibility. Tabs share only the folder-tab strip and slide animation; nothing
  * crosses between them. For multiple views over one shared dataset (shared
  * selection + cross-tab filter intersection), use `TabbedTable` instead.
+ *
+ * A thin composition over the shared headless store (in `independent` mode) +
+ * compound primitives.
  */
 export function IndependentTabbedTable({
   tabs,
-  activeTabId: controlledActiveId,
+  activeTabId,
   defaultTabId,
   onActiveTabChange,
   actions,
@@ -233,163 +182,38 @@ export function IndependentTabbedTable({
   measure,
   classNames,
 }: IndependentTabbedTableProps) {
-  const autoLayoutId = useId()
-  const indicatorLayoutId = tabIndicatorLayoutId ?? `tgx-indep-tab-indicator-${autoLayoutId}`
-
-  // ----- Active tab (slide/animation lives in the shared shell) -----
-  const [internalActiveId, setInternalActiveId] = useState(defaultTabId ?? tabs[0]?.id ?? '')
-  const activeId = controlledActiveId ?? internalActiveId
-  const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0]
-
-  const selectTab = useCallback(
-    (id: string) => {
-      if (id === activeId) return
-      if (controlledActiveId === undefined) setInternalActiveId(id)
-      onActiveTabChange?.(id)
-    },
-    [activeId, controlledActiveId, onActiveTabChange],
-  )
-
-  // ----- Per-tab state, lifted by id so it survives tab switches -----
-  const [sortingByTab, setSortingByTab] = useState<Record<string, SortingState>>({})
-  const [filtersByTab, setFiltersByTab] = useState<Record<string, ColumnFiltersState>>({})
-  const [selectionByTab, setSelectionByTab] = useState<Record<string, string[]>>({})
-  const [visibilityByTab, setVisibilityByTab] = useState<Record<string, VisibilityState>>(() =>
-    readStoredVisibility(tabs),
-  )
-
-  const sortingHandlerFor = useCallback(
-    (tabId: string): OnChangeFn<SortingState> =>
-      (updater) =>
-        setSortingByTab((prev) => {
-          const current = prev[tabId] ?? []
-          return { ...prev, [tabId]: typeof updater === 'function' ? updater(current) : updater }
-        }),
-    [],
-  )
-
-  const filtersHandlerFor = useCallback(
-    (tabId: string): Dispatch<SetStateAction<ColumnFiltersState>> =>
-      (updater) =>
-        setFiltersByTab((prev) => {
-          const current = prev[tabId] ?? []
-          return { ...prev, [tabId]: typeof updater === 'function' ? updater(current) : updater }
-        }),
-    [],
-  )
-
-  const selectionHandlerFor = useCallback(
-    (tabId: string) => (ids: string[]) =>
-      setSelectionByTab((prev) => ({ ...prev, [tabId]: ids })),
-    [],
-  )
-
-  const visibilityHandlerFor = useCallback(
-    (tab: IndependentTab): OnChangeFn<VisibilityState> =>
-      (updater) =>
-        setVisibilityByTab((prev) => {
-          const current = prev[tab.id] ?? {}
-          const next = typeof updater === 'function' ? updater(current) : updater
-          const key = tab.columnVisibilityStorageKey
-          if (key && typeof window !== 'undefined') {
-            try {
-              window.localStorage.setItem(key, JSON.stringify(next))
-            } catch {
-              // best-effort persist
-            }
-          }
-          return { ...prev, [tab.id]: next }
-        }),
-    [],
-  )
-
-  const clearColumnFilter = useCallback(
-    (tabId: string) => (columnId: string) =>
-      setFiltersByTab((prev) => ({
-        ...prev,
-        [tabId]: (prev[tabId] ?? []).filter((f) => f.id !== columnId),
-      })),
-    [],
-  )
-
-  const clearAllFilters = useCallback(
-    (tabId: string) => () => setFiltersByTab((prev) => ({ ...prev, [tabId]: [] })),
-    [],
-  )
-
-  // ----- Active tab chrome (reflects only the active tab) -----
-  const activeFilters = activeTab ? (filtersByTab[activeTab.id] ?? []) : []
-  const activeVisibility = activeTab ? (visibilityByTab[activeTab.id] ?? {}) : {}
-
-  const badgeItems = activeTab
-    ? activeTab.getFilterBadges(activeFilters, clearColumnFilter(activeTab.id))
-    : []
-  const pickerItems = activeTab ? activeTab.getPickerItems(activeVisibility) : []
-
-  // Top-placed counts render in the tab strip; the active panel reports its
-  // leaf counts up via onRecordCountChange (see independentTable render).
-  const showTopRecordCount = activeTab?.showsTopRecordCount === true
-  const [recordCountInfo, setRecordCountInfo] = useState<RecordCountInfo | null>(null)
-
-  const hasActions = Boolean(actions) || pickerItems.length > 0 || showTopRecordCount
+  const buildFilterBadges = (api: FilterChromeApi): FilterBadgeItem[] => {
+    const tab = tabs.find((t) => t.id === api.activeId)
+    if (!tab) return []
+    const filters = api.filtersByTab[api.activeId] ?? []
+    return tab.getFilterBadges(filters, (columnId) => api.clearFilter(api.activeId, columnId))
+  }
 
   return (
-    <TabStripShell
-      tabs={tabs.map((t) => ({ id: t.id, label: t.label }))}
-      activeId={activeId}
-      onSelectTab={selectTab}
-      indicatorLayoutId={indicatorLayoutId}
+    <Table.Provider
+      mode="independent"
+      tabs={tabs}
+      activeTabId={activeTabId}
+      defaultTabId={defaultTabId}
+      onActiveTabChange={onActiveTabChange}
+      indicatorLayoutId={tabIndicatorLayoutId}
       classNames={classNames}
-      centerContent={
-        <FilterBadges
-          items={badgeItems}
-          onClearAll={activeTab ? clearAllFilters(activeTab.id) : () => {}}
-          className={cn('flex-nowrap border-b-0 p-0', classNames?.filterBadges)}
+      measure={measure}
+      buildFilterBadges={buildFilterBadges}
+    >
+      <Table.Container>
+        <Table.TabStrip
+          centerContent={<Table.FilterBadges />}
+          endContent={
+            <>
+              {actions}
+              <Table.ColumnVisibility />
+              <Table.RecordCount />
+            </>
+          }
         />
-      }
-      endContent={
-        hasActions ? (
-          <>
-            {actions}
-            {pickerItems.length > 0 && activeTab && (
-              <ColumnVisibilityPicker
-                items={pickerItems}
-                onToggle={(id, visible) => {
-                  visibilityHandlerFor(activeTab)((prev) => ({ ...prev, [id]: visible }))
-                }}
-              />
-            )}
-            {showTopRecordCount && recordCountInfo && (
-              <span
-                data-tgx-record-count=""
-                className={cn(RECORD_COUNT_CLASS, classNames?.recordCount)}
-              >
-                {formatRecordCount(recordCountInfo, activeTab?.recordCountLabel)}
-              </span>
-            )}
-          </>
-        ) : undefined
-      }
-      renderPanel={() =>
-        activeTab
-          ? activeTab.render({
-              sorting: sortingByTab[activeTab.id] ?? activeTab.initialSorting ?? [],
-              onSortingChange: sortingHandlerFor(activeTab.id),
-              columnFilters: filtersByTab[activeTab.id] ?? [],
-              onColumnFiltersChange: filtersHandlerFor(activeTab.id),
-              visibility: visibilityByTab[activeTab.id] ?? {},
-              onVisibilityChange: visibilityHandlerFor(activeTab),
-              selectedRowIds: activeTab.enableRowSelection
-                ? (selectionByTab[activeTab.id] ?? [])
-                : undefined,
-              onSelectedRowIdsChange: selectionHandlerFor(activeTab.id),
-              measure,
-              classNames,
-              recordCountInToolbar: showTopRecordCount ? false : undefined,
-              onRecordCountChange: showTopRecordCount ? setRecordCountInfo : undefined,
-            })
-          : null
-      }
-    />
+        <Table.Panels />
+      </Table.Container>
+    </Table.Provider>
   )
 }

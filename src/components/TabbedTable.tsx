@@ -1,31 +1,31 @@
-import type { ColumnDef, OnChangeFn, SortingState, VisibilityState } from '@tanstack/react-table'
-import { useCallback, useId, useMemo, useState } from 'react'
-import { ColumnVisibilityPicker } from '../core/ColumnVisibilityPicker'
-import { describeFilterValue, FilterBadges, type FilterBadgeItem } from '../core/FilterBadges'
-import { SortHierarchyPicker } from '../core/SortHierarchyPicker'
+import type { ColumnDef } from '@tanstack/react-table'
+import { useMemo } from 'react'
+import { describeFilterValue, type FilterBadgeItem } from '../core/FilterBadges'
 import { TableCore } from '../core/TableCore'
-import { TabStripShell } from '../core/TabStripShell'
 import { getColumnId } from '../hooks/useAutoColumnWidths'
-import { useSharedTabFilters } from '../hooks/useSharedTabFilters'
-import { cn } from '../lib/cn'
-import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
-import type {
-  RecordCountInfo,
-  TabbedTableProps,
-  TabbedTableTab,
-  TableRowData,
-} from '../types'
+import {
+  Table,
+  type FilterChromeApi,
+  type TableBodyRenderArgs,
+  type TableTabModel,
+} from '../primitives'
+import type { ColumnFilterValue, TabbedTableProps, TabbedTableTab, TableRowData } from '../types'
+
+/** Stable empty sort-only column list, so the no-foreign-sort case never remounts cells. */
+const EMPTY_COLUMNS: ColumnDef<TableRowData, unknown>[] = []
 
 /**
  * Multiple table views (tabs) over the same rows, with cross-tab filter
- * intersection, shared selection, and a folder-tab strip (spec §18).
+ * intersection, shared selection, and shared multi-column sorting (spec §18).
+ * A thin composition over the shared headless store + compound primitives: the
+ * store is the single source of truth for all cross-cutting state.
  */
 export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<TRow>) {
   const {
     data,
     getRowId,
     tabs,
-    activeTabId: controlledActiveId,
+    activeTabId,
     defaultTabId,
     onActiveTabChange,
     actions,
@@ -52,305 +52,231 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     defaultExpanded,
   } = props
 
-  const autoLayoutId = useId()
-  const indicatorLayoutId = tabIndicatorLayoutId ?? `tgx-tab-indicator-${autoLayoutId}`
-
-  // ----- Active tab (slide/animation lives in the shared shell) -----
-
-  const [internalActiveId, setInternalActiveId] = useState(defaultTabId ?? tabs[0]?.id ?? '')
-  const activeId = controlledActiveId ?? internalActiveId
-  const activeIndex = Math.max(
-    0,
-    tabs.findIndex((t) => t.id === activeId),
-  )
-  const activeTab = tabs[activeIndex]
-
-  const selectTab = (id: string) => {
-    if (id === activeId) return
-    if (controlledActiveId === undefined) setInternalActiveId(id)
-    onActiveTabChange?.(id)
-  }
-
-  // ----- Shared selection across tabs (spec §11/§18) -----
-
-  const [internalSelected, setInternalSelected] = useState<string[]>([])
-  const effectiveSelected = enableRowSelection
-    ? (selectedRowIds ?? internalSelected)
-    : undefined
-  const handleSelectedChange = useCallback(
-    (ids: string[]) => {
-      setInternalSelected(ids)
-      onSelectedRowIdsChange?.(ids)
-    },
-    [onSelectedRowIdsChange],
-  )
-
-  // ----- Cross-tab shared filtering (spec §18.3) -----
-
-  const { filtersByTab, setFiltersForTab, dataForTab, activeFilters, clearFilter, clearAll } =
-    useSharedTabFilters({ data, getRowId, tabs, getSubRows })
-
-  const columnLabelFor = useCallback(
-    (tab: TabbedTableTab<TRow>, columnId: string): string => {
-      if (tab.columnLabel) return tab.columnLabel(columnId)
-      const col = tab.columns.find((c) => getColumnId(c as ColumnDef<TRow, unknown>) === columnId)
-      return col && typeof col.header === 'string' ? col.header : columnId
-    },
+  const columnLabelFor = useMemo(
+    () =>
+      (tab: TabbedTableTab<TRow>, columnId: string): string => {
+        if (tab.columnLabel) return tab.columnLabel(columnId)
+        const col = tab.columns.find((c) => getColumnId(c as ColumnDef<TRow, unknown>) === columnId)
+        return col && typeof col.header === 'string' ? col.header : columnId
+      },
     [],
   )
 
   // Resolve a readable label from the union of every tab's columns, so sorted
   // columns that aren't present on the active tab still show a name.
-  const resolveColumnLabel = useCallback(
-    (columnId: string): string => {
-      for (const tab of tabs) {
-        const col = tab.columns.find(
-          (c) => getColumnId(c as ColumnDef<TRow, unknown>) === columnId,
-        )
-        if (col) return columnLabelFor(tab, columnId)
-      }
-      return columnId
-    },
+  const resolveColumnLabel = useMemo(
+    () =>
+      (columnId: string): string => {
+        for (const tab of tabs) {
+          const col = tab.columns.find(
+            (c) => getColumnId(c as ColumnDef<TRow, unknown>) === columnId,
+          )
+          if (col) return columnLabelFor(tab, columnId)
+        }
+        return columnId
+      },
     [tabs, columnLabelFor],
   )
 
-  const badgeItems: FilterBadgeItem[] = activeFilters.map((f) => {
-    const tab = tabs.find((t) => t.id === f.tabId)
-    const colLabel = tab ? columnLabelFor(tab, f.columnId) : f.columnId
-    return {
-      key: `${f.tabId}:${f.columnId}`,
-      label: `${tab?.label ?? f.tabId} • ${colLabel}: ${describeFilterValue(f.value)}`,
-      onClear: () => clearFilter(f.tabId, f.columnId),
-    }
-  })
-
-  // ----- Shared sorting across tabs (spec §18) -----
-  //
-  // One SortingState for the whole tab group, like selection: a sort applied on
-  // any tab reorders rows on EVERY tab, since all tabs are views over the same
-  // dataset. Sorting is fully shared regardless of which columns each tab shows
-  // — when the sort targets a column the active tab doesn't render, that
-  // column's def is handed to the tab's TableCore as a hidden sort-only column
-  // (see sortOnlyColumns below) so its rows are still ordered. Seeded from the
-  // initially-active tab's initialSorting (falling back to the first tab that
-  // defines one).
-
-  const [sharedSorting, setSharedSorting] = useState<SortingState>(() => {
-    const initiallyActive = tabs.find(
-      (t) => t.id === (controlledActiveId ?? defaultTabId ?? tabs[0]?.id),
-    )
-    return (
-      initiallyActive?.initialSorting ??
-      tabs.find((t) => t.initialSorting)?.initialSorting ??
-      []
-    )
-  })
-
-  const handleSortingChange = useCallback<OnChangeFn<SortingState>>((updater) => {
-    setSharedSorting((prev) => (typeof updater === 'function' ? updater(prev) : updater))
-  }, [])
-
-  // Leaf column defs referenced by the shared sort that the active tab doesn't
-  // render, drawn from the union of all tabs' leaf columns (first definition
-  // wins for a shared id, since they read the same underlying field). Handed to
-  // the active tab's TableCore as hidden sort-only columns so its rows are
-  // ordered by the foreign column without a visible header or warning.
-  const sortOnlyColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
-    if (!activeTab) return []
-    const ownIds = new Set(
-      activeTab.columns.map((c) => getColumnId(c as ColumnDef<TRow, unknown>)),
-    )
-    const foreignIds = sharedSorting.map((s) => s.id).filter((id) => !ownIds.has(id))
-    if (foreignIds.length === 0) return []
-    const union = new Map<string, ColumnDef<TRow, unknown>>()
-    for (const tab of tabs) {
-      for (const c of tab.columns) {
-        const col = c as ColumnDef<TRow, unknown>
-        const id = getColumnId(col)
-        if (id && !union.has(id)) union.set(id, col)
-      }
-    }
-    const out: ColumnDef<TRow, unknown>[] = []
-    for (const id of foreignIds) {
-      const def = union.get(id)
-      if (def) out.push(def)
-    }
-    return out
-  }, [activeTab, sharedSorting, tabs])
-
-  // ----- Per-tab column visibility, persisted under `${base}:${tab.id}` -----
-
-  const storageKeyFor = useCallback(
-    (tab: TabbedTableTab<TRow>): string | undefined =>
-      tab.columnVisibilityStorageKey ??
-      (columnVisibilityStorageKeyBase
-        ? `${columnVisibilityStorageKeyBase}:${tab.id}`
-        : undefined),
+  const storageKeyFor = useMemo(
+    () =>
+      (tab: TabbedTableTab<TRow>): string | undefined =>
+        tab.columnVisibilityStorageKey ??
+        (columnVisibilityStorageKeyBase
+          ? `${columnVisibilityStorageKeyBase}:${tab.id}`
+          : undefined),
     [columnVisibilityStorageKeyBase],
   )
 
-  const [visibilityByTab, setVisibilityByTab] = useState<Record<string, VisibilityState>>(() => {
-    const out: Record<string, VisibilityState> = {}
-    if (typeof window === 'undefined') return out
-    for (const tab of tabs) {
-      const key = storageKeyFor(tab)
-      if (!key) continue
-      try {
-        const raw = window.localStorage.getItem(key)
-        if (raw) out[tab.id] = JSON.parse(raw) as VisibilityState
-      } catch {
-        // best-effort restore
-      }
-    }
-    return out
-  })
-
-  const makeVisibilityHandler = useCallback(
-    (tab: TabbedTableTab<TRow>): OnChangeFn<VisibilityState> =>
-      (updater) => {
-        setVisibilityByTab((prev) => {
-          const current = prev[tab.id] ?? {}
-          const next = typeof updater === 'function' ? updater(current) : updater
-          const key = storageKeyFor(tab)
-          if (key && typeof window !== 'undefined') {
-            try {
-              window.localStorage.setItem(key, JSON.stringify(next))
-            } catch {
-              // best-effort persist
-            }
-          }
-          return { ...prev, [tab.id]: next }
-        })
-      },
-    [storageKeyFor],
-  )
-
-  // ----- Column picker for the active tab (excluded entirely with column groups) -----
-
-  const pickerItems =
-    enableColumnVisibility && activeTab && !(activeTab.editable && activeTab.columnGroups)
-      ? activeTab.columns
-          .map((c) => c as ColumnDef<TRow, unknown>)
-          .filter((c) => c.enableHiding !== false)
-          .map((c) => {
-            const id = getColumnId(c)
-            return {
-              id,
-              label: columnLabelFor(activeTab, id),
-              visible: (visibilityByTab[activeTab.id] ?? {})[id] !== false,
-            }
-          })
-      : []
-
-  // Top-placed counts live in the tab strip (not a second toolbar row), so the
-  // active panel reports its leaf counts up via onRecordCountChange.
   const showTopRecordCount =
     enableRecordCount === true && (recordCountPosition ?? 'top') === 'top'
-  const [recordCountInfo, setRecordCountInfo] = useState<RecordCountInfo | null>(null)
 
-  const hasActions =
-    Boolean(actions) ||
-    pickerItems.length > 0 ||
-    enableSortHierarchy === true ||
-    showTopRecordCount
+  // ----- Build the type-erased tab models the store renders -----
+  const models = useMemo<TableTabModel[]>(() => {
+    return tabs.map((tab) => {
+      // Leaf column defs referenced by the shared sort that this tab doesn't
+      // render, drawn from the union of all tabs' leaf columns (first definition
+      // wins for a shared id). Handed to TableCore as hidden sort-only columns.
+      //
+      // The result identity is cached by the foreign-id list: `render` runs on
+      // every store change (selection, etc.), and a fresh array each time would
+      // bust TableCore's column memo and remount every cell.
+      let sortOnlyCache: { key: string; cols: ColumnDef<TRow, unknown>[] } = {
+        key: '',
+        cols: EMPTY_COLUMNS as ColumnDef<TRow, unknown>[],
+      }
+      const sortOnlyFor = (sorting: { id: string }[]): ColumnDef<TRow, unknown>[] => {
+        const ownIds = new Set(tab.columns.map((c) => getColumnId(c as ColumnDef<TRow, unknown>)))
+        const foreignIds = sorting.map((s) => s.id).filter((id) => !ownIds.has(id))
+        const key = foreignIds.join('|')
+        if (key === sortOnlyCache.key) return sortOnlyCache.cols
+        if (foreignIds.length === 0) {
+          sortOnlyCache = { key, cols: EMPTY_COLUMNS as ColumnDef<TRow, unknown>[] }
+          return sortOnlyCache.cols
+        }
+        const union = new Map<string, ColumnDef<TRow, unknown>>()
+        for (const t of tabs) {
+          for (const c of t.columns) {
+            const col = c as ColumnDef<TRow, unknown>
+            const id = getColumnId(col)
+            if (id && !union.has(id)) union.set(id, col)
+          }
+        }
+        const out: ColumnDef<TRow, unknown>[] = []
+        for (const id of foreignIds) {
+          const def = union.get(id)
+          if (def) out.push(def)
+        }
+        sortOnlyCache = { key, cols: out }
+        return out
+      }
 
-  return (
-    <TabStripShell
-      tabs={tabs.map((t) => ({ id: t.id, label: t.label }))}
-      activeId={activeId}
-      onSelectTab={selectTab}
-      indicatorLayoutId={indicatorLayoutId}
-      classNames={classNames}
-      centerContent={
-        <FilterBadges
-          items={badgeItems}
-          onClearAll={clearAll}
-          className={cn('flex-nowrap border-b-0 p-0', classNames?.filterBadges)}
-        />
-      }
-      endContent={
-        hasActions ? (
-          <>
-            {actions}
-            {enableSortHierarchy === true && (
-              <SortHierarchyPicker
-                sorting={sharedSorting}
-                resolveLabel={resolveColumnLabel}
-                onChange={setSharedSorting}
-              />
-            )}
-            {pickerItems.length > 0 && activeTab && (
-              <ColumnVisibilityPicker
-                items={pickerItems}
-                onToggle={(id, visible) => {
-                  makeVisibilityHandler(activeTab)((prev) => ({ ...prev, [id]: visible }))
-                }}
-              />
-            )}
-            {showTopRecordCount && recordCountInfo && (
-              <span
-                data-tgx-record-count=""
-                className={cn(RECORD_COUNT_CLASS, classNames?.recordCount)}
-              >
-                {formatRecordCount(recordCountInfo, recordCountLabel)}
-              </span>
-            )}
-          </>
-        ) : undefined
-      }
-      renderPanel={(pinnedPaneX) =>
-        activeTab ? (
+      const model: TableTabModel = {
+        id: tab.id,
+        label: tab.label,
+        columnVisibilityStorageKey: storageKeyFor(tab),
+        initialSorting: tab.initialSorting,
+        enableRowSelection: enableRowSelection === true,
+        showsTopRecordCount: showTopRecordCount,
+        recordCountLabel,
+        getPickerItems: (visibility) => {
+          if (enableColumnVisibility !== true) return []
+          if (tab.editable === true && tab.columnGroups) return []
+          return tab.columns
+            .map((c) => c as ColumnDef<TRow, unknown>)
+            .filter((c) => c.enableHiding !== false)
+            .map((c) => {
+              const id = getColumnId(c)
+              return { id, label: columnLabelFor(tab, id), visible: visibility[id] !== false }
+            })
+        },
+        render: (args: TableBodyRenderArgs) => (
           <TableCore<TRow>
-            data={dataForTab(activeTab.id)}
-            columns={activeTab.columns}
+            data={(args.sharedData as TRow[] | undefined) ?? data}
+            columns={tab.columns}
             getRowId={getRowId}
-            editable={activeTab.editable === true}
-            editableColumnIds={
-              activeTab.editable === true ? activeTab.editableColumnIds : undefined
-            }
-            onSaveEdit={activeTab.editable === true ? activeTab.onSaveEdit : undefined}
-            singleClickEdit={activeTab.editable === true ? activeTab.singleClickEdit : undefined}
-            columnGroups={activeTab.editable === true ? activeTab.columnGroups : undefined}
-            getCellClassName={
-              activeTab.editable === true ? activeTab.getCellClassName : undefined
-            }
-            isSubmitting={activeTab.editable === true ? activeTab.isSubmitting : undefined}
+            editable={tab.editable === true}
+            editableColumnIds={tab.editable === true ? tab.editableColumnIds : undefined}
+            onSaveEdit={tab.editable === true ? tab.onSaveEdit : undefined}
+            singleClickEdit={tab.editable === true ? tab.singleClickEdit : undefined}
+            columnGroups={tab.editable === true ? tab.columnGroups : undefined}
+            getCellClassName={tab.editable === true ? tab.getCellClassName : undefined}
+            isSubmitting={tab.editable === true ? tab.isSubmitting : undefined}
             bordered={false}
-            frozenColumns={activeTab.frozenColumns ?? 0}
-            controlledSorting={sharedSorting}
-            onControlledSortingChange={handleSortingChange}
-            sortOnlyColumns={sortOnlyColumns}
-            columnLabel={activeTab.columnLabel ?? ((id) => columnLabelFor(activeTab, id))}
-            columnFilters={filtersByTab[activeTab.id] ?? []}
-            onColumnFiltersChange={setFiltersForTab(activeTab.id)}
-            controlledVisibility={visibilityByTab[activeTab.id] ?? {}}
-            onControlledVisibilityChange={makeVisibilityHandler(activeTab)}
+            frozenColumns={tab.frozenColumns ?? 0}
+            controlledSorting={args.sorting}
+            onControlledSortingChange={args.onSortingChange}
+            sortOnlyColumns={sortOnlyFor(args.sorting)}
+            columnLabel={tab.columnLabel ?? ((id) => columnLabelFor(tab, id))}
+            columnFilters={args.columnFilters}
+            onColumnFiltersChange={args.onColumnFiltersChange}
+            controlledVisibility={args.visibility}
+            onControlledVisibilityChange={args.onVisibilityChange}
             hideBuiltInPicker
             hideFilterBadges
             enableMultiSort={enableMultiSort}
             enableRowSelection={enableRowSelection}
-            selectedRowIds={effectiveSelected}
-            onSelectedRowIdsChange={handleSelectedChange}
+            selectedRowIds={args.selectedRowIds}
+            onSelectedRowIdsChange={args.onSelectedRowIdsChange}
             enableColumnVisibility={false}
             enableFooter={enableFooter}
             enableRecordCount={enableRecordCount}
             recordCountPosition={recordCountPosition}
             recordCountLabel={recordCountLabel}
-            recordCountInToolbar={showTopRecordCount ? false : undefined}
-            onRecordCountChange={showTopRecordCount ? setRecordCountInfo : undefined}
+            recordCountInToolbar={args.recordCountInToolbar}
+            onRecordCountChange={args.onRecordCountChange}
             enableExpanding={enableExpanding}
             getSubRows={getSubRows}
             defaultExpanded={defaultExpanded}
             emptyMessage={emptyMessage}
             isLoading={isLoading}
             loadingSkeleton={loadingSkeleton}
-            measure={measure}
+            measure={args.measure}
             includeHeaderInAutosize={includeHeaderInAutosize}
-            classNames={classNames}
-            pinnedPaneX={pinnedPaneX}
+            classNames={args.classNames}
+            pinnedPaneX={args.pinnedPaneX}
           />
-        ) : null
+        ),
       }
-    />
+      return model
+    })
+  }, [
+    tabs,
+    data,
+    getRowId,
+    storageKeyFor,
+    enableRowSelection,
+    showTopRecordCount,
+    recordCountLabel,
+    enableColumnVisibility,
+    columnLabelFor,
+    enableMultiSort,
+    enableFooter,
+    enableRecordCount,
+    recordCountPosition,
+    enableExpanding,
+    getSubRows,
+    defaultExpanded,
+    emptyMessage,
+    isLoading,
+    loadingSkeleton,
+    includeHeaderInAutosize,
+  ])
+
+  const buildFilterBadges = useMemo(
+    () =>
+      (api: FilterChromeApi): FilterBadgeItem[] =>
+        api.activeFilters.map((f) => {
+          const tab = tabs.find((t) => t.id === f.tabId)
+          const colLabel = tab ? columnLabelFor(tab, f.columnId) : f.columnId
+          return {
+            key: `${f.tabId}:${f.columnId}`,
+            label: `${tab?.label ?? f.tabId} • ${colLabel}: ${describeFilterValue(
+              f.value as ColumnFilterValue,
+            )}`,
+            onClear: () => api.clearFilter(f.tabId, f.columnId),
+          }
+        }),
+    [tabs, columnLabelFor],
+  )
+
+  return (
+    <Table.Provider
+      mode="shared"
+      tabs={models}
+      activeTabId={activeTabId}
+      defaultTabId={defaultTabId}
+      onActiveTabChange={onActiveTabChange}
+      indicatorLayoutId={tabIndicatorLayoutId}
+      classNames={classNames}
+      measure={measure}
+      enableRowSelection={enableRowSelection}
+      selectedRowIds={selectedRowIds}
+      onSelectedRowIdsChange={onSelectedRowIdsChange}
+      sharedFilterSource={{
+        data: data as unknown[],
+        getRowId: getRowId as (row: unknown) => unknown,
+        getSubRows: getSubRows as ((row: unknown) => unknown[] | undefined) | undefined,
+        tabs,
+      }}
+      buildFilterBadges={buildFilterBadges}
+      enableSortHierarchy={enableSortHierarchy}
+      resolveSortLabel={resolveColumnLabel}
+    >
+      <Table.Container>
+        <Table.TabStrip
+          centerContent={<Table.FilterBadges />}
+          endContent={
+            <>
+              {actions}
+              <Table.SortControl />
+              <Table.ColumnVisibility />
+              <Table.RecordCount />
+            </>
+          }
+        />
+        <Table.Panels />
+      </Table.Container>
+    </Table.Provider>
   )
 }
