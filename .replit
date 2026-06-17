@@ -18,6 +18,10 @@ author = "agent"
 task = "workflow.run"
 args = "Playground"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "skills"
+
 [[workflows.workflow]]
 name = "Playground"
 author = "agent"
@@ -29,6 +33,17 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "skills"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run check:skills:strict"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [[ports]]
 localPort = 5000

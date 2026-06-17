@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 // Skill drift guardrail for the bundled @tanstack/intent skills.
 //
-//   node scripts/check-skills.mjs           verify (validate + stale + source drift)
-//   node scripts/check-skills.mjs --write   (re)write the source-tracking baseline
+//   node scripts/check-skills.mjs            verify (validate + stale + source drift)
+//   node scripts/check-skills.mjs --strict   verify and exit non-zero on drift
+//   node scripts/check-skills.mjs --write     (re)write the source-tracking baseline
 //
 // The baseline (skills/sync-state.json) records a content hash of every file a
 // skill declares in its `sources` frontmatter. On verify, the current hashes are
 // recomputed and compared so a changed source doc points at the exact skill that
 // needs review — beyond the coarse version check `intent stale` performs.
 //
-// This is a guardrail, not a gate: drift is reported but never hard-fails.
+// By default this is a guardrail, not a gate: drift is reported but never
+// hard-fails (used by the post-merge backstop). With --strict, drift makes the
+// process exit non-zero so a task agent can gate on it before merging.
 
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
@@ -21,6 +24,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const skillsDir = join(repoRoot, 'skills')
 const baselinePath = join(skillsDir, 'sync-state.json')
 const write = process.argv.includes('--write')
+const strict = process.argv.includes('--strict')
 
 function readPackageVersion() {
   const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'))
@@ -123,7 +127,7 @@ runIntent(['stale'])
 console.log('\n▶ source drift (content hashes vs baseline)')
 if (!existsSync(baselinePath)) {
   console.log('  ⚠ no baseline found — run: npm run check:skills -- --write')
-  process.exit(0)
+  process.exit(strict ? 1 : 0)
 }
 
 const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'))
@@ -144,12 +148,19 @@ for (const skill of skills) {
 
 if (findings.length === 0) {
   console.log('  ✅ all tracked sources match the baseline')
-} else {
-  console.log(`  ⚠ ${findings.length} skill(s) need review:`)
-  for (const f of findings) console.log(`    - ${f}`)
-  console.log('\n  After updating the affected skill(s), re-baseline with:')
-  console.log('    npm run check:skills -- --write')
+  process.exit(0)
 }
 
-// Guardrail: never hard-fail.
+console.log(`  ⚠ ${findings.length} skill(s) need review:`)
+for (const f of findings) console.log(`    - ${f}`)
+console.log('\n  To fix: review the flagged skill(s) in skills/<name>/SKILL.md so')
+console.log('  they match the new behavior of the changed source(s), then re-baseline:')
+console.log('    npm run check:skills -- --write')
+
+if (strict) {
+  console.error('\n✖ skill drift detected (strict mode) — update the skill(s) before merging.')
+  process.exit(1)
+}
+
+// Default mode is a guardrail: never hard-fail.
 process.exit(0)

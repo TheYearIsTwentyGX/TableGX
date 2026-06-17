@@ -27,5 +27,15 @@ A high-performance, type-safe React data-table library: ReadOnlyTable, EditableT
 ## Notes
 - Because this is a library, no workflow/web server is configured and deployment is not applicable. Consumers install it as a dependency.
 
+## Maintaining agent skills
+This package ships four `@tanstack/intent` agent skills in `skills/`, each declaring `sources` (e.g. `README.md`, `src/index.ts`, `src/types.ts`, `src/theme.css`, `src/lib/columns.tsx`, `src/components/TabbedTable.tsx`, `src/components/IndependentTabbedTable.tsx`). Skills must be kept in sync **within the same task that changes a tracked source**, so they never merge stale.
+
+Before completing any task:
+1. Run the skills validation step (`skills`), or `npm run check:skills:strict`.
+2. If a source you changed is flagged, update the affected `skills/<name>/SKILL.md` so it matches the new behavior.
+3. Re-baseline with `npm run check:skills -- --write` and commit the updated `skills/` files (including `skills/sync-state.json`) as part of the same task.
+
+The post-merge script (`scripts/post-merge.sh`) still runs the non-strict `npm run check:skills` as a silent backstop, but pre-merge updates by the task agent are the primary mechanism.
+
 ## User preferences
 (none recorded yet)

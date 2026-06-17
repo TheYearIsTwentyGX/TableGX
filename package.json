@@ -37,6 +37,7 @@
     "test:perf": "vitest run --config vitest.browser.config.ts",
     "typecheck": "tsc --noEmit",
     "check:skills": "node scripts/check-skills.mjs",
+    "check:skills:strict": "node scripts/check-skills.mjs --strict",
     "dev:playground": "vite --config playground/vite.config.ts"
   },
   "keywords": [
