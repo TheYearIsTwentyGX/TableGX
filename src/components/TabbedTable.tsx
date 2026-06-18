@@ -47,6 +47,9 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     rowHeight,
     enableSortHierarchy,
     enableFooter,
+    enableGlobalSearch,
+    searchableColumns,
+    searchPlaceholder,
     enableRecordCount,
     recordCountPosition,
     recordCountLabel,
@@ -140,6 +143,8 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
         columnVisibilityStorageKey: storageKeyFor(tab),
         initialSorting: tab.initialSorting,
         enableRowSelection: enableRowSelection === true,
+        enableGlobalSearch: enableGlobalSearch === true,
+        searchPlaceholder,
         showsTopRecordCount: showTopRecordCount,
         recordCountLabel,
         getPickerItems: (visibility) => {
@@ -186,6 +191,12 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             enableColumnVirtualization={enableColumnVirtualization}
             rowHeight={rowHeight}
             enableFooter={enableFooter}
+            enableGlobalSearch={enableGlobalSearch}
+            globalSearch={args.globalSearch}
+            onGlobalSearchChange={args.onGlobalSearchChange}
+            searchableColumns={searchableColumns}
+            searchPlaceholder={searchPlaceholder}
+            searchInToolbar={false}
             enableRecordCount={enableRecordCount}
             recordCountPosition={recordCountPosition}
             recordCountLabel={recordCountLabel}
@@ -219,6 +230,9 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableMultiSort,
     rowHeight,
     enableFooter,
+    enableGlobalSearch,
+    searchableColumns,
+    searchPlaceholder,
     enableRecordCount,
     recordCountPosition,
     enableExpanding,
@@ -276,6 +290,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
           endContent={
             <>
               {actions}
+              <Table.Search />
               <Table.SortControl />
               <Table.ColumnVisibility />
               <Table.RecordCount />

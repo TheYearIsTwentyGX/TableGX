@@ -4,22 +4,22 @@
     "tablegx-advanced": {
       "sources_sha": {
         "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/types.ts": "0418c3011db808b8c3e6d1469cd8e542d29cbba6435e3f5b00b424767c16e846",
-        "src/components/TabbedTable.tsx": "3de4f205b8c6ec2f3d4c6362a77ef37b4b313cafa327eddb23a93520588badc7",
-        "src/components/IndependentTabbedTable.tsx": "5ddb77bd991434a0a88426a11e0e8630e2d40aa0fe8c3fd552b6f8d4c3ebd98e"
+        "src/types.ts": "1e7f9d23d8a82ab715dbeaa8552f5f489f6f3a699171af60ebf1c1ac9d84889a",
+        "src/components/TabbedTable.tsx": "c95bada219b7d05294ceb013dabd29875ba5e11b924623c286ceee29725dfd0d",
+        "src/components/IndependentTabbedTable.tsx": "f8a114530a06958cda0c3edb61ef5279ce1668ad13f0ee1fb283ffe529033201"
       }
     },
     "tablegx-editing": {
       "sources_sha": {
         "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/types.ts": "0418c3011db808b8c3e6d1469cd8e542d29cbba6435e3f5b00b424767c16e846",
+        "src/types.ts": "1e7f9d23d8a82ab715dbeaa8552f5f489f6f3a699171af60ebf1c1ac9d84889a",
         "src/lib/columns.tsx": "526deac3a603f75d18d03bc6d4061867e9e3aa42e858176ed5c6bf369ad82819"
       }
     },
     "tablegx-quickstart": {
       "sources_sha": {
         "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/index.ts": "62385d19b3707e9544715f59b2eb3ee4b71d2ae01e85c734088684e4d1d2faea"
+        "src/index.ts": "4d977d3b0f569f4fccf6afb954b69538728863948870a4d567168adeb58ba6a4"
       }
     },
     "tablegx-theming": {

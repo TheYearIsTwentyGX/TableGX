@@ -116,6 +116,8 @@ export function FacilitiesTable({ data }: { data: Row[] }) {
   enableFooter
   enableRecordCount
   recordCountPosition="top"
+  enableGlobalSearch
+  searchPlaceholder="Search…"
   bordered
   isLoading={loading}
   loadingSkeleton={(widths) => <MySkeleton widths={widths} />}
@@ -134,9 +136,13 @@ export function FacilitiesTable({ data }: { data: Row[] }) {
 
 `enableRecordCount` shows an opt-in row count (off by default). When a filter narrows the set it reads "Showing X of Y" (filtered vs. total leaf rows); otherwise a single total (e.g. "1,234 rows"). `recordCountPosition` is `'top'` (default — right of the toolbar) or `'bottom'` (annotation floated at the table's bottom-right). `recordCountLabel(info)` overrides the text/markup.
 
+### Global search
+
+`enableGlobalSearch` (off by default) adds a toolbar search box that filters rows by a case-insensitive "includes" match across all searched columns at once — separate from the per-column filter popovers. `searchPlaceholder` customizes the placeholder; `searchableColumns={['name']}` restricts which columns are searched (otherwise every visible column except those with `meta.searchable: false`); `globalSearch` / `onGlobalSearchChange` make it controlled. The record count reflects the searched set. See tablegx-advanced for tabbed placement and the `Table.Search` primitive.
+
 ### Headless compound primitives
 
-For custom chrome layouts (move the toolbar, split the tab strip), drop down to the exported primitives: `TableProvider` / `useTableStore` plus slot components (`TableContainer`, `TableTabStrip`, `TablePanels`, `TableBody`, `TableToolbar`, `TableFilterBadges`, `TableSortControl`, `TableColumnVisibility`, `TableRecordCount`), also reachable as `Table.*` and `TableGX.*`. See tablegx-advanced.
+For custom chrome layouts (move the toolbar, split the tab strip), drop down to the exported primitives: `TableProvider` / `useTableStore` plus slot components (`TableContainer`, `TableTabStrip`, `TablePanels`, `TableBody`, `TableToolbar`, `TableFilterBadges`, `TableSortControl`, `TableSearch`, `TableColumnVisibility`, `TableRecordCount`), also reachable as `Table.*` and `TableGX.*`. See tablegx-advanced.
 
 ### Header width floor
 

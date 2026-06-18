@@ -15,6 +15,8 @@ export { TableFilterBadges } from './TableFilterBadges'
 export type { TableFilterBadgesProps } from './TableFilterBadges'
 export { TableSortControl } from './TableSortControl'
 export type { TableSortControlProps } from './TableSortControl'
+export { TableSearch } from './TableSearch'
+export type { TableSearchProps } from './TableSearch'
 export { TableColumnVisibility } from './TableColumnVisibility'
 export type { TableColumnVisibilityProps } from './TableColumnVisibility'
 export { TableRecordCount } from './TableRecordCount'
@@ -39,6 +41,7 @@ import { TableBody } from './TableBody'
 import { TableToolbar } from './TableToolbar'
 import { TableFilterBadges } from './TableFilterBadges'
 import { TableSortControl } from './TableSortControl'
+import { TableSearch } from './TableSearch'
 import { TableColumnVisibility } from './TableColumnVisibility'
 import { TableRecordCount } from './TableRecordCount'
 
@@ -57,6 +60,7 @@ export const Table = {
   Toolbar: TableToolbar,
   FilterBadges: TableFilterBadges,
   SortControl: TableSortControl,
+  Search: TableSearch,
   ColumnVisibility: TableColumnVisibility,
   RecordCount: TableRecordCount,
 } as const

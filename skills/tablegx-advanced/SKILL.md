@@ -187,6 +187,31 @@ columnVisibilityStorageKeyBase="my-tabs"        // TabbedTable → `${base}:${ta
 
 `enableRecordCount` (on the base tables, `TabbedTable`, and per `IndependentTab`) shows an opt-in count: "Showing X of Y" when filters narrow the leaf set, else a single total. `recordCountPosition` is `'top'` (default) or `'bottom'`; `recordCountLabel(info)` overrides the text. On `TabbedTable` a top count renders in the tab strip.
 
+### Global search
+
+`enableGlobalSearch` (opt-in, off by default; on the base tables, `TableGX`, `TabbedTable`, and per `IndependentTab`) adds a single search box that filters rows by a case-insensitive "includes" match across all searched columns at once. This is distinct from the per-column filter popovers and can be used alongside them (both narrow the set).
+
+```tsx
+<ReadOnlyTable
+  data={data}
+  columns={columns}
+  getRowId={(r) => r.id}
+  enableGlobalSearch
+  searchPlaceholder="Search rows…"          // optional; defaults to "Search…"
+  searchableColumns={['name', 'city']}      // optional; restricts which columns are searched
+  globalSearch={query}                      // optional controlled value (base tables / TableGX)
+  onGlobalSearchChange={setQuery}           // optional controlled handler
+/>
+```
+
+- **Which columns are searched:** an explicit `searchableColumns` array takes precedence; otherwise every visible, non-selection column participates unless it opts out with `meta: { searchable: false }` on its column def.
+- **Placement:** single-table mode renders the box in the toolbar (before the sort/columns/record-count cluster). `TabbedTable` and `IndependentTabbedTable` render it in the tab strip. In shared `TabbedTable` the query is shared across tabs; in `IndependentTabbedTable` each tab keeps its own.
+- **Record count** reflects the searched (and filtered) row set.
+- A clear "x" button appears once there's a query.
+- Headless: the `Table.Search` / `TableGX.Search` primitive (and `TableSearch` export) renders the same box wired to the store; it renders nothing unless the active tab enables search.
+
+Source: src/types.ts
+
 ### Selection count
 
 Row selection is shared on `TabbedTable` (per-tab on `IndependentTabbedTable`). Read the current count from the `selectedRowIds` array you pass to `selectedRowIds` / `onSelectedRowIdsChange` — there is no separate selection-count prop.
@@ -199,13 +224,13 @@ Row selection is shared on `TabbedTable` (per-tab on `IndependentTabbedTable`). 
 import {
   TableProvider, useTableStore,
   TableContainer, TableTabStrip, TablePanels, TableBody,
-  TableToolbar, TableFilterBadges, TableSortControl,
+  TableToolbar, TableFilterBadges, TableSortControl, TableSearch,
   TableColumnVisibility, TableRecordCount,
 } from '@twentygx/tablegx'
 // or via the namespaces: Table.Provider / Table.TabStrip / …  and  TableGX.Provider / TableGX.TabStrip / …
 ```
 
-`TableProvider` (`mode: 'shared' | 'independent'`) owns all cross-cutting state; `useTableStore()` reads it (throws outside a provider). The slot components render the tab strip, panels, toolbar, filter badges, sort-hierarchy control, column-visibility picker, and record count, each wired to the store. The facades above are the recommended path — reach for the raw primitives only when you need to rearrange the chrome.
+`TableProvider` (`mode: 'shared' | 'independent'`) owns all cross-cutting state; `useTableStore()` reads it (throws outside a provider). The slot components render the tab strip, panels, toolbar, filter badges, sort-hierarchy control, global-search box, column-visibility picker, and record count, each wired to the store. The facades above are the recommended path — reach for the raw primitives only when you need to rearrange the chrome.
 
 ### Auto-size header floor
 

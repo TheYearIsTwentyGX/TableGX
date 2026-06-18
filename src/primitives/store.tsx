@@ -134,6 +134,30 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [mode, tabs],
   )
 
+  // ----- Global search (shared value in shared mode; per-tab in independent) -----
+  const [sharedSearch, setSharedSearchState] = useState('')
+  const [searchByTab, setSearchByTab] = useState<Record<string, string>>({})
+
+  const getSearch = useCallback(
+    (tabId: string): string => {
+      if (mode === 'shared') return sharedSearch
+      return searchByTab[tabId] ?? ''
+    },
+    [mode, sharedSearch, searchByTab],
+  )
+
+  const setSearch = useCallback(
+    (tabId: string) =>
+      (value: string) => {
+        if (mode === 'shared') {
+          setSharedSearchState(value)
+          return
+        }
+        setSearchByTab((prev) => ({ ...prev, [tabId]: value }))
+      },
+    [mode],
+  )
+
   // ----- Selection (shared group-level vs per-tab) -----
   const [internalSelected, setInternalSelected] = useState<string[]>([])
   const sharedSelected = enableRowSelection ? (selectedRowIds ?? internalSelected) : undefined
@@ -231,6 +255,8 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
         onColumnFiltersChange: setFiltersForTab(tabId),
         visibility: getVisibility(tabId),
         onVisibilityChange: tab ? setVisibility(tab) : () => {},
+        globalSearch: getSearch(tabId),
+        onGlobalSearchChange: setSearch(tabId),
         selectedRowIds: getSelection(tabId),
         onSelectedRowIdsChange: setSelection(tabId),
         sharedData: mode === 'shared' && tab ? dataForTab(tabId) : undefined,
@@ -250,6 +276,8 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
       setFiltersForTab,
       getVisibility,
       setVisibility,
+      getSearch,
+      setSearch,
       getSelection,
       setSelection,
       mode,
@@ -306,6 +334,15 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
         }
       : null
 
+  const search =
+    activeTab?.enableGlobalSearch === true
+      ? {
+          value: getSearch(activeId),
+          onChange: setSearch(activeId),
+          placeholder: activeTab.searchPlaceholder,
+        }
+      : null
+
   const recordCount =
     activeTab?.showsTopRecordCount === true
       ? { info: recordCountInfo, label: activeTab.recordCountLabel }
@@ -326,6 +363,7 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     togglePickerItem,
     setAllPickerItems,
     sortControl,
+    search,
     recordCount,
   }
 

@@ -22,7 +22,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { motion, type MotionValue } from 'framer-motion'
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from 'lucide-react'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FROZEN_PANE_MAX_FRACTION,
   HEADER_HEIGHT_PX,
@@ -39,7 +39,12 @@ import { useRowSelectionBridge } from '../hooks/useRowSelectionBridge'
 import { getCellEditValue } from '../lib/cell'
 import { cn } from '../lib/cn'
 import { computeAggregate, formatAggregate } from '../lib/aggregates'
-import { matchesFilterValue, tgxFilterFn, isEmptyFilterValue } from '../lib/filtering'
+import {
+  matchesFilterValue,
+  tgxFilterFn,
+  tgxGlobalFilterFn,
+  isEmptyFilterValue,
+} from '../lib/filtering'
 import { Button } from '../ui/button'
 import { Checkbox } from '../ui/checkbox'
 import type {
@@ -56,6 +61,7 @@ import { BodyCell } from './BodyCell'
 import type { EditNavigation } from './CellEditors'
 import { ColumnVisibilityPicker } from './ColumnVisibilityPicker'
 import { describeFilterValue, FilterBadges, type FilterBadgeItem } from './FilterBadges'
+import { TableSearchInput } from './SearchInput'
 import { HeaderCell } from './HeaderCell'
 import { TableSkeleton } from './TableSkeleton'
 
@@ -104,6 +110,13 @@ export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow>
   recordCountInToolbar?: boolean
   /** Internal — reports the computed leaf counts up so a tab strip can render them. */
   onRecordCountChange?: (info: RecordCountInfo | null) => void
+  /**
+   * Internal — when false the global-search input is not drawn in this table's
+   * toolbar. The tabbed shells set this so the search box lives in the tab strip
+   * instead of the panel; the engine still applies the query via `globalSearch`.
+   * Default true.
+   */
+  searchInToolbar?: boolean
   /** Internal — negated tab-slide x offset keeping the pinned pane static (spec §18.5). */
   pinnedPaneX?: MotionValue<number>
 }
@@ -432,6 +445,12 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     enableColumnVirtualization = true,
     rowHeight,
     enableFooter = false,
+    enableGlobalSearch = false,
+    globalSearch,
+    onGlobalSearchChange,
+    searchableColumns,
+    searchPlaceholder,
+    searchInToolbar = true,
     enableRecordCount = false,
     recordCountPosition = 'top',
     recordCountLabel,
@@ -485,6 +504,21 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     },
     [onColumnFiltersChange, controlledFilters],
   )
+
+  // ----- Global search (opt-in; controlled or internal) -----
+  const [internalSearch, setInternalSearch] = useState('')
+  const searchValue = enableGlobalSearch ? (globalSearch ?? internalSearch) : ''
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      onGlobalSearchChange?.(value)
+      if (globalSearch === undefined) setInternalSearch(value)
+    },
+    [onGlobalSearchChange, globalSearch],
+  )
+  // Keep the input responsive on large tables: the query the engine filters by
+  // trails the typed value so the heavy filtered-row recompute is deferred while
+  // the input itself updates immediately.
+  const deferredSearch = useDeferredValue(searchValue)
 
   const [storedVisibility, setStoredVisibility] = useLocalStorageState<VisibilityState>(
     columnVisibilityStorageKey,
@@ -632,12 +666,30 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   const getRowIdString = useCallback((row: TRow) => String(getRowId(row)), [getRowId])
 
+  // Resolve which columns the global search box scans. An explicit
+  // `searchableColumns` list wins outright; otherwise every visible,
+  // non-selection column participates unless it opts out via `meta.searchable`.
+  const searchableSet = useMemo(
+    () => (searchableColumns ? new Set(searchableColumns) : null),
+    [searchableColumns],
+  )
+  const getColumnCanGlobalFilter = useCallback(
+    (column: Column<TRow, unknown>): boolean => {
+      if (!enableGlobalSearch || column.id === SELECTION_COLUMN_ID) return false
+      if (searchableSet) return searchableSet.has(column.id)
+      if (column.columnDef.meta?.searchable === false) return false
+      return column.getIsVisible()
+    },
+    [enableGlobalSearch, searchableSet],
+  )
+
   const table = useReactTable<TRow>({
     data,
     columns: effectiveColumns,
     state: {
       sorting: effectiveSorting,
       columnFilters: filters,
+      globalFilter: enableGlobalSearch ? deferredSearch : '',
       columnVisibility: effectiveVisibility,
       rowSelection,
       expanded: enableExpanding ? expandedState : {},
@@ -656,6 +708,9 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     filterFromLeafRows: true,
+    enableGlobalFilter: enableGlobalSearch,
+    globalFilterFn: tgxGlobalFilterFn as unknown as import('@tanstack/react-table').FilterFn<TRow>,
+    getColumnCanGlobalFilter,
     enableMultiSort,
     isMultiSortEvent: (e) => (e as React.MouseEvent).shiftKey,
     enableRowSelection,
@@ -1244,8 +1299,11 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // Right boundary line when the columns don't fill the viewport.
   const showRightEdge = viewportWidth > 0 && contentWidth < viewportWidth
 
+  const showSearchInput = enableGlobalSearch && searchInToolbar
+
   const hasToolbarRow =
     Boolean(toolbar) ||
+    showSearchInput ||
     pickerItems.length > 0 ||
     (enableExpanding && !isLoading) ||
     showTopRecordCount
@@ -1279,6 +1337,13 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
         >
           {toolbar}
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {showSearchInput && (
+              <TableSearchInput
+                value={searchValue}
+                onChange={handleSearchChange}
+                placeholder={searchPlaceholder}
+              />
+            )}
             {enableExpanding && !isLoading && (
               <>
                 <Button

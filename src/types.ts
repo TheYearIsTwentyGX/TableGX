@@ -108,6 +108,14 @@ export type TableColumnMeta = {
   // --- Cell actions ---
   actions?: CellAction<TableRowData>[]
 
+  // --- Global search ---
+  /**
+   * Opt this column out of the built-in global search bar. Defaults to true
+   * (searched). Ignored when the table is given an explicit `searchableColumns`
+   * list, which takes precedence over per-column flags.
+   */
+  searchable?: boolean
+
   // --- Custom rendering & interaction ---
   /**
    * Opt this column's value area out of single-line truncation, giving the
@@ -268,6 +276,28 @@ export type AdvancedFeatureProps<TRow> = {
   rowHeight?: RowHeight<TRow>
   enableFooter?: boolean
   /**
+   * Show a built-in global search bar — a single text input that filters rows
+   * by a case-insensitive "includes" match across all searched columns at once
+   * (distinct from the per-column filter popovers). Off by default. Combines
+   * with active per-column filters and sorting. In single-table mode the input
+   * renders in the toolbar before the sort/columns/record-count cluster; in
+   * tabbed modes it renders in the tab strip between the tabs and the end
+   * controls and applies to the active tab's rows.
+   */
+  enableGlobalSearch?: boolean
+  /** Controlled global-search query. When set, pair with {@link onGlobalSearchChange}. */
+  globalSearch?: string
+  /** Notified when the global-search query changes (controlled or uncontrolled). */
+  onGlobalSearchChange?: (value: string) => void
+  /**
+   * Restrict global search to these column ids. When provided it takes
+   * precedence over per-column `meta.searchable` flags; otherwise every visible
+   * non-selection column is searched unless it sets `meta.searchable: false`.
+   */
+  searchableColumns?: string[]
+  /** Placeholder for the global-search input. Defaults to "Search…". */
+  searchPlaceholder?: string
+  /**
    * Show an opt-in count of the table's rows. Off by default. When a filter
    * narrows the set it reads "Showing X of Y" (filtered leaf rows vs. total
    * leaf rows); otherwise a single total (e.g. "1,234 rows").
@@ -422,6 +452,12 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   /** Body row height for this tab (default fixed 56px). See {@link AdvancedFeatureProps.rowHeight}. */
   rowHeight?: RowHeight<TRow>
   enableFooter?: boolean
+  /** Show a built-in global search bar for this tab (see {@link AdvancedFeatureProps.enableGlobalSearch}). */
+  enableGlobalSearch?: boolean
+  /** Restrict this tab's global search to these column ids (see {@link AdvancedFeatureProps.searchableColumns}). */
+  searchableColumns?: string[]
+  /** Placeholder for this tab's global-search input. Defaults to "Search…". */
+  searchPlaceholder?: string
   /** Show an opt-in row count for this tab (see {@link AdvancedFeatureProps.enableRecordCount}). */
   enableRecordCount?: boolean
   /** Where this tab's record count renders: `'top'` or `'bottom'`. Default `'top'`. */
@@ -505,6 +541,11 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'enableColumnVirtualization'
   | 'rowHeight'
   | 'enableFooter'
+  | 'enableGlobalSearch'
+  | 'globalSearch'
+  | 'onGlobalSearchChange'
+  | 'searchableColumns'
+  | 'searchPlaceholder'
   | 'enableRecordCount'
   | 'recordCountPosition'
   | 'recordCountLabel'

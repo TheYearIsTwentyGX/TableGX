@@ -36,6 +36,9 @@ export type TableBodyRenderArgs = {
   onColumnFiltersChange: Dispatch<SetStateAction<ColumnFiltersState>>
   visibility: VisibilityState
   onVisibilityChange: OnChangeFn<VisibilityState>
+  /** Active tab's global-search query (applies to the active tab's rows). */
+  globalSearch: string
+  onGlobalSearchChange: (value: string) => void
   selectedRowIds: string[] | undefined
   onSelectedRowIdsChange: (ids: string[]) => void
   /** Shared-dataset rows after cross-tab filter intersection (shared mode only). */
@@ -64,6 +67,10 @@ export type TableTabModel = {
   columnVisibilityStorageKey?: string
   initialSorting?: SortingState
   enableRowSelection: boolean
+  /** True when this tab opts into the built-in global search bar. */
+  enableGlobalSearch: boolean
+  /** Placeholder for this tab's global-search input. */
+  searchPlaceholder?: string
   /** True when this tab's record count is enabled and placed at the top (tab strip). */
   showsTopRecordCount: boolean
   recordCountLabel?: RecordCountLabel
@@ -137,6 +144,12 @@ export type TableStore = {
     sorting: SortingState
     resolveLabel: (columnId: string) => string
     onChange: (next: SortingState) => void
+  } | null
+  /** Global-search control for the active tab; null when that tab disables it. */
+  search: {
+    value: string
+    onChange: (value: string) => void
+    placeholder?: string
   } | null
   recordCount: { info: RecordCountInfo | null; label?: RecordCountLabel } | null
 }

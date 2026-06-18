@@ -65,6 +65,7 @@ const STATE_OPTIONS = ['TX', 'CA', 'NY'].map((s) => ({ label: s, value: s }))
 | `renderCell(ctx)` | Full control of cell content (non-truncating, flexible) |
 | `onCellClick(ctx, e)` | Make the whole cell clickable, isolated from selection/expand/edit |
 | `disableTruncate` | Opt the value area out of single-line truncation |
+| `searchable` | Set `false` to exclude the column from the built-in global search (`enableGlobalSearch`); see tablegx-advanced |
 
 Module augmentation: `ColumnMeta` extends `TableColumnMeta`.
 

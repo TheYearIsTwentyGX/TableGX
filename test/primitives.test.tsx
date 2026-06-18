@@ -19,6 +19,7 @@ function probeTab(id: string, label: string): TableTabModel {
     id,
     label,
     enableRowSelection: true,
+    enableGlobalSearch: false,
     showsTopRecordCount: false,
     getPickerItems: () => [],
     render: (args: TableBodyRenderArgs) => (

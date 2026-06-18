@@ -66,6 +66,8 @@ export function independentTable<TRow extends TableRowData>(
     initialSorting: config.initialSorting,
     enableColumnVisibility,
     enableRowSelection,
+    enableGlobalSearch: config.enableGlobalSearch === true,
+    searchPlaceholder: config.searchPlaceholder,
     columnVisibilityStorageKey: config.columnVisibilityStorageKey,
     showsTopRecordCount,
     recordCountLabel: config.recordCountLabel,
@@ -129,6 +131,12 @@ export function independentTable<TRow extends TableRowData>(
         enableColumnVirtualization={config.enableColumnVirtualization}
         rowHeight={config.rowHeight}
         enableFooter={config.enableFooter}
+        enableGlobalSearch={config.enableGlobalSearch}
+        globalSearch={args.globalSearch}
+        onGlobalSearchChange={args.onGlobalSearchChange}
+        searchableColumns={config.searchableColumns}
+        searchPlaceholder={config.searchPlaceholder}
+        searchInToolbar={false}
         enableRecordCount={config.enableRecordCount}
         recordCountPosition={config.recordCountPosition}
         recordCountLabel={config.recordCountLabel}
@@ -210,6 +218,7 @@ export function IndependentTabbedTable({
           endContent={
             <>
               {actions}
+              <Table.Search />
               <Table.ColumnVisibility />
               <Table.RecordCount />
             </>

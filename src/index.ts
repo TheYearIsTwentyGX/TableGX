@@ -28,6 +28,7 @@ export {
   TableToolbar,
   TableFilterBadges,
   TableSortControl,
+  TableSearch,
   TableColumnVisibility,
   TableRecordCount,
 } from './primitives'
@@ -38,6 +39,7 @@ export type {
   TableToolbarProps,
   TableFilterBadgesProps,
   TableSortControlProps,
+  TableSearchProps,
   TableColumnVisibilityProps,
   TableRecordCountProps,
   TableMode,
@@ -126,6 +128,6 @@ export { isolateCellEvent, cellInteractionProps } from './lib/isolate'
 export { getCellEditValue } from './lib/cell'
 export { formatDateSafe, parseDateSafe } from './lib/date'
 export { computeAggregate } from './lib/aggregates'
-export { tgxFilterFn, matchesFilterValue } from './lib/filtering'
+export { tgxFilterFn, matchesFilterValue, tgxGlobalFilterFn, matchesGlobalSearch } from './lib/filtering'
 export { measureTextWidth, canMeasureText } from './lib/measure'
 export { cn } from './lib/cn'
