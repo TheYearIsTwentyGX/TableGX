@@ -2,6 +2,8 @@ import { render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ReadOnlyTable } from '../src/components/ReadOnlyTable'
 import { TabbedTable } from '../src/components/TabbedTable'
+import { textColumn } from '../src/lib/columns'
+import type { ColumnDef } from '@tanstack/react-table'
 import type { PerfRow } from './perf/harness'
 import type { TabbedTableTab } from '../src/types'
 import {
@@ -277,5 +279,120 @@ describe('row height', () => {
     const rows = renderedRowEls(container)
     expect(rows.length).toBeGreaterThan(0)
     for (const row of rows) expect(row.style.height).toBe('72px')
+  })
+})
+
+// A paragraph long enough that, at any realistic column width, it wraps to
+// several lines — pushing its cell (and therefore its row) past the 56px floor.
+const TALL_TEXT = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(8)
+
+type AlignRow = { id: string; pinned: string; scrollA: string; scrollB: string }
+
+const ALIGN_COLUMNS: ColumnDef<AlignRow, unknown>[] = [
+  textColumn<AlignRow>('pinned', 'Pinned'),
+  textColumn<AlignRow>('scrollA', 'Scroll A'),
+  textColumn<AlignRow>('scrollB', 'Scroll B'),
+]
+
+/** The rendered row element for a given row id. */
+function rowById(root: ParentNode, id: string): HTMLElement {
+  const el = root.querySelector<HTMLElement>(`[data-tgx-row="${id}"]`)
+  if (!el) throw new Error(`no row rendered for id ${id}`)
+  return el
+}
+
+/** Split a row's cells into its frozen-pane cells and its scroll-pane cells. */
+function splitRowCells(row: HTMLElement): { pinned: HTMLElement[]; scroll: HTMLElement[] } {
+  const pane = row.querySelector<HTMLElement>('[data-tgx-pinned]')
+  if (!pane) throw new Error('row has no frozen pane')
+  const all = Array.from(row.querySelectorAll<HTMLElement>('[data-tgx-cell]'))
+  return {
+    pinned: all.filter((c) => pane.contains(c)),
+    scroll: all.filter((c) => !pane.contains(c)),
+  }
+}
+
+describe('row height + frozen columns (auto-height alignment)', () => {
+  // The data alternates which side carries the tall paragraph so a single
+  // render exercises both "scroll cell drives the height" (row "scroll-tall")
+  // and "pinned cell drives the height" (row "pinned-tall").
+  const data: AlignRow[] = [
+    { id: 'scroll-tall', pinned: 'short', scrollA: TALL_TEXT, scrollB: 'short' },
+    { id: 'pinned-tall', pinned: TALL_TEXT, scrollA: 'short', scrollB: 'short' },
+  ]
+
+  function renderAligned() {
+    mountViewport()
+    return render(
+      <ReadOnlyTable
+        data={data}
+        columns={ALIGN_COLUMNS}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+        frozenColumns={1}
+        rowHeight="auto"
+        enableRowVirtualization={false}
+      />,
+    )
+  }
+
+  it('keeps the frozen pane stretching with the row (h-full, no locked height)', () => {
+    const { container } = renderAligned()
+    for (const id of ['scroll-tall', 'pinned-tall']) {
+      const row = rowById(container, id)
+      // Row grows from a floor instead of being locked, so the taller pane wins.
+      expect(row.style.minHeight).toBe('56px')
+      expect(row.style.height).toBe('')
+      const pane = row.querySelector<HTMLElement>('[data-tgx-pinned]')!
+      // The pinned pane keeps h-full so flexbox stretches it to the row height.
+      expect(pane.className).toContain('h-full')
+      // Both panes live in the same flex row, so they cannot drift apart.
+      const { pinned, scroll } = splitRowCells(row)
+      expect(pinned.length).toBe(1)
+      expect(scroll.length).toBe(2)
+    }
+  })
+
+  it('a tall scroll cell and a tall pinned cell both drive a shared floor with no locked heights', () => {
+    const { container } = renderAligned()
+    for (const id of ['scroll-tall', 'pinned-tall']) {
+      const { pinned, scroll } = splitRowCells(rowById(container, id))
+      for (const cell of [...pinned, ...scroll]) {
+        // No cell locks a fixed height — a locked side would clip or misalign
+        // when the other side grows. Every cell shares the same min-height
+        // floor and top-aligns its wrapping content.
+        expect(cell.style.height).toBe('')
+        expect(cell.style.minHeight).toBe('56px')
+        expect(cell.className).toContain('items-start')
+      }
+    }
+  })
+
+  it('still applies a fixed rowHeight uniformly across both panes', () => {
+    mountViewport()
+    const { container } = render(
+      <ReadOnlyTable
+        data={data}
+        columns={ALIGN_COLUMNS}
+        getRowId={(r) => r.id}
+        maxHeight={`${VIEWPORT_HEIGHT_PX}px`}
+        measure={perfMeasure}
+        frozenColumns={1}
+        rowHeight={88}
+        enableRowVirtualization={false}
+      />,
+    )
+    for (const id of ['scroll-tall', 'pinned-tall']) {
+      const row = rowById(container, id)
+      expect(row.style.height).toBe('88px')
+      expect(row.style.minHeight).toBe('')
+      const { pinned, scroll } = splitRowCells(row)
+      for (const cell of [...pinned, ...scroll]) {
+        // Fixed height locks both panes to the same pixel height (aligned).
+        expect(cell.style.height).toBe('88px')
+        expect(cell.style.minHeight).toBe('')
+      }
+    }
   })
 })
