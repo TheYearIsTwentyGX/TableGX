@@ -8,7 +8,7 @@ description: >-
   tree grids, or shared/independent filter/selection across column sets.
 type: core
 library: tablegx
-library_version: "2.3.0"
+library_version: "3.0.0"
 sources:
   - "README.md"
   - "src/types.ts"
