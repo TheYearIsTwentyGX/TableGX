@@ -4,8 +4,9 @@
 //   - @tutera/tablegx    -> private @tutera registry
 //
 // Registry auth lives in .npmrc via env interpolation (NPM_TOKEN, TUTERA_AUTH);
-// no tokens are stored here. package.json's `name` is swapped per target and always
-// restored afterwards (even on failure).
+// no tokens are stored here. package.json's `name` scope is swapped per target and
+// always normalized back to the canonical @twentygx scope afterwards — even if a
+// previous run was killed mid-publish and left the file swapped.
 //
 //   node scripts/publish.mjs                 publish to all targets
 //   node scripts/publish.mjs npm             publish only the @twentygx (npm) build
@@ -19,6 +20,9 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pkgPath = join(repoRoot, 'package.json')
+
+// The canonical scope that must always be the one committed on disk.
+const HOME_SCOPE = '@twentygx'
 
 const TARGETS = {
   npm: { scope: '@twentygx', registry: 'https://registry.npmjs.org/' },
@@ -34,9 +38,20 @@ for (const t of selected) {
   }
 }
 
-const original = readFileSync(pkgPath, 'utf8')
-const pkg = JSON.parse(original)
+// Replace ONLY the top-level package name value, preserving the file's exact
+// formatting (so a non-canonical scope left by an interrupted run is repaired
+// without reformatting the whole file).
+function withName(src, name) {
+  return src.replace(/("name"\s*:\s*)"[^"]*"/, `$1"${name}"`)
+}
+
+const onDisk = readFileSync(pkgPath, 'utf8')
+const pkg = JSON.parse(onDisk)
 const baseName = pkg.name.replace(/^@[^/]+\//, '')
+// Canonical, byte-identical-when-already-correct content with the home scope.
+const canonical = withName(onDisk, `${HOME_SCOPE}/${baseName}`)
+// Repair the working tree immediately if a prior run left a swapped scope.
+if (onDisk !== canonical) writeFileSync(pkgPath, canonical)
 
 function run(cmd, args) {
   execFileSync(cmd, args, { cwd: repoRoot, stdio: 'inherit' })
@@ -50,11 +65,13 @@ try {
   for (const t of selected) {
     const { scope, registry } = TARGETS[t]
     const name = `${scope}/${baseName}`
-    writeFileSync(pkgPath, JSON.stringify({ ...pkg, name }, null, 2) + '\n')
+    writeFileSync(pkgPath, withName(canonical, name))
     console.log(`\n▶ publishing ${name}@${pkg.version} → ${registry}`)
-    run('npm', ['publish', '--ignore-scripts', '--registry', registry, ...passthrough])
+    // Enforced --registry goes last so passthrough flags can't override the target.
+    run('npm', ['publish', '--ignore-scripts', ...passthrough, '--registry', registry])
   }
   console.log('\n✅ publish complete')
 } finally {
-  writeFileSync(pkgPath, original)
+  // Always leave the canonical (@twentygx) name on disk.
+  writeFileSync(pkgPath, canonical)
 }

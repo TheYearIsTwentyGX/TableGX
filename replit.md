@@ -24,6 +24,18 @@ A high-performance, type-safe React data-table library: ReadOnlyTable, EditableT
 - **Perf benchmark (real browser):** `npm run test:perf` (Vitest browser mode + Playwright/Chromium; NOT part of `npm test`)
 - **Typecheck:** `npm run typecheck` (tsc --noEmit)
 
+## Publishing
+The same package (`tablegx`) is published under two scopes to two registries:
+- `@twentygx/tablegx` → public npm (`https://registry.npmjs.org/`)
+- `@tutera/tablegx` → private `@tutera` registry
+
+Commands (see `scripts/publish.mjs`):
+- `npm run publish:npm` — publish `@twentygx/tablegx` to npm
+- `npm run publish:tutera` — publish `@tutera/tablegx` to the private registry
+- `npm run publish:all` — both (npm first; extra flags like `--dry-run` / `--otp=CODE` pass through)
+
+The script builds once, swaps only the `package.json` `name` scope per target, and always restores the canonical `@twentygx` name afterward. Per-scope registry routing and auth (`NPM_TOKEN`, `TUTERA_AUTH`) live in `.npmrc` via env interpolation — never commit raw tokens. Bump the version before publishing; registries reject republishing an existing version.
+
 ## Notes
 - Because this is a library, no workflow/web server is configured and deployment is not applicable. Consumers install it as a dependency.
 

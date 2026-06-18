@@ -1,10 +1,1 @@
-- [Dark mode class placement](dark-mode-tokens.md) — toggle `.dark` on `<html>`, not a nested div, or `<body>` + Radix portals stay light.
-- [Auto-width font measurement](autowidth-font-measurement.md) — library sets no font-family; measure auto-column text in the consumer's inherited rendered font + safety margin + re-measure on fonts.ready.
-- [Frozen pane split is identity-based](frozen-pane-split.md) — the frozen pane is the visible intersection of a canonical frozen id set, never a positional slice of visible columns.
-- [Playwright on NixOS](playwright-nixos-chromium.md) — browser-mode tests must use the Nix system Chromium via provider-factory `launchOptions.executablePath`; bundled one can't find libs.
-- [TanStack sort direction](tanstack-sort-direction.md) — number/date columns sort descending-first on click; text columns ascending-first. Assert accordingly in tests.
-- [Auto-width icon measurement](autowidth-icon-measurement.md) — jsdom test harness mocks offsetWidth to container size on the prototype; cap measured icon widths or the header floor explodes & breaks the column-virtualization perf guard.
-- [Perf harness scroll container](perf-harness-scroll-container.md) — perf guards grab the first `.tgx-scrollbar`; new scrollable strips above the body must use a different class or virtualization assertions break.
-- [TableCore column-prop identity](tablecore-column-identity.md) — fresh array props (e.g. sortOnlyColumns) per render remount every cell; cache by content + share an EMPTY constant, else captured-node tests fail.
-- [TableGX facade composition](tablegx-facade.md) — TableGX delegates tabbed/independent to existing components (they ARE the primitive composition) & renders TableCore directly for table; toggling editable off must cancel the open editor.
-- [rowHeight modes](row-height-modes.md) — unset default must be byte-identical (cn/twMerge preserves order); 'auto' forces column-virt off; virtualized auto measures via offsetHeight, which the jsdom harness mocks.
+- [Multi-registry publishing](multi-registry-publishing.md) — same package "tablegx" published under two scopes; @twentygx is the canonical on-disk scope; @tutera goes to a private registry.
