@@ -5,8 +5,7 @@
   "license": "MIT",
   "type": "module",
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "access": "public"
   },
   "sideEffects": [
     "*.css"
@@ -38,7 +37,10 @@
     "typecheck": "tsc --noEmit",
     "check:skills": "node scripts/check-skills.mjs",
     "check:skills:strict": "node scripts/check-skills.mjs --strict",
-    "dev:playground": "vite --config playground/vite.config.ts"
+    "dev:playground": "vite --config playground/vite.config.ts",
+    "publish:npm": "node scripts/publish.mjs npm",
+    "publish:tutera": "node scripts/publish.mjs tutera",
+    "publish:all": "node scripts/publish.mjs all"
   },
   "keywords": [
     "react",
