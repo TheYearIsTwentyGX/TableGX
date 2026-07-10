@@ -14,30 +14,54 @@ function isNonEmpty(value: unknown): boolean {
 }
 
 /**
- * Computes a footer aggregate over raw cell values. Numeric aggregates ignore
- * non-numeric values; `count` tallies non-empty values. Returns null when no
- * value participates (so the caller can render nothing).
+ * Computes a footer aggregate over items via an accessor, so callers can pass
+ * rows directly instead of materializing an intermediate values array per
+ * column. Numeric aggregates ignore non-numeric values; `count` tallies
+ * non-empty values. Returns null when no value participates (so the caller can
+ * render nothing).
  */
-export function computeAggregate(kind: FooterAggregate, values: unknown[]): number | null {
+export function computeAggregateOver<T>(
+  kind: FooterAggregate,
+  items: readonly T[],
+  getValue: (item: T) => unknown,
+): number | null {
   if (kind === 'count') {
-    return values.reduce<number>((acc, v) => (isNonEmpty(v) ? acc + 1 : acc), 0)
+    let tally = 0
+    for (const item of items) {
+      if (isNonEmpty(getValue(item))) tally++
+    }
+    return tally
   }
-  const numbers: number[] = []
-  for (const value of values) {
-    const n = toNumber(value)
-    if (n !== null) numbers.push(n)
+  // Single pass, no intermediate array: spreading into Math.min/max overflows
+  // the call stack once the filtered set grows past engine argument limits.
+  let count = 0
+  let sum = 0
+  let min = Infinity
+  let max = -Infinity
+  for (const item of items) {
+    const n = toNumber(getValue(item))
+    if (n === null) continue
+    count++
+    sum += n
+    if (n < min) min = n
+    if (n > max) max = n
   }
-  if (numbers.length === 0) return null
+  if (count === 0) return null
   switch (kind) {
     case 'sum':
-      return numbers.reduce((a, b) => a + b, 0)
+      return sum
     case 'avg':
-      return numbers.reduce((a, b) => a + b, 0) / numbers.length
+      return sum / count
     case 'min':
-      return Math.min(...numbers)
+      return min
     case 'max':
-      return Math.max(...numbers)
+      return max
   }
+}
+
+/** Computes a footer aggregate over raw cell values. */
+export function computeAggregate(kind: FooterAggregate, values: unknown[]): number | null {
+  return computeAggregateOver(kind, values, (v) => v)
 }
 
 /** Default footer formatter. */

@@ -72,16 +72,26 @@ export function useSharedTabFilters<TRow extends TableRowData>(options: {
   const { data, getRowId, tabs, getSubRows } = options
   const [filtersByTab, setFiltersByTab] = useState<Record<string, ColumnFiltersState>>({})
 
-  const setFiltersForTab = useCallback(
-    (tabId: string) => (updater: React.SetStateAction<ColumnFiltersState>) => {
-      setFiltersByTab((prev) => {
-        const current = prev[tabId] ?? []
-        const next = typeof updater === 'function' ? updater(current) : updater
-        return { ...prev, [tabId]: next }
-      })
-    },
-    [],
-  )
+  // Cached per tab so each call returns the same function identity — these
+  // become TableCore's onColumnFiltersChange and are re-requested on every
+  // store render via getBodyArgs.
+  const setFiltersForTab = useMemo(() => {
+    const cache = new Map<string, (updater: React.SetStateAction<ColumnFiltersState>) => void>()
+    return (tabId: string) => {
+      let fn = cache.get(tabId)
+      if (!fn) {
+        fn = (updater) => {
+          setFiltersByTab((prev) => {
+            const current = prev[tabId] ?? []
+            const next = typeof updater === 'function' ? updater(current) : updater
+            return { ...prev, [tabId]: next }
+          })
+        }
+        cache.set(tabId, fn)
+      }
+      return fn
+    }
+  }, [])
 
   // Per-tab sets of top-level row ids passing that tab's filters.
   const passingSets = useMemo(() => {
@@ -101,20 +111,30 @@ export function useSharedTabFilters<TRow extends TableRowData>(options: {
     return sets
   }, [tabs, filtersByTab, data, getRowId, getSubRows])
 
-  const dataForTab = useCallback(
-    (tabId: string): TRow[] => {
+  // Cached per tab so repeated calls return the same array identity: this is
+  // invoked on every store render via getBodyArgs, and a fresh array there
+  // would feed TableCore a new `data` prop each time — rebuilding row models
+  // and re-running the synchronous auto-width measurement for no reason.
+  const dataForTab = useMemo(() => {
+    const cache = new Map<string, TRow[]>()
+    return (tabId: string): TRow[] => {
+      const hit = cache.get(tabId)
+      if (hit) return hit
       const otherSets: Set<string>[] = []
       for (const [id, set] of passingSets) {
         if (id !== tabId) otherSets.push(set)
       }
-      if (otherSets.length === 0) return data
-      return data.filter((row) => {
-        const id = String(getRowId(row))
-        return otherSets.every((set) => set.has(id))
-      })
-    },
-    [data, getRowId, passingSets],
-  )
+      const result =
+        otherSets.length === 0
+          ? data
+          : data.filter((row) => {
+              const id = String(getRowId(row))
+              return otherSets.every((set) => set.has(id))
+            })
+      cache.set(tabId, result)
+      return result
+    }
+  }, [data, getRowId, passingSets])
 
   const activeFilters = useMemo(() => {
     const out: { tabId: string; columnId: string; value: ColumnFilterValue }[] = []

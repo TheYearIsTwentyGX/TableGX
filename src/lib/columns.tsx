@@ -68,9 +68,16 @@ export function selectColumn<TRow extends TableRowData>(
   options: { label: string; value: string }[],
   meta?: TableColumnMeta,
 ): ColumnDef<TRow, unknown> {
+  // Built once at factory time: labelFor runs per cell per render (and per
+  // auto-width sample). First entry wins on duplicate values, matching the
+  // previous options.find behavior.
+  const labelByValue = new Map<string, string>()
+  for (const o of options) {
+    if (!labelByValue.has(o.value)) labelByValue.set(o.value, o.label)
+  }
   const labelFor = (value: unknown) => {
     const str = String(value ?? '')
-    return options.find((o) => o.value === str)?.label ?? str
+    return labelByValue.get(str) ?? str
   }
   return {
     id,

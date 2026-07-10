@@ -18,7 +18,11 @@ export type BodyCellProps<TRow extends TableRowData> = {
   /** Column is whitelisted + meta.editable and the table is editable. */
   canEdit: boolean
   singleClickEdit?: boolean
-  /** Disables editors while a save is pending or the table is submitting. */
+  /**
+   * Disables the active editor while its save is pending. Only the row hosting
+   * the editor ever receives true; entry into new edits during a save is
+   * gated in TableCore's beginEdit instead, so other rows keep a stable false.
+   */
   editorsDisabled: boolean
   isSubmitting?: boolean
   initialEditValue: string
@@ -93,7 +97,7 @@ function BodyCellInner<TRow extends TableRowData>({
   const interactiveBoolean = canEdit && isBoolean && singleClickEdit && !editorsDisabled
 
   const beginEdit = () => {
-    if (!canEdit || isEditing || editorsDisabled) return
+    if (!canEdit || isEditing) return
     onBeginEdit(cell)
   }
 

@@ -38,7 +38,7 @@ import { useLocalStorageState } from '../hooks/useLocalStorageState'
 import { useRowSelectionBridge } from '../hooks/useRowSelectionBridge'
 import { getCellEditValue } from '../lib/cell'
 import { cn } from '../lib/cn'
-import { computeAggregate, formatAggregate } from '../lib/aggregates'
+import { computeAggregateOver, formatAggregate } from '../lib/aggregates'
 import {
   matchesFilterValue,
   tgxFilterFn,
@@ -66,6 +66,10 @@ import { HeaderCell } from './HeaderCell'
 import { TableSkeleton } from './TableSkeleton'
 
 const GROUP_HEADER_HEIGHT_PX = 32
+// Locale-aware comparator for faceted value lists. A cached Collator is an
+// order of magnitude faster than String#localeCompare per comparison, which
+// matters when a filter popover opens on a high-cardinality column.
+const facetedValueCollator = new Intl.Collator()
 const FOOTER_HEIGHT_PX = 40
 const ROW_OVERSCAN = 8
 // Scroll-pane cells render in fixed chunks of this many columns. When the
@@ -77,6 +81,37 @@ const CHUNK_COLUMNS = 8
 
 const PINNED_BODY_BG_CLASSES =
   'bg-card transition-colors group-hover:bg-(--tgx-row-hover-bg) group-data-[selected]:bg-(--tgx-row-selected-bg) group-hover:group-data-[selected]:bg-(--tgx-row-selected-hover-bg)'
+
+/**
+ * The sticky frozen pane. A motion.div is mounted only when a tab-slide
+ * MotionValue is actually supplied (the tabbed shells); in single-table mode
+ * the pane never animates, and a framer-motion component per virtualized row
+ * adds real mount cost exactly where scroll performance is decided.
+ */
+function PinnedPane({
+  x,
+  width,
+  className,
+  children,
+}: {
+  x?: MotionValue<number>
+  width: number
+  className: string
+  children: React.ReactNode
+}) {
+  if (x) {
+    return (
+      <motion.div data-tgx-pinned="" className={className} style={{ width, x }}>
+        {children}
+      </motion.div>
+    )
+  }
+  return (
+    <div data-tgx-pinned="" className={className} style={{ width }}>
+      {children}
+    </div>
+  )
+}
 
 export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow> & {
   editable: boolean
@@ -183,6 +218,7 @@ type RowCellContext<TRow extends TableRowData> = {
   expandColumnId: string | null
   /** Non-null only when this row hosts the active editor. */
   editing: EditingState
+  /** True only on the row hosting the active editor while its save is pending. */
   editorsDisabled: boolean
   isSubmitting: boolean
   singleClickEdit: boolean
@@ -377,13 +413,13 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
       }}
     >
       {pinnedCount > 0 && (
-        <motion.div
-          data-tgx-pinned=""
+        <PinnedPane
+          x={pinnedPaneX}
+          width={pinnedWidth}
           className={cn(
             'sticky left-0 z-10 flex h-full shrink-0 border-r border-border',
             PINNED_BODY_BG_CLASSES,
           )}
-          style={{ width: pinnedWidth, x: pinnedPaneX }}
         >
           {cells.slice(0, pinnedCount).map((cell) =>
             renderBodyCell(
@@ -400,7 +436,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
               props,
             ),
           )}
-        </motion.div>
+        </PinnedPane>
       )}
       {chunks}
     </div>
@@ -574,6 +610,13 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   // ----- Columns (selection injection) -----
 
+  // Read by the selection column's renderers so `isSubmitting` never
+  // invalidates the column defs: a new columns array rebuilds every Column
+  // instance and, through getVisibleCells, every visible cell — twice per
+  // save. Rows still repaint on change via their own isSubmitting prop.
+  const isSubmittingRef = useRef(isSubmitting)
+  isSubmittingRef.current = isSubmitting
+
   // Foreign columns referenced by the shared sort that this tab doesn't render,
   // normalized to hidden sort-only columns. They let the engine order rows by a
   // column owned by another tab; they're forced invisible below so they never
@@ -598,14 +641,21 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       id: SELECTION_COLUMN_ID,
       header: ({ table }) => {
         const filteredRows = table.getFilteredRowModel().flatRows
-        const allSelected = filteredRows.length > 0 && filteredRows.every((r) => r.getIsSelected())
+        // Empty-selection fast path: this header re-renders with every table
+        // commit (including each scroll window shift), and with nothing
+        // selected the `some` scan below would walk every filtered row.
+        const anySelected = Object.keys(table.getState().rowSelection).length > 0
+        const allSelected =
+          anySelected && filteredRows.length > 0 && filteredRows.every((r) => r.getIsSelected())
         const someSelected =
-          !allSelected && filteredRows.some((r) => r.getIsSelected() || r.getIsSomeSelected())
+          anySelected &&
+          !allSelected &&
+          filteredRows.some((r) => r.getIsSelected() || r.getIsSomeSelected())
         return (
           <Checkbox
             aria-label="Select all rows"
             checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-            disabled={isSubmitting}
+            disabled={isSubmittingRef.current}
             onCheckedChange={(value) => {
               table.setRowSelection((prev) => {
                 const next = { ...prev }
@@ -623,7 +673,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
         <Checkbox
           aria-label="Select row"
           checked={row.getIsSelected() ? true : row.getIsSomeSelected() ? 'indeterminate' : false}
-          disabled={!row.getCanSelect() || isSubmitting}
+          disabled={!row.getCanSelect() || isSubmittingRef.current}
           onClick={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
           onCheckedChange={(value) => row.toggleSelected(value === true)}
@@ -635,7 +685,9 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       enableResizing: false,
     }
     return [selectionColumn, ...columns, ...sortOnlyLeafColumns]
-  }, [columns, sortOnlyLeafColumns, enableRowSelection, isSubmitting])
+    // isSubmitting is read via isSubmittingRef (see above) — not a dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns, sortOnlyLeafColumns, enableRowSelection])
 
   // Sorting is fully shared across tabs: a sort by any column reorders rows on
   // every tab, since all tabs are views over one dataset. Columns this tab
@@ -770,17 +822,20 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // visible intersection of the canonical frozen id set (selection column plus
   // the first N data leaf columns), so hiding a frozen column shrinks the pane
   // without promoting the next scrollable column into it.
+  // Derived from the column defs, not the table instance: the TanStack table
+  // object is referentially stable forever, so keying on it would leave this
+  // memo stale when the `columns` prop changes at runtime. The first N data
+  // leaf columns are exactly the first N entries of `columns` (selection is
+  // injected ahead of them, sort-only columns after).
   const frozenColumnIds = useMemo(() => {
     const ids = new Set<string>()
     if (enableRowSelection) ids.add(SELECTION_COLUMN_ID)
-    for (const col of table
-      .getAllLeafColumns()
-      .filter((c) => c.id !== SELECTION_COLUMN_ID)
-      .slice(0, Math.max(0, frozenColumns))) {
-      ids.add(col.id)
+    for (const col of columns.slice(0, Math.max(0, frozenColumns))) {
+      const id = getColumnId(col)
+      if (id) ids.add(id)
     }
     return ids
-  }, [table, enableRowSelection, frozenColumns])
+  }, [columns, enableRowSelection, frozenColumns])
   const pinnedColumns = visibleLeafColumns.filter((c) => frozenColumnIds.has(c.id))
   const scrollColumns = visibleLeafColumns.filter((c) => !frozenColumnIds.has(c.id))
   // The canonical frozen set is a prefix of the column order, so visible pinned
@@ -918,14 +973,16 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const [savePending, setSavePending] = useState(false)
   const editorsDisabled = savePending || isSubmitting
 
-  const editableColumnIdsRef = useRef(editableColumnIds)
-  editableColumnIdsRef.current = editableColumnIds
+  const editableColumnIdsSet = useMemo(
+    () => (editableColumnIds ? new Set(editableColumnIds) : null),
+    [editableColumnIds],
+  )
+  const editableColumnIdsSetRef = useRef(editableColumnIdsSet)
+  editableColumnIdsSetRef.current = editableColumnIdsSet
   const onSaveEditRef = useRef(onSaveEdit)
   onSaveEditRef.current = onSaveEdit
   const savePendingRef = useRef(savePending)
   savePendingRef.current = savePending
-  const isSubmittingRef = useRef(isSubmitting)
-  isSubmittingRef.current = isSubmitting
 
   // Flipping `editable` off (e.g. via the TableGX live toggle) must not leave an
   // editor stranded open over a now read-only cell. Cancel any in-progress edit.
@@ -937,7 +994,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     (columnId: string, meta: { editable?: boolean } | undefined): boolean => {
       if (!editable) return false
       if (meta?.editable !== true) return false
-      return editableColumnIdsRef.current?.includes(columnId) ?? false
+      return editableColumnIdsSetRef.current?.has(columnId) ?? false
     },
     [editable],
   )
@@ -956,6 +1013,9 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   )
 
   const beginEdit = useCallback((cell: Cell<TRow, unknown>) => {
+    // Guarded here (not via a per-cell disabled prop) so a pending save blocks
+    // new edits without re-rendering every visible cell on each save.
+    if (savePendingRef.current || isSubmittingRef.current) return
     setEditing({
       rowId: cell.row.id,
       columnId: cell.column.id,
@@ -1067,9 +1127,8 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     for (const col of visibleLeafColumns) {
       const meta = col.columnDef.meta
       if (!meta?.footerAggregate) continue
-      const computed = computeAggregate(
-        meta.footerAggregate,
-        leaves.map((r) => r.getValue(col.id)),
+      const computed = computeAggregateOver(meta.footerAggregate, leaves, (r) =>
+        r.getValue(col.id),
       )
       if (computed !== null) map.set(col.id, formatAggregate(computed, meta.footerFormat))
     }
@@ -1191,7 +1250,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     for (const key of column.getFacetedUniqueValues().keys()) {
       set.add(String(key ?? ''))
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
+    return Array.from(set).sort(facetedValueCollator.compare)
   }, [])
 
   const handleFilterChange = useCallback(
@@ -1423,10 +1482,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                   className="relative flex w-full border-b border-border bg-(--tgx-header-bg)"
                   style={{ height: GROUP_HEADER_HEIGHT_PX }}
                 >
-                  <motion.div
-                    data-tgx-pinned=""
+                  <PinnedPane
+                    x={pinnedPaneX}
+                    width={pinnedWidth}
                     className="sticky left-0 z-30 flex h-full shrink-0 border-r border-border bg-(--tgx-header-bg)"
-                    style={{ width: pinnedWidth, x: pinnedPaneX }}
                   >
                     {groupSegments.pinned.map((seg) => (
                       <div
@@ -1440,7 +1499,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                         {seg.label}
                       </div>
                     ))}
-                  </motion.div>
+                  </PinnedPane>
                   <div className="flex h-full">
                     {groupSegments.scroll.map((seg) => (
                       <div
@@ -1466,13 +1525,13 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                 style={{ height: HEADER_HEIGHT_PX }}
               >
                 {pinnedCount > 0 && (
-                  <motion.div
-                    data-tgx-pinned=""
+                  <PinnedPane
+                    x={pinnedPaneX}
+                    width={pinnedWidth}
                     className="sticky left-0 z-30 flex h-full shrink-0 border-r border-border bg-(--tgx-header-bg)"
-                    style={{ width: pinnedWidth, x: pinnedPaneX }}
                   >
                     {pinnedColumns.map((_, i) => renderHeaderCell(i, true))}
-                  </motion.div>
+                  </PinnedPane>
                 )}
                 {visibleScrollEnd >= visibleScrollStart && (
                   <div
@@ -1516,7 +1575,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                     pinnedWidthOf={pinnedWidthOf}
                     expandColumnId={expandColumnId}
                     editing={editing !== null && editing.rowId === row.id ? editing : null}
-                    editorsDisabled={editorsDisabled}
+                    editorsDisabled={editing !== null && editing.rowId === row.id ? editorsDisabled : false}
                     isSubmitting={isSubmitting}
                     singleClickEdit={singleClickEdit}
                     isSelected={row.getIsSelected()}
@@ -1557,7 +1616,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                       pinnedWidthOf={pinnedWidthOf}
                       expandColumnId={expandColumnId}
                       editing={editing !== null && editing.rowId === row.id ? editing : null}
-                      editorsDisabled={editorsDisabled}
+                      editorsDisabled={editing !== null && editing.rowId === row.id ? editorsDisabled : false}
                       isSubmitting={isSubmitting}
                       singleClickEdit={singleClickEdit}
                       isSelected={row.getIsSelected()}
@@ -1593,13 +1652,13 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                 style={{ height: FOOTER_HEIGHT_PX }}
               >
                 {pinnedCount > 0 && (
-                  <motion.div
-                    data-tgx-pinned=""
+                  <PinnedPane
+                    x={pinnedPaneX}
+                    width={pinnedWidth}
                     className="sticky left-0 z-30 flex h-full shrink-0 border-r border-border bg-(--tgx-header-bg)"
-                    style={{ width: pinnedWidth, x: pinnedPaneX }}
                   >
                     {pinnedColumns.map((col) => renderFooterCell(col.id, true))}
-                  </motion.div>
+                  </PinnedPane>
                 )}
                 {visibleScrollEnd >= visibleScrollStart && (
                   <div

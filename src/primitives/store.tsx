@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useId,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react'
@@ -20,6 +21,8 @@ import type {
 } from './types'
 
 const TableStoreContext = createContext<TableStore | null>(null)
+
+const noopVisibilityChange: OnChangeFn<VisibilityState> = () => {}
 
 /** Read the headless table store. Throws when used outside a `TableProvider`. */
 export function useTableStore(): TableStore {
@@ -120,21 +123,31 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [mode, sharedSorting, sortingByTab, tabs],
   )
 
-  const setSorting = useCallback(
-    (tabId: string): OnChangeFn<SortingState> =>
-      (updater) => {
-        if (mode === 'shared') {
-          setSharedSorting((prev) => (typeof updater === 'function' ? updater(prev) : updater))
-          return
+  // The curried per-tab setters below cache the inner closure per tab id so
+  // repeated calls (getBodyArgs runs on every store render) hand TableCore the
+  // same onSortingChange/onGlobalSearchChange/etc. identity instead of a fresh
+  // closure each time.
+  const setSorting = useMemo(() => {
+    const cache = new Map<string, OnChangeFn<SortingState>>()
+    return (tabId: string): OnChangeFn<SortingState> => {
+      let fn = cache.get(tabId)
+      if (!fn) {
+        fn = (updater) => {
+          if (mode === 'shared') {
+            setSharedSorting((prev) => (typeof updater === 'function' ? updater(prev) : updater))
+            return
+          }
+          setSortingByTab((prev) => {
+            const tab = tabs.find((t) => t.id === tabId)
+            const current = prev[tabId] ?? tab?.initialSorting ?? []
+            return { ...prev, [tabId]: typeof updater === 'function' ? updater(current) : updater }
+          })
         }
-        setSortingByTab((prev) => {
-          const tab = tabs.find((t) => t.id === tabId)
-          const current = prev[tabId] ?? tab?.initialSorting ?? []
-          return { ...prev, [tabId]: typeof updater === 'function' ? updater(current) : updater }
-        })
-      },
-    [mode, tabs],
-  )
+        cache.set(tabId, fn)
+      }
+      return fn
+    }
+  }, [mode, tabs])
 
   // ----- Global search (shared value in shared mode; per-tab in independent) -----
   const [sharedSearch, setSharedSearchState] = useState('')
@@ -148,17 +161,23 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [mode, sharedSearch, searchByTab],
   )
 
-  const setSearch = useCallback(
-    (tabId: string) =>
-      (value: string) => {
-        if (mode === 'shared') {
-          setSharedSearchState(value)
-          return
+  const setSearch = useMemo(() => {
+    const cache = new Map<string, (value: string) => void>()
+    return (tabId: string) => {
+      let fn = cache.get(tabId)
+      if (!fn) {
+        fn = (value) => {
+          if (mode === 'shared') {
+            setSharedSearchState(value)
+            return
+          }
+          setSearchByTab((prev) => ({ ...prev, [tabId]: value }))
         }
-        setSearchByTab((prev) => ({ ...prev, [tabId]: value }))
-      },
-    [mode],
-  )
+        cache.set(tabId, fn)
+      }
+      return fn
+    }
+  }, [mode])
 
   // ----- Selection (shared group-level vs per-tab) -----
   const [internalSelected, setInternalSelected] = useState<string[]>([])
@@ -181,17 +200,23 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [mode, sharedSelected, selectionByTab, tabs],
   )
 
-  const setSelection = useCallback(
-    (tabId: string) =>
-      (ids: string[]) => {
-        if (mode === 'shared') {
-          handleSharedSelectedChange(ids)
-          return
+  const setSelection = useMemo(() => {
+    const cache = new Map<string, (ids: string[]) => void>()
+    return (tabId: string) => {
+      let fn = cache.get(tabId)
+      if (!fn) {
+        fn = (ids) => {
+          if (mode === 'shared') {
+            handleSharedSelectedChange(ids)
+            return
+          }
+          setSelectionByTab((prev) => ({ ...prev, [tabId]: ids }))
         }
-        setSelectionByTab((prev) => ({ ...prev, [tabId]: ids }))
-      },
-    [mode, handleSharedSelectedChange],
-  )
+        cache.set(tabId, fn)
+      }
+      return fn
+    }
+  }, [mode, handleSharedSelectedChange])
 
   // ----- Filters (per-tab in both modes; intersected for display in shared mode) -----
   const filterSource = sharedFilterSource ?? { data: [], getRowId: (r: unknown) => r, tabs: [] }
@@ -223,25 +248,33 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [visibilityByTab],
   )
 
-  const setVisibility = useCallback(
-    (tab: TableTabModel): OnChangeFn<VisibilityState> =>
-      (updater) => {
-        setVisibilityByTab((prev) => {
-          const current = prev[tab.id] ?? {}
-          const next = typeof updater === 'function' ? updater(current) : updater
-          const key = tab.columnVisibilityStorageKey
-          if (key && typeof window !== 'undefined') {
-            try {
-              window.localStorage.setItem(key, JSON.stringify(next))
-            } catch {
-              // best-effort persist
+  // Keyed on `tabs` (not just tab.id): the closure captures the tab object for
+  // its columnVisibilityStorageKey, so a changed tab definition must bust it.
+  const setVisibility = useMemo(() => {
+    const cache = new Map<string, OnChangeFn<VisibilityState>>()
+    return (tab: TableTabModel): OnChangeFn<VisibilityState> => {
+      let fn = cache.get(tab.id)
+      if (!fn) {
+        fn = (updater) => {
+          setVisibilityByTab((prev) => {
+            const current = prev[tab.id] ?? {}
+            const next = typeof updater === 'function' ? updater(current) : updater
+            const key = tab.columnVisibilityStorageKey
+            if (key && typeof window !== 'undefined') {
+              try {
+                window.localStorage.setItem(key, JSON.stringify(next))
+              } catch {
+                // best-effort persist
+              }
             }
-          }
-          return { ...prev, [tab.id]: next }
-        })
-      },
-    [],
-  )
+            return { ...prev, [tab.id]: next }
+          })
+        }
+        cache.set(tab.id, fn)
+      }
+      return fn
+    }
+  }, [tabs])
 
   // ----- Top-placed record count, lifted from the active panel to the strip -----
   const [recordCountInfo, setRecordCountInfo] = useState<RecordCountInfo | null>(null)
@@ -256,7 +289,7 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
         columnFilters: filtersByTab[tabId] ?? [],
         onColumnFiltersChange: setFiltersForTab(tabId),
         visibility: getVisibility(tabId),
-        onVisibilityChange: tab ? setVisibility(tab) : () => {},
+        onVisibilityChange: tab ? setVisibility(tab) : noopVisibilityChange,
         globalSearch: getSearch(tabId),
         onGlobalSearchChange: setSearch(tabId),
         selectedRowIds: getSelection(tabId),
@@ -290,9 +323,16 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
   )
 
   // ----- Chrome derivations -----
-  const filterBadges: FilterBadgeItem[] = buildFilterBadges
-    ? buildFilterBadges({ activeId, filtersByTab, activeFilters, clearFilter })
-    : []
+  //
+  // Each derivation is memoized so it can serve as a stable dep of the store
+  // useMemo below — otherwise the fresh object per render would defeat it.
+  const filterBadges: FilterBadgeItem[] = useMemo(
+    () =>
+      buildFilterBadges
+        ? buildFilterBadges({ activeId, filtersByTab, activeFilters, clearFilter })
+        : [],
+    [buildFilterBadges, activeId, filtersByTab, activeFilters, clearFilter],
+  )
 
   // Shared mode clears every tab's filters; independent mode clears only the
   // active tab (each tab being its own table).
@@ -301,9 +341,10 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     else setFiltersForTab(activeId)([])
   }, [mode, clearAll, setFiltersForTab, activeId])
 
-  const pickerItems: ColumnVisibilityItem[] = activeTab
-    ? activeTab.getPickerItems(getVisibility(activeTab.id))
-    : []
+  const pickerItems: ColumnVisibilityItem[] = useMemo(
+    () => (activeTab ? activeTab.getPickerItems(getVisibility(activeTab.id)) : []),
+    [activeTab, getVisibility],
+  )
 
   const togglePickerItem = useCallback(
     (id: string, visible: boolean) => {
@@ -327,49 +368,83 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     [activeTab, setVisibility, pickerItems],
   )
 
-  const sortControl =
-    enableSortHierarchy && mode === 'shared'
-      ? {
-          sorting: sharedSorting,
-          resolveLabel: resolveSortLabel ?? ((id: string) => id),
-          onChange: setSharedSorting,
-        }
-      : null
+  const sortControl = useMemo(
+    () =>
+      enableSortHierarchy && mode === 'shared'
+        ? {
+            sorting: sharedSorting,
+            resolveLabel: resolveSortLabel ?? ((id: string) => id),
+            onChange: setSharedSorting,
+          }
+        : null,
+    [enableSortHierarchy, mode, sharedSorting, resolveSortLabel],
+  )
 
-  const search =
-    activeTab?.enableGlobalSearch === true
-      ? {
-          value: getSearch(activeId),
-          onChange: setSearch(activeId),
-          placeholder: activeTab.searchPlaceholder,
-        }
-      : null
+  const search = useMemo(
+    () =>
+      activeTab?.enableGlobalSearch === true
+        ? {
+            value: getSearch(activeId),
+            onChange: setSearch(activeId),
+            placeholder: activeTab.searchPlaceholder,
+          }
+        : null,
+    [activeTab, activeId, getSearch, setSearch],
+  )
 
-  const recordCount =
-    activeTab?.showsTopRecordCount === true
-      ? { info: recordCountInfo, label: activeTab.recordCountLabel }
-      : null
+  const recordCount = useMemo(
+    () =>
+      activeTab?.showsTopRecordCount === true
+        ? { info: recordCountInfo, label: activeTab.recordCountLabel }
+        : null,
+    [activeTab, recordCountInfo],
+  )
 
-  const store: TableStore = {
-    mode,
-    tabs,
-    activeId,
-    activeTab,
-    selectTab,
-    indicatorLayoutId,
-    classNames,
-    tabColumnPreviewDelayMs,
-    tabColumnPreviewPosition,
-    getBodyArgs,
-    filterBadges,
-    clearAllFilters,
-    pickerItems,
-    togglePickerItem,
-    setAllPickerItems,
-    sortControl,
-    search,
-    recordCount,
-  }
+  // Memoized so a state change in one slice doesn't hand every context
+  // consumer a fresh store object (context re-renders all consumers whenever
+  // the provider value's identity changes).
+  const store: TableStore = useMemo(
+    () => ({
+      mode,
+      tabs,
+      activeId,
+      activeTab,
+      selectTab,
+      indicatorLayoutId,
+      classNames,
+      tabColumnPreviewDelayMs,
+      tabColumnPreviewPosition,
+      getBodyArgs,
+      filterBadges,
+      clearAllFilters,
+      pickerItems,
+      togglePickerItem,
+      setAllPickerItems,
+      sortControl,
+      search,
+      recordCount,
+    }),
+    [
+      mode,
+      tabs,
+      activeId,
+      activeTab,
+      selectTab,
+      indicatorLayoutId,
+      classNames,
+      tabColumnPreviewDelayMs,
+      tabColumnPreviewPosition,
+      getBodyArgs,
+      filterBadges,
+      clearAllFilters,
+      pickerItems,
+      togglePickerItem,
+      setAllPickerItems,
+      sortControl,
+      search,
+      recordCount,
+    ],
+  )
 
   return <TableStoreContext.Provider value={store}>{children}</TableStoreContext.Provider>
 }
