@@ -994,15 +994,16 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     }
     if (!frozenColumnIds.has(id)) {
       const index = scrollColumns.findIndex((c) => c.id === id)
-      if (index === -1) return
-      const el = scrollRef.current
-      if (el) {
-        const left = colOffsets[index] ?? 0
-        const width = scrollWidths[index] ?? 0
-        const visibleStart = el.scrollLeft
-        const visibleEnd = visibleStart + paneWidth
-        if (left < visibleStart || left + width > visibleEnd) {
-          el.scrollTo({ left, behavior: 'smooth' })
+      if (index !== -1) {
+        const el = scrollRef.current
+        if (el) {
+          const left = colOffsets[index] ?? 0
+          const width = scrollWidths[index] ?? 0
+          const visibleStart = el.scrollLeft
+          const visibleEnd = visibleStart + paneWidth
+          if (left < visibleStart || left + width > visibleEnd) {
+            el.scrollTo({ left, behavior: 'smooth' })
+          }
         }
       }
     }
