@@ -4,11 +4,12 @@ description: >-
   TabbedTable multi-view tables, shared cross-tab filters and row selection,
   IndependentTabbedTable (fully separate per-tab tables), idColumn, nested rows
   (enableExpanding, getSubRows), footer aggregates on filtered leaves, column
-  visibility persistence, frozen columns during tab slide. Use for tabbed views,
-  tree grids, or shared/independent filter/selection across column sets.
+  visibility persistence, frozen columns during tab slide, hover tab column
+  preview (enableTabColumnPreview). Use for tabbed views, tree grids, or
+  shared/independent filter/selection across column sets.
 type: core
 library: tablegx
-library_version: "3.0.0"
+library_version: "3.1.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -122,6 +123,8 @@ const tabs: IndependentTab[] = [
 ```
 
 The active tab can be uncontrolled (`defaultTabId`) or controlled (`activeTabId` + `onActiveTabChange`); `actions` renders right-aligned controls in the tab strip. `TabbedTable` exposes the same `activeTabId` / `defaultTabId` / `onActiveTabChange` / `actions` controls.
+
+**Tab column preview** (both `TabbedTable` and `IndependentTabbedTable`, default off): `enableTabColumnPreview` shows a popover on tab-header hover listing that tab's hideable columns alphabetically, so users can tell what's on a tab without switching to it. `tabColumnPreviewDelayMs` sets the hover delay before it opens (default 600); `tabColumnPreviewPosition` places it `'above'`, `'below'`, or `'auto'` (default) relative to the tab strip. Columns with `enableHiding: false` are excluded from the list. The `TabColumnPreviewPosition` type is exported.
 
 **Per-tab independence:** each tab keeps its own sorting, column filters, row selection, and column visibility, lifted by tab `id` so state survives tab switches. Chrome (filter badges, column picker, loading/empty states) reflects only the active tab. There is no `idColumn` and no cross-tab intersection — that concept is exclusive to `TabbedTable`. Column visibility persistence uses a full `columnVisibilityStorageKey` per tab (not a shared base). Frozen columns aren't shared across tabs, so the frozen pane slides out with the scrolling pane during the transition (`TabbedTable` instead keeps its shared frozen pane visually static).
 
