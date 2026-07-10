@@ -320,6 +320,20 @@ export type AdvancedFeatureProps<TRow> = {
   defaultExpanded?: boolean | Record<string, boolean>
 }
 
+/**
+ * Internal — one row of the Ctrl+G "jump to column" dialog (see
+ * `AdvancedFeatureProps.enableColumnJump`). Not exported publicly; `tabId` /
+ * `tabLabel` are set only for entries belonging to a different tab than the
+ * one currently rendering the dialog.
+ */
+export type ColumnJumpEntry = {
+  columnId: string
+  label: string
+  hidden: boolean
+  tabId?: string
+  tabLabel?: ReactNode
+}
+
 export type ReadOnlyTableProps<TRow extends TableRowData> = {
   data: TRow[]
   columns: ColumnDef<TRow, unknown>[]
