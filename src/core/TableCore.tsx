@@ -50,6 +50,7 @@ import { Checkbox } from '../ui/checkbox'
 import type {
   ColumnFilterValue,
   ColumnGroupDef,
+  ColumnJumpEntry,
   EditingState,
   ReadOnlyTableProps,
   RecordCountInfo,
@@ -59,6 +60,7 @@ import type {
 import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
 import { BodyCell } from './BodyCell'
 import type { EditNavigation } from './CellEditors'
+import { ColumnJumpDialog } from './ColumnJumpDialog'
 import { ColumnVisibilityPicker } from './ColumnVisibilityPicker'
 import { describeFilterValue, FilterBadges, type FilterBadgeItem } from './FilterBadges'
 import { TableSearchInput } from './SearchInput'
@@ -154,6 +156,14 @@ export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow>
   searchInToolbar?: boolean
   /** Internal — negated tab-slide x offset keeping the pinned pane static (spec §18.5). */
   pinnedPaneX?: MotionValue<number>
+  /** Internal — TabbedTable/IndependentTabbedTable supply every other tab's jump entries. */
+  columnJumpForeignEntries?: ColumnJumpEntry[]
+  /** Internal — called when the user picks an entry belonging to another tab. */
+  onJumpToForeignColumn?: (entry: ColumnJumpEntry) => void
+  /** Internal — sent by the tab store after a cross-tab jump switches to this tab. */
+  scrollToColumnId?: string | null
+  /** Internal — acks a completed `scrollToColumnId` request so the store clears it. */
+  onScrollToColumnHandled?: () => void
 }
 
 function headerLabelOf<TRow extends TableRowData>(
@@ -477,6 +487,8 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onSelectedRowIdsChange,
     enableColumnVisibility = false,
     columnVisibilityStorageKey,
+    enableColumnJump = false,
+    columnJumpIncludeHidden = true,
     enableRowVirtualization = true,
     enableColumnVirtualization = true,
     rowHeight,
@@ -512,6 +524,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     hideBuiltInPicker = false,
     hideFilterBadges = false,
     pinnedPaneX,
+    columnJumpForeignEntries,
+    onJumpToForeignColumn,
+    scrollToColumnId,
+    onScrollToColumnHandled,
   } = props
 
   // ----- Table state -----
@@ -922,6 +938,98 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   } = useColumnVirtualization(scrollWidths, paneWidth, getScrollLeft)
 
   const contentWidth = pinnedWidth + scrollTotalWidth
+
+  // ----- Column jump (Ctrl+G / Cmd+G) -----
+
+  const columnJumpOwnEntries = useMemo<ColumnJumpEntry[]>(() => {
+    if (!enableColumnJump) return []
+    return columns
+      .filter((c) => c.enableHiding !== false)
+      .map((c) => {
+        const id = getColumnId(c)
+        return {
+          columnId: id,
+          label: headerLabelOf(c, id, columnLabel),
+          hidden: visibility[id] === false,
+        }
+      })
+      .filter((entry) => columnJumpIncludeHidden !== false || !entry.hidden)
+  }, [columns, columnLabel, visibility, enableColumnJump, columnJumpIncludeHidden])
+
+  const columnJumpEntries = useMemo<ColumnJumpEntry[]>(
+    () => [...columnJumpOwnEntries, ...(columnJumpForeignEntries ?? [])],
+    [columnJumpOwnEntries, columnJumpForeignEntries],
+  )
+
+  const [columnJumpOpen, setColumnJumpOpen] = useState(false)
+  const [pendingJumpColumnId, setPendingJumpColumnId] = useState<string | null>(null)
+
+  // A cross-tab jump lands here once the store switches the active tab to
+  // this one and hands this instance the column id via `scrollToColumnId`.
+  useEffect(() => {
+    if (scrollToColumnId) setPendingJumpColumnId(scrollToColumnId)
+  }, [scrollToColumnId])
+
+  const handleColumnJumpSelect = useCallback(
+    (entry: ColumnJumpEntry) => {
+      if (entry.tabId !== undefined) {
+        onJumpToForeignColumn?.(entry)
+        return
+      }
+      setPendingJumpColumnId(entry.columnId)
+    },
+    [onJumpToForeignColumn],
+  )
+
+  // Un-hides (if needed) and scrolls a pending own-column jump into view. When
+  // the column starts hidden this runs twice: once to flip visibility, then
+  // again once the updated `visibility` re-render puts the column into
+  // `scrollColumns` so its offset can be computed.
+  useEffect(() => {
+    if (!pendingJumpColumnId) return
+    const id = pendingJumpColumnId
+    if (visibility[id] === false) {
+      handleVisibilityChange((prev) => ({ ...prev, [id]: true }))
+      return
+    }
+    if (!frozenColumnIds.has(id)) {
+      const index = scrollColumns.findIndex((c) => c.id === id)
+      if (index === -1) return
+      const el = scrollRef.current
+      if (el) {
+        const left = colOffsets[index] ?? 0
+        const width = scrollWidths[index] ?? 0
+        const visibleStart = el.scrollLeft
+        const visibleEnd = visibleStart + paneWidth
+        if (left < visibleStart || left + width > visibleEnd) {
+          el.scrollTo({ left, behavior: 'smooth' })
+        }
+      }
+    }
+    setPendingJumpColumnId(null)
+    onScrollToColumnHandled?.()
+  }, [
+    pendingJumpColumnId,
+    visibility,
+    handleVisibilityChange,
+    frozenColumnIds,
+    scrollColumns,
+    colOffsets,
+    scrollWidths,
+    paneWidth,
+    onScrollToColumnHandled,
+  ])
+
+  const handleTableKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!enableColumnJump) return
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault()
+        setColumnJumpOpen(true)
+      }
+    },
+    [enableColumnJump],
+  )
 
   // ----- Rows + row virtualization -----
 
@@ -1385,7 +1493,17 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
         classNames?.root,
       )}
       style={maxHeight ? { maxHeight } : undefined}
+      onKeyDown={handleTableKeyDown}
     >
+      {enableColumnJump && (
+        <ColumnJumpDialog
+          open={columnJumpOpen}
+          onOpenChange={setColumnJumpOpen}
+          entries={columnJumpEntries}
+          onSelect={handleColumnJumpSelect}
+          className={classNames?.columnJumpDialog}
+        />
+      )}
       {hasToolbarRow && (
         <div
           data-tgx-toolbar=""

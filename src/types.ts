@@ -214,6 +214,8 @@ export type TableClassNames = {
   skeleton?: string
   /** The opt-in record-count region (top toolbar/tab-strip count or bottom floated corner annotation). */
   recordCount?: string
+  /** The Ctrl+G "jump to column" dialog (see `enableColumnJump`). */
+  columnJumpDialog?: string
 }
 
 /** Class overrides for the TabbedTable chrome. */
@@ -251,6 +253,17 @@ export type AdvancedFeatureProps<TRow> = {
   onSelectedRowIdsChange?: (ids: string[]) => void
   enableColumnVisibility?: boolean
   columnVisibilityStorageKey?: string
+  /**
+   * Ctrl+G / Cmd+G opens a searchable "jump to column" dialog; selecting an
+   * entry scrolls that column into view (and, in a tabbed table, switches to
+   * the tab that renders it). Off by default.
+   */
+  enableColumnJump?: boolean
+  /**
+   * Whether hidden columns appear in the jump list. Selecting a hidden column
+   * un-hides it. Default true.
+   */
+  columnJumpIncludeHidden?: boolean
   /**
    * Row virtualization. On by default. Set false to render every row in normal
    * document flow instead of a sliding virtual window — useful for small tables
@@ -574,5 +587,7 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'enableRecordCount'
   | 'recordCountPosition'
   | 'recordCountLabel'
+  | 'enableColumnJump'
+  | 'columnJumpIncludeHidden'
 > &
   Pick<AdvancedFeatureProps<TRow>, 'enableExpanding' | 'getSubRows' | 'defaultExpanded'>
