@@ -9,6 +9,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { ColumnVisibilityItem } from '../core/ColumnVisibilityPicker'
 import type { FilterBadgeItem } from '../core/FilterBadges'
 import type {
+  ColumnJumpEntry,
   MeasureTextFn,
   RecordCountInfo,
   RecordCountLabel,
@@ -54,6 +55,17 @@ export type TableBodyRenderArgs = {
   onRecordCountChange?: (info: RecordCountInfo | null) => void
   /** Negated tab-slide x, supplied by the sliding panel host (kept static pane). */
   pinnedPaneX?: MotionValue<number>
+  /** Every other tab's column-jump entries, merged into the active tab's dialog list. */
+  columnJumpForeignEntries: ColumnJumpEntry[]
+  /** Switches to the entry's tab, un-hiding the column there if needed, and arms `scrollToColumnId` for the newly-active tab. */
+  onJumpToForeignColumn: (entry: ColumnJumpEntry) => void
+  /** Set once this tab becomes active after a cross-tab jump; the mounted `TableCore` scrolls to it and acks via `onScrollToColumnHandled`. */
+  scrollToColumnId: string | null
+  onScrollToColumnHandled: () => void
+  /** Resolved container-level `enableColumnJump`. `independentTable()`'s `render` reads this (see `TableProviderConfig.enableColumnJump` above); `TabbedTable` reads its own prop directly instead. */
+  columnJumpEnabled: boolean
+  /** Resolved container-level `columnJumpIncludeHidden` (defaulted to `true`), for the same reason as `columnJumpEnabled`. */
+  columnJumpIncludeHiddenResolved: boolean
 }
 
 /**
@@ -80,6 +92,10 @@ export type TableTabModel = {
   /** Alphabetized display labels of this tab's hideable columns, for the hover
    *  column-preview popover. Empty when that feature is off. */
   columnPreviewLabels: string[]
+  /** This tab's jump-list candidates (id + label), built the same way as
+   *  `columnPreviewLabels` but gated on `enableColumnJump` instead of
+   *  `enableTabColumnPreview`. Empty when column jump is disabled. */
+  columnJumpItems: { id: string; label: string }[]
   /** Render this tab's table panel from the store-computed args. */
   render: (args: TableBodyRenderArgs) => ReactNode
 }
@@ -117,6 +133,10 @@ export type TableProviderConfig = {
   tabColumnPreviewDelayMs?: number
   /** Where a tab's column-preview popover opens relative to the tab strip. */
   tabColumnPreviewPosition?: TabColumnPreviewPosition
+  /** Whether the Ctrl+G column-jump dialog is enabled for this table. `TabbedTable` also reads its own `enableColumnJump` prop directly; `IndependentTabbedTable`'s per-tab `TableCore`s read it back via `TableBodyRenderArgs.columnJumpEnabled` below, since `independentTable()`'s `render` closure has no other way to see a container-level prop. */
+  enableColumnJump?: boolean
+  /** Whether hidden columns appear in the jump list (see `AdvancedFeatureProps.columnJumpIncludeHidden`). Default true. */
+  columnJumpIncludeHidden?: boolean
   // ----- shared-mode selection (group-level) -----
   enableRowSelection?: boolean
   selectedRowIds?: string[]

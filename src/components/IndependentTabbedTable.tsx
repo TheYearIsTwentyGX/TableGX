@@ -95,6 +95,14 @@ export function independentTable<TRow extends TableRowData>(
       .map((c) => columnLabelOf(config, getColumnId(c)))
       .sort((a, b) => a.localeCompare(b)),
 
+    columnJumpItems: config.columns
+      .map((c) => c as ColumnDef<TRow, unknown>)
+      .filter((c) => c.enableHiding !== false)
+      .map((c) => {
+        const id = getColumnId(c)
+        return { id, label: columnLabelOf(config, id) }
+      }),
+
     getFilterBadges: (filters, clearColumn) =>
       filters
         .filter((f) => !isEmptyFilterValue(f.value as ColumnFilterValue))
@@ -158,6 +166,12 @@ export function independentTable<TRow extends TableRowData>(
         measure={config.measure ?? args.measure}
         includeHeaderInAutosize={config.includeHeaderInAutosize}
         classNames={args.classNames}
+        enableColumnJump={args.columnJumpEnabled}
+        columnJumpIncludeHidden={args.columnJumpIncludeHiddenResolved}
+        columnJumpForeignEntries={args.columnJumpForeignEntries}
+        onJumpToForeignColumn={args.onJumpToForeignColumn}
+        scrollToColumnId={args.scrollToColumnId}
+        onScrollToColumnHandled={args.onScrollToColumnHandled}
       />
     ),
   }
@@ -184,6 +198,10 @@ export type IndependentTabbedTableProps = {
   tabColumnPreviewDelayMs?: number
   /** Where the column-preview popover opens relative to the tab strip. Default 'auto'. */
   tabColumnPreviewPosition?: TabColumnPreviewPosition
+  /** Ctrl+G "jump to column" dialog, spanning all tabs. Default false. */
+  enableColumnJump?: boolean
+  /** Whether hidden columns appear in the jump list. Default true. */
+  columnJumpIncludeHidden?: boolean
 }
 
 /**
@@ -208,6 +226,8 @@ export function IndependentTabbedTable({
   enableTabColumnPreview,
   tabColumnPreviewDelayMs = 600,
   tabColumnPreviewPosition = 'auto',
+  enableColumnJump,
+  columnJumpIncludeHidden,
 }: IndependentTabbedTableProps) {
   const buildFilterBadges = (api: FilterChromeApi): FilterBadgeItem[] => {
     const tab = tabs.find((t) => t.id === api.activeId)
@@ -216,8 +236,11 @@ export function IndependentTabbedTable({
     return tab.getFilterBadges(filters, (columnId) => api.clearFilter(api.activeId, columnId))
   }
 
-  const tabsForStore =
-    enableTabColumnPreview === true ? tabs : tabs.map((t) => ({ ...t, columnPreviewLabels: [] }))
+  const tabsForStore = tabs.map((t) => ({
+    ...t,
+    columnPreviewLabels: enableTabColumnPreview === true ? t.columnPreviewLabels : [],
+    columnJumpItems: enableColumnJump === true ? t.columnJumpItems : [],
+  }))
 
   return (
     <Table.Provider
@@ -232,6 +255,8 @@ export function IndependentTabbedTable({
       tabColumnPreviewDelayMs={tabColumnPreviewDelayMs}
       tabColumnPreviewPosition={tabColumnPreviewPosition}
       buildFilterBadges={buildFilterBadges}
+      enableColumnJump={enableColumnJump === true}
+      columnJumpIncludeHidden={columnJumpIncludeHidden ?? true}
     >
       <Table.Container>
         <Table.TabStrip

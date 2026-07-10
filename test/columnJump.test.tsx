@@ -2,9 +2,11 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { EditableTable } from '../src/components/EditableTable'
+import { IndependentTabbedTable, independentTable } from '../src/components/IndependentTabbedTable'
 import { ReadOnlyTable } from '../src/components/ReadOnlyTable'
+import { TabbedTable } from '../src/components/TabbedTable'
 import { textColumn } from '../src/lib/columns'
-import type { MeasureTextFn } from '../src/types'
+import type { MeasureTextFn, TabbedTableTab } from '../src/types'
 
 type Row = { id: string; name: string; city: string; country: string }
 
@@ -198,6 +200,88 @@ describe('column jump — editable table', () => {
       )
       await openViaShortcut(user)
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+  })
+})
+
+describe('column jump — shared tabbed table', () => {
+  const sharedTabs: TabbedTableTab<Row>[] = [
+    { id: 'a', label: 'Tab A', columns: [textColumn<Row>('name', 'Name')] },
+    { id: 'b', label: 'Tab B', columns: [textColumn<Row>('country', 'Country')] },
+  ]
+
+  function activeTable(container: HTMLElement): HTMLElement {
+    const panels = container.querySelectorAll<HTMLElement>('[data-tgx-table]')
+    return panels[panels.length - 1]!
+  }
+
+  it('lists columns from every tab and switches tabs on selection', async () => {
+    const user = userEvent.setup()
+    await withElementSize(async () => {
+      const { container } = render(
+        <TabbedTable<Row>
+          data={data}
+          getRowId={(r) => r.id}
+          idColumn="id"
+          tabs={sharedTabs}
+          enableColumnJump
+        />,
+      )
+      await user.click(within(activeTable(container)).getByRole('button', { name: /^Name/ }))
+      await user.keyboard('{Control>}g{/Control}')
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByRole('button', { name: 'Name' })).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: /Country.*Tab B|Tab B.*Country/ })).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('button', { name: /Country/ }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(within(activeTable(container)).getByText('Peru')).toBeInTheDocument(),
+      )
+    })
+  })
+})
+
+describe('column jump — independent tabbed table', () => {
+  type OtherRow = { id: string; total: number }
+
+  function activeTable(container: HTMLElement): HTMLElement {
+    const panels = container.querySelectorAll<HTMLElement>('[data-tgx-table]')
+    return panels[panels.length - 1]!
+  }
+
+  it('switches tabs across independent tables on selection', async () => {
+    const user = userEvent.setup()
+    await withElementSize(async () => {
+      const tabA = independentTable<Row>({
+        id: 'a',
+        label: 'Tab A',
+        data,
+        getRowId: (r) => r.id,
+        columns: [textColumn<Row>('name', 'Name')],
+      })
+      const tabB = independentTable<OtherRow>({
+        id: 'b',
+        label: 'Tab B',
+        data: [{ id: '1', total: 42 }],
+        getRowId: (r) => r.id,
+        columns: [
+          {
+            id: 'total',
+            header: 'Total',
+            accessorKey: 'total',
+            cell: ({ getValue }) => String(getValue()),
+          },
+        ],
+      })
+      const { container } = render(
+        <IndependentTabbedTable tabs={[tabA, tabB]} enableColumnJump measure={measure} />,
+      )
+      await user.click(within(activeTable(container)).getByRole('button', { name: /^Name/ }))
+      await user.keyboard('{Control>}g{/Control}')
+      const dialog = await screen.findByRole('dialog')
+      await user.click(within(dialog).getByRole('button', { name: /Total/ }))
+      await waitFor(() => expect(within(activeTable(container)).getByText('42')).toBeInTheDocument())
     })
   })
 })
