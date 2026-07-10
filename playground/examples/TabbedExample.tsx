@@ -351,6 +351,7 @@ export function TabbedExample() {
           enableRowSelection={selectable}
           selectedRowIds={selected}
           onSelectedRowIdsChange={setSelected}
+          enableTabColumnPreview
         />
       </div>
     </Section>

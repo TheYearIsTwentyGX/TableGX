@@ -22,6 +22,7 @@ function probeTab(id: string, label: string): TableTabModel {
     enableGlobalSearch: false,
     showsTopRecordCount: false,
     getPickerItems: () => [],
+    columnPreviewLabels: [],
     render: (args: TableBodyRenderArgs) => (
       <div data-testid={`body-${id}`}>
         <span data-testid={`sorting-${id}`}>{JSON.stringify(args.sorting)}</span>

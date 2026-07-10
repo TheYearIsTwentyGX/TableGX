@@ -37,6 +37,9 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     measure,
     includeHeaderInAutosize,
     classNames,
+    enableTabColumnPreview,
+    tabColumnPreviewDelayMs = 600,
+    tabColumnPreviewPosition = 'auto',
     enableMultiSort,
     enableRowSelection,
     selectedRowIds,
@@ -158,6 +161,14 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
               return { id, label: columnLabelFor(tab, id), visible: visibility[id] !== false }
             })
         },
+        columnPreviewLabels:
+          enableTabColumnPreview !== true
+            ? []
+            : tab.columns
+                .map((c) => c as ColumnDef<TRow, unknown>)
+                .filter((c) => c.enableHiding !== false)
+                .map((c) => columnLabelFor(tab, getColumnId(c)))
+                .sort((a, b) => a.localeCompare(b)),
         render: (args: TableBodyRenderArgs) => (
           <TableCore<TRow>
             data={(args.sharedData as TRow[] | undefined) ?? data}
@@ -227,6 +238,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     recordCountLabel,
     enableColumnVisibility,
     columnLabelFor,
+    enableTabColumnPreview,
     enableMultiSort,
     rowHeight,
     enableFooter,
@@ -271,6 +283,8 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
       indicatorLayoutId={tabIndicatorLayoutId}
       classNames={classNames}
       measure={measure}
+      tabColumnPreviewDelayMs={tabColumnPreviewDelayMs}
+      tabColumnPreviewPosition={tabColumnPreviewPosition}
       enableRowSelection={enableRowSelection}
       selectedRowIds={selectedRowIds}
       onSelectedRowIdsChange={onSelectedRowIdsChange}

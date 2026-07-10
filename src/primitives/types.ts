@@ -13,6 +13,7 @@ import type {
   RecordCountInfo,
   RecordCountLabel,
   TabbedTableClassNames,
+  TabColumnPreviewPosition,
 } from '../types'
 
 /**
@@ -76,6 +77,9 @@ export type TableTabModel = {
   recordCountLabel?: RecordCountLabel
   /** Column-picker rows for the current visibility (empty when not applicable). */
   getPickerItems: (visibility: VisibilityState) => ColumnVisibilityItem[]
+  /** Alphabetized display labels of this tab's hideable columns, for the hover
+   *  column-preview popover. Empty when that feature is off. */
+  columnPreviewLabels: string[]
   /** Render this tab's table panel from the store-computed args. */
   render: (args: TableBodyRenderArgs) => ReactNode
 }
@@ -109,6 +113,10 @@ export type TableProviderConfig = {
   indicatorLayoutId?: string
   classNames?: TabbedTableClassNames
   measure?: MeasureTextFn
+  /** Hover delay (ms) before a tab's column-preview popover opens. */
+  tabColumnPreviewDelayMs?: number
+  /** Where a tab's column-preview popover opens relative to the tab strip. */
+  tabColumnPreviewPosition?: TabColumnPreviewPosition
   // ----- shared-mode selection (group-level) -----
   enableRowSelection?: boolean
   selectedRowIds?: string[]
@@ -131,6 +139,8 @@ export type TableStore = {
   selectTab: (id: string) => void
   indicatorLayoutId: string
   classNames?: TabbedTableClassNames
+  tabColumnPreviewDelayMs?: number
+  tabColumnPreviewPosition?: TabColumnPreviewPosition
   /** Body args for the active tab; the panel host injects `pinnedPaneX`. */
   getBodyArgs: (pinnedPaneX?: MotionValue<number>) => TableBodyRenderArgs
   // ----- chrome (computed each render) -----

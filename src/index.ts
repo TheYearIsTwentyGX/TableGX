@@ -89,6 +89,7 @@ export type {
   RecordCountPosition,
   RecordCountInfo,
   RecordCountLabel,
+  TabColumnPreviewPosition,
   TableClassNames,
   TabbedTableClassNames,
   AdvancedFeatureProps,

@@ -182,6 +182,9 @@ export type LoadingSkeleton = ReactNode | ((widths: number[]) => ReactNode)
 /** Where an opt-in record count renders relative to the table body. */
 export type RecordCountPosition = 'top' | 'bottom'
 
+/** Where the tab column-preview popover opens relative to the tab strip. */
+export type TabColumnPreviewPosition = 'above' | 'below' | 'auto'
+
 /** Leaf-row counts handed to a record-count label override. */
 export type RecordCountInfo = {
   /** Leaf rows after the active filters are applied. */
@@ -223,6 +226,8 @@ export type TabbedTableClassNames = TableClassNames & {
   tabIndicator?: string
   /** The Excel-style step arrows shown when the tab strip overflows. */
   tabScrollButton?: string
+  /** The hover popover listing a tab's columns (see `enableTabColumnPreview`). */
+  tabColumnPreview?: string
   panel?: string
 }
 
@@ -530,6 +535,12 @@ export type TabbedTableProps<TRow extends TableRowData> = {
    */
   includeHeaderInAutosize?: boolean
   classNames?: TabbedTableClassNames
+  /** Show a hover popover on each tab listing that tab's columns. Default false. */
+  enableTabColumnPreview?: boolean
+  /** Hover delay (ms) before the column-preview popover opens. Default 600. */
+  tabColumnPreviewDelayMs?: number
+  /** Where the column-preview popover opens relative to the tab strip. Default 'auto'. */
+  tabColumnPreviewPosition?: TabColumnPreviewPosition
 } & Pick<
   AdvancedFeatureProps<TRow>,
   | 'enableMultiSort'

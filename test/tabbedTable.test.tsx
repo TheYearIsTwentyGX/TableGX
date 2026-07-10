@@ -285,6 +285,84 @@ describe('TabbedTable sort-hierarchy popover', () => {
   })
 })
 
+describe('TabbedTable tab column preview', () => {
+  const previewTabs: TabbedTableTab<Row>[] = [
+    {
+      id: 'a',
+      label: 'Tab A',
+      columns: [
+        textColumn<Row>('name', 'Name'),
+        textColumn<Row>('city', 'City'),
+        { ...textColumn<Row>('id', 'Id'), enableHiding: false },
+      ],
+    },
+    { id: 'b', label: 'Tab B', columns: [textColumn<Row>('name', 'Name')] },
+  ]
+
+  it('shows no preview popover when the feature is off', async () => {
+    const user = userEvent.setup()
+    render(
+      <TabbedTable<Row>
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={previewTabs}
+        defaultTabId="a"
+        measure={measure}
+        tabColumnPreviewDelayMs={10}
+      />,
+    )
+    await user.hover(screen.getByRole('button', { name: 'Tab A' }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('lists a tab\'s hideable columns alphabetically after the hover delay', async () => {
+    const user = userEvent.setup()
+    render(
+      <TabbedTable<Row>
+        data={data}
+        getRowId={(r) => r.id}
+        idColumn="id"
+        tabs={previewTabs}
+        defaultTabId="a"
+        measure={measure}
+        enableTabColumnPreview
+        tabColumnPreviewDelayMs={10}
+      />,
+    )
+    await user.hover(screen.getByRole('button', { name: 'Tab A' }))
+    const tooltip = await screen.findByRole('tooltip')
+    // Alphabetical: City before Name. The enableHiding:false Id column is excluded.
+    expect(tooltip.textContent).toBe('CityName')
+  })
+
+  it('still selects the tab on click while a preview popover is open', async () => {
+    await withElementSize(async () => {
+      const user = userEvent.setup()
+      const { container } = render(
+        <TabbedTable<Row>
+          data={data}
+          getRowId={(r) => r.id}
+          idColumn="id"
+          tabs={previewTabs}
+          defaultTabId="a"
+          measure={measure}
+          enableTabColumnPreview
+          tabColumnPreviewDelayMs={10}
+        />,
+      )
+      const tabBButton = screen.getByRole('button', { name: 'Tab B' })
+      await user.hover(tabBButton)
+      await screen.findByRole('tooltip')
+      await user.click(tabBButton)
+      await waitFor(() =>
+        expect(within(activeTable(container)).queryByText('Alpha')).toBeInTheDocument(),
+      )
+    })
+  })
+})
+
 describe('TabbedTable invalid active tab fallback', () => {
   it('renders the first tab when defaultTabId does not match any tab', async () => {
     await withElementSize(async () => {

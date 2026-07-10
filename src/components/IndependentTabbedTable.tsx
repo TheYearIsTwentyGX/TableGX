@@ -16,6 +16,7 @@ import type {
   IndependentTabConfig,
   MeasureTextFn,
   TabbedTableClassNames,
+  TabColumnPreviewPosition,
   TableRowData,
 } from '../types'
 
@@ -87,6 +88,12 @@ export function independentTable<TRow extends TableRowData>(
           }
         })
     },
+
+    columnPreviewLabels: config.columns
+      .map((c) => c as ColumnDef<TRow, unknown>)
+      .filter((c) => c.enableHiding !== false)
+      .map((c) => columnLabelOf(config, getColumnId(c)))
+      .sort((a, b) => a.localeCompare(b)),
 
     getFilterBadges: (filters, clearColumn) =>
       filters
@@ -171,6 +178,12 @@ export type IndependentTabbedTableProps = {
   /** Default text measurer; a tab's own `measure` takes precedence. */
   measure?: MeasureTextFn
   classNames?: TabbedTableClassNames
+  /** Show a hover popover on each tab listing that tab's columns. Default false. */
+  enableTabColumnPreview?: boolean
+  /** Hover delay (ms) before the column-preview popover opens. Default 600. */
+  tabColumnPreviewDelayMs?: number
+  /** Where the column-preview popover opens relative to the tab strip. Default 'auto'. */
+  tabColumnPreviewPosition?: TabColumnPreviewPosition
 }
 
 /**
@@ -192,6 +205,9 @@ export function IndependentTabbedTable({
   tabIndicatorLayoutId,
   measure,
   classNames,
+  enableTabColumnPreview,
+  tabColumnPreviewDelayMs = 600,
+  tabColumnPreviewPosition = 'auto',
 }: IndependentTabbedTableProps) {
   const buildFilterBadges = (api: FilterChromeApi): FilterBadgeItem[] => {
     const tab = tabs.find((t) => t.id === api.activeId)
@@ -200,16 +216,21 @@ export function IndependentTabbedTable({
     return tab.getFilterBadges(filters, (columnId) => api.clearFilter(api.activeId, columnId))
   }
 
+  const tabsForStore =
+    enableTabColumnPreview === true ? tabs : tabs.map((t) => ({ ...t, columnPreviewLabels: [] }))
+
   return (
     <Table.Provider
       mode="independent"
-      tabs={tabs}
+      tabs={tabsForStore}
       activeTabId={activeTabId}
       defaultTabId={defaultTabId}
       onActiveTabChange={onActiveTabChange}
       indicatorLayoutId={tabIndicatorLayoutId}
       classNames={classNames}
       measure={measure}
+      tabColumnPreviewDelayMs={tabColumnPreviewDelayMs}
+      tabColumnPreviewPosition={tabColumnPreviewPosition}
       buildFilterBadges={buildFilterBadges}
     >
       <Table.Container>

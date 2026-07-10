@@ -352,3 +352,81 @@ describe('IndependentTabbedTable column picker show-all / hide-all', () => {
     })
   })
 })
+
+describe('IndependentTabbedTable tab column preview', () => {
+  function previewTabs() {
+    return [
+      independentTable<Person>({
+        id: 'people',
+        label: 'People',
+        data: people,
+        getRowId: (r) => r.id,
+        columns: [
+          textColumn<Person>('name', 'Name'),
+          textColumn<Person>('city', 'City'),
+          { ...textColumn<Person>('id', 'Id'), enableHiding: false },
+        ],
+        measure,
+      }),
+      independentTable<Order>({
+        id: 'orders',
+        label: 'Orders',
+        data: orders,
+        getRowId: (r) => r.ref,
+        columns: [textColumn<Order>('ref', 'Ref')],
+        measure,
+      }),
+    ]
+  }
+
+  it('shows no preview popover when the feature is off', async () => {
+    const user = userEvent.setup()
+    render(
+      <IndependentTabbedTable
+        tabs={previewTabs()}
+        defaultTabId="people"
+        tabColumnPreviewDelayMs={10}
+      />,
+    )
+    await user.hover(screen.getByRole('button', { name: 'People' }))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it("lists a tab's hideable columns alphabetically after the hover delay", async () => {
+    const user = userEvent.setup()
+    render(
+      <IndependentTabbedTable
+        tabs={previewTabs()}
+        defaultTabId="people"
+        enableTabColumnPreview
+        tabColumnPreviewDelayMs={10}
+      />,
+    )
+    await user.hover(screen.getByRole('button', { name: 'People' }))
+    const tooltip = await screen.findByRole('tooltip')
+    // Alphabetical: City before Name. The enableHiding:false Id column is excluded.
+    expect(tooltip.textContent).toBe('CityName')
+  })
+
+  it('still selects the tab on click while a preview popover is open', async () => {
+    await withElementSize(async () => {
+      const user = userEvent.setup()
+      const { container } = render(
+        <IndependentTabbedTable
+          tabs={previewTabs()}
+          defaultTabId="people"
+          enableTabColumnPreview
+          tabColumnPreviewDelayMs={10}
+        />,
+      )
+      const ordersButton = screen.getByRole('button', { name: 'Orders' })
+      await user.hover(ordersButton)
+      await screen.findByRole('tooltip')
+      await user.click(ordersButton)
+      await waitFor(() =>
+        expect(within(activeTable(container)).queryByText('A-100')).toBeInTheDocument(),
+      )
+    })
+  })
+})
