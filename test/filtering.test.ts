@@ -4,6 +4,7 @@ import {
   isEmptyFilterValue,
   matchesFilterValue,
   matchesGlobalSearch,
+  tgxFilterFn,
   tgxGlobalFilterFn,
 } from '../src/lib/filtering'
 
@@ -73,5 +74,44 @@ describe('tgxGlobalFilterFn', () => {
 
   it('keeps every row when the query is empty', () => {
     expect(tgxGlobalFilterFn(rowFor('Avocado'), 'name', '', () => {})).toBe(true)
+  })
+
+  // TanStack always passes the query through resolveFilterValue before the
+  // filter fn; a mixed-case query must stay case-insensitive end to end.
+  it('stays case-insensitive through resolveFilterValue', () => {
+    const resolved = tgxGlobalFilterFn.resolveFilterValue!('VOC')
+    expect(tgxGlobalFilterFn(rowFor('Avocado'), 'name', resolved, () => {})).toBe(true)
+    expect(tgxGlobalFilterFn(rowFor('zzz'), 'name', resolved, () => {})).toBe(false)
+  })
+
+  it('resolveFilterValue coerces non-string queries', () => {
+    expect(tgxGlobalFilterFn.resolveFilterValue!(null)).toBe('')
+    expect(tgxGlobalFilterFn.resolveFilterValue!(1234)).toBe('1234')
+  })
+})
+
+describe('tgxFilterFn', () => {
+  const rowFor = (value: unknown): Row<Record<string, unknown>> =>
+    ({ getValue: () => value }) as unknown as Row<Record<string, unknown>>
+
+  it('stays case-insensitive through resolveFilterValue', () => {
+    const resolved = tgxFilterFn.resolveFilterValue!({ text: 'WORLD', checkedValues: null })
+    expect(tgxFilterFn(rowFor('Hello World'), 'name', resolved, () => {})).toBe(true)
+    expect(tgxFilterFn(rowFor('Hello'), 'name', resolved, () => {})).toBe(false)
+  })
+
+  it('matches like matchesFilterValue without resolveFilterValue', () => {
+    const raw = { text: 'World', checkedValues: null }
+    expect(tgxFilterFn(rowFor('Hello World'), 'name', raw, () => {})).toBe(true)
+    expect(tgxFilterFn(rowFor('Hello'), 'name', raw, () => {})).toBe(false)
+  })
+
+  it('combines text and checklist (AND) through resolveFilterValue', () => {
+    const resolved = tgxFilterFn.resolveFilterValue!({
+      text: 'APP',
+      checkedValues: new Set(['Apple', 'Banana']),
+    })
+    expect(tgxFilterFn(rowFor('Apple'), 'name', resolved, () => {})).toBe(true)
+    expect(tgxFilterFn(rowFor('Banana'), 'name', resolved, () => {})).toBe(false)
   })
 })

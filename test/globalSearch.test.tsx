@@ -203,6 +203,7 @@ describe('global search — shared tabbed mode', () => {
         <TabbedTable<Row>
           data={data}
           getRowId={(r) => r.id}
+          idColumn="id"
           enableGlobalSearch
           tabs={[
             { id: 'a', label: 'All', columns },

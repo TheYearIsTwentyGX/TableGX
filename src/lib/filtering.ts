@@ -20,6 +20,9 @@ export function matchesFilterValue(cellValue: unknown, filterValue: ColumnFilter
   return true
 }
 
+/** Column filter value pre-processed once per filter pass (resolveFilterValue). */
+type ResolvedColumnFilterValue = ColumnFilterValue & { loweredText?: string }
+
 /**
  * Default column filter: case-insensitive "includes" text search combined with
  * a faceted checklist of exact values (spec §10.1).
@@ -27,13 +30,27 @@ export function matchesFilterValue(cellValue: unknown, filterValue: ColumnFilter
 export const tgxFilterFn: FilterFn<TableRowData> = (
   row: Row<TableRowData>,
   columnId: string,
-  filterValue: ColumnFilterValue,
+  filterValue: ResolvedColumnFilterValue,
 ) => {
   if (isEmptyFilterValue(filterValue)) return true
-  return matchesFilterValue(row.getValue(columnId), filterValue)
+  const text = String(row.getValue(columnId) ?? '')
+  const needle = filterValue.loweredText ?? filterValue.text?.toLowerCase()
+  if (needle) {
+    if (!text.toLowerCase().includes(needle)) return false
+  }
+  if (filterValue.checkedValues) {
+    if (!filterValue.checkedValues.has(text)) return false
+  }
+  return true
 }
 
 tgxFilterFn.autoRemove = (value: unknown) => isEmptyFilterValue(value)
+
+// Lowercase the query once per filter pass instead of once per row.
+tgxFilterFn.resolveFilterValue = (value: unknown): ResolvedColumnFilterValue => {
+  const v = value as ColumnFilterValue
+  return { ...v, loweredText: v?.text ? v.text.toLowerCase() : undefined }
+}
 
 /**
  * Case-insensitive "includes" match used by the built-in global search bar —
@@ -58,7 +75,14 @@ export const tgxGlobalFilterFn: FilterFn<TableRowData> = (
   columnId: string,
   filterValue: unknown,
 ) => {
-  const query = typeof filterValue === 'string' ? filterValue : String(filterValue ?? '')
+  // resolveFilterValue has already normalized + lowercased the query.
+  const query = filterValue as string
   if (!query) return true
-  return matchesGlobalSearch(row.getValue(columnId), query)
+  return String(row.getValue(columnId) ?? '')
+    .toLowerCase()
+    .includes(query)
 }
+
+// Normalize + lowercase the query once per filter pass instead of once per cell.
+tgxGlobalFilterFn.resolveFilterValue = (value: unknown): string =>
+  (typeof value === 'string' ? value : String(value ?? '')).toLowerCase()

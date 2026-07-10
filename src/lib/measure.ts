@@ -10,6 +10,12 @@ export const HEADER_FONT =
   "500 14px ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
 const widthCache = new Map<string, number>()
+/**
+ * Cache cap so high-churn data (unique ids, timestamps) can't grow the cache
+ * without bound over an app's lifetime. Eviction is FIFO — Map preserves
+ * insertion order, so the oldest entry is always first.
+ */
+const WIDTH_CACHE_MAX_ENTRIES = 10_000
 
 function approximateWidth(text: string, font: string): number {
   // Used when canvas measurement is unavailable (e.g. jsdom without canvas).
@@ -32,6 +38,10 @@ export const measureTextWidth: MeasureTextFn = (text, font) => {
     width = measureNaturalWidth(prepareWithSegments(text, font))
   } catch {
     width = approximateWidth(text, font)
+  }
+  if (widthCache.size >= WIDTH_CACHE_MAX_ENTRIES) {
+    const oldest = widthCache.keys().next().value
+    if (oldest !== undefined) widthCache.delete(oldest)
   }
   widthCache.set(key, width)
   return width

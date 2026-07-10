@@ -81,6 +81,40 @@ function HeaderCellInner<TRow extends TableRowData>({
   const textRef = useRef<HTMLSpanElement>(null)
   const iconsRef = useRef<HTMLDivElement>(null)
 
+  // Resize drags coalesce to one width commit per animation frame. Pointer
+  // events can fire at 120–240Hz and every commit re-renders the whole grid
+  // (all row/chunk memos key on the width function), so committing per event
+  // makes dragging jank on wide tables.
+  const pendingResizeRef = useRef<number | null>(null)
+  const resizeRafRef = useRef<number | null>(null)
+  const onResizeRef = useRef(onResize)
+  onResizeRef.current = onResize
+  const scheduleResize = (next: number) => {
+    pendingResizeRef.current = next
+    if (resizeRafRef.current !== null) return
+    resizeRafRef.current = requestAnimationFrame(() => {
+      resizeRafRef.current = null
+      const w = pendingResizeRef.current
+      pendingResizeRef.current = null
+      if (w !== null) onResizeRef.current(column.id, w)
+    })
+  }
+  const flushResize = () => {
+    if (resizeRafRef.current !== null) {
+      cancelAnimationFrame(resizeRafRef.current)
+      resizeRafRef.current = null
+    }
+    const w = pendingResizeRef.current
+    pendingResizeRef.current = null
+    if (w !== null) onResizeRef.current(column.id, w)
+  }
+  React.useEffect(
+    () => () => {
+      if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current)
+    },
+    [],
+  )
+
   // When the header text + icon cluster can't sit side by side, the icons float
   // over the text (an overlay) instead of being hidden or shrinking the text.
   // Measured from the rendered DOM so it reacts to the real text/icon widths;
@@ -197,10 +231,11 @@ function HeaderCellInner<TRow extends TableRowData>({
               ABSOLUTE_MIN_COLUMN_WIDTH_PX,
               drag.startWidth + (e.clientX - drag.startX),
             )
-            onResize(column.id, next)
+            scheduleResize(next)
           }}
           onPointerUp={(e) => {
             dragState.current = null
+            flushResize()
             e.currentTarget.releasePointerCapture(e.pointerId)
           }}
           onKeyDown={(e) => {

@@ -257,6 +257,12 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
     setAutoWidths((prev) => (mapsEqual(prev, next) ? prev : next))
   }, [containerRef])
 
+  // Function props (getSubRows, measure) are intentionally not identity deps:
+  // they're read fresh through `latest`, and keying on their identity would
+  // re-run the synchronous pre-paint measurement on every render for consumers
+  // that pass inline lambdas. Only measure's presence retriggers (it gates the
+  // canMeasureText early-return).
+  const hasMeasure = Boolean(options.measure)
   useLayoutEffect(() => {
     recompute()
   }, [
@@ -264,8 +270,7 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
     options.data,
     columnsKey,
     options.enableExpanding,
-    options.getSubRows,
-    options.measure,
+    hasMeasure,
     options.includeHeaderInAutosize,
   ])
 
