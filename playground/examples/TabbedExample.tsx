@@ -35,6 +35,18 @@ type FunPerson = Person & {
   favoriteFont: string
   standupExcuse: string
   chaosLevel: number
+  // Extra Overview columns purely to make that tab wide enough to require
+  // horizontal scrolling — handy for exercising the column-jump scroll.
+  deskToyCount: number
+  mondayMood: string
+  slackStatus: string
+  timezone: string
+  wfhDaysPerWeek: number
+  onboardingBuddy: string
+  favoriteMeetingRoom: string
+  printerRage: number
+  lastVacation: string
+  secretTalent: string
 }
 
 const COFFEE = [
@@ -108,9 +120,44 @@ const EXCUSES = [
   'Refactoring vibes',
   'Just one more PR',
 ]
+const MOODS = ['Optimistic', 'Caffeinated', 'In denial', 'Ready', 'Still asleep', 'Feral']
+const SLACK_STATUSES = [
+  'Heads down 🎧',
+  'brb snacks',
+  'In a meeting',
+  'Vibing',
+  'Deep in the weeds',
+  'Out sick',
+]
+const TIMEZONES = ['PST', 'MST', 'CST', 'EST', 'GMT', 'CET', 'JST', 'AEST']
+const BUDDIES = [
+  'Priya',
+  'Marcus',
+  'Yuki',
+  'Fatima',
+  'Diego',
+  'Ingrid',
+  'Kwame',
+  'Soo-ah',
+]
+const MEETING_ROOMS = ['The Fishbowl', 'Narnia', 'Bat Cave', 'The Aquarium', 'Basecamp']
+const SECRET_TALENTS = [
+  'Can solve a Rubik’s cube blindfolded',
+  'Competitive yo-yoer',
+  'Makes killer sourdough',
+  'Speedcubes CSS selectors',
+  'Whistles the Star Wars theme',
+  'Undefeated at foosball',
+]
 
 function at<T>(arr: T[], i: number): T {
   return arr[((i % arr.length) + arr.length) % arr.length]!
+}
+
+function daysAgoIso(days: number): string {
+  const d = new Date(2024, 0, 1)
+  d.setDate(d.getDate() - days)
+  return d.toISOString().slice(0, 10)
 }
 
 function makeFunPeople(count: number): FunPerson[] {
@@ -127,6 +174,16 @@ function makeFunPeople(count: number): FunPerson[] {
     favoriteFont: at(FONTS, i * 6),
     standupExcuse: at(EXCUSES, i * 9),
     chaosLevel: 1 + ((i * 3) % 11),
+    deskToyCount: (i * 2) % 9,
+    mondayMood: at(MOODS, i * 5),
+    slackStatus: at(SLACK_STATUSES, i * 7),
+    timezone: at(TIMEZONES, i),
+    wfhDaysPerWeek: i % 6,
+    onboardingBuddy: at(BUDDIES, i * 3),
+    favoriteMeetingRoom: at(MEETING_ROOMS, i * 2),
+    printerRage: 1 + ((i * 4) % 10),
+    lastVacation: daysAgoIso((i * 13) % 400),
+    secretTalent: at(SECRET_TALENTS, i * 8),
   }))
 }
 
@@ -159,6 +216,18 @@ export function TabbedExample() {
       ),
       selectColumn('status', 'Status', STATUS_OPTIONS),
       dateColumn('startDate', 'Start date'),
+      // Extra columns purely to make Overview wide enough to require
+      // horizontal scrolling — handy for testing the column-jump scroll.
+      numberColumn('deskToyCount', 'Desk toys'),
+      badgeColumn('mondayMood', 'Monday mood'),
+      textColumn('slackStatus', 'Slack status'),
+      textColumn('timezone', 'Timezone'),
+      numberColumn('wfhDaysPerWeek', 'WFH days/week'),
+      textColumn('onboardingBuddy', 'Onboarding buddy'),
+      textColumn('favoriteMeetingRoom', 'Favorite meeting room'),
+      numberColumn('printerRage', 'Printer rage (1-10)'),
+      dateColumn('lastVacation', 'Last vacation'),
+      textColumn('secretTalent', 'Secret talent'),
     ],
     [],
   )
