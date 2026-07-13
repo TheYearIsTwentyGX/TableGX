@@ -128,6 +128,73 @@ describe('column jump — single table', () => {
     })
   })
 
+  it('opens on Ctrl+G while hovering the table, with no click or focus at all', async () => {
+    const user = userEvent.setup()
+    await withElementSize(async () => {
+      render(
+        <>
+          <button>Outside</button>
+          <ReadOnlyTable<Row>
+            data={data}
+            columns={columns}
+            getRowId={(r) => r.id}
+            measure={measure}
+            enableColumnJump
+          />
+        </>,
+      )
+      // Focus stays on <body> (nothing is clicked or focused) — only hover
+      // should be enough to scope the shortcut to this table.
+      await user.hover(screen.getByText('Avocado'))
+      await user.keyboard('{Control>}g{/Control}')
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+  })
+
+  it('stops responding once the mouse leaves and no focus was ever established', async () => {
+    const user = userEvent.setup()
+    await withElementSize(async () => {
+      render(
+        <>
+          <button>Outside</button>
+          <ReadOnlyTable<Row>
+            data={data}
+            columns={columns}
+            getRowId={(r) => r.id}
+            measure={measure}
+            enableColumnJump
+          />
+        </>,
+      )
+      await user.hover(screen.getByText('Avocado'))
+      await user.unhover(screen.getByText('Avocado'))
+      await user.keyboard('{Control>}g{/Control}')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('columnJumpGlobalShortcut opens the dialog with no hover or focus at all', async () => {
+    const user = userEvent.setup()
+    await withElementSize(async () => {
+      render(
+        <>
+          <button>Outside</button>
+          <ReadOnlyTable<Row>
+            data={data}
+            columns={columns}
+            getRowId={(r) => r.id}
+            measure={measure}
+            enableColumnJump
+            columnJumpGlobalShortcut
+          />
+        </>,
+      )
+      await user.click(screen.getByRole('button', { name: 'Outside' }))
+      await user.keyboard('{Control>}g{/Control}')
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+  })
+
   it('lists every column and filters as the user types', async () => {
     const user = userEvent.setup()
     await withElementSize(async () => {

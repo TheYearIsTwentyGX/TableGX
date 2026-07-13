@@ -47,6 +47,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableColumnVisibility,
     enableColumnJump,
     columnJumpIncludeHidden,
+    columnJumpGlobalShortcut,
     enableRowVirtualization,
     enableColumnVirtualization,
     rowHeight,
@@ -237,6 +238,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             pinnedPaneX={args.pinnedPaneX}
             enableColumnJump={enableColumnJump}
             columnJumpIncludeHidden={columnJumpIncludeHidden ?? true}
+            columnJumpGlobalShortcut={columnJumpGlobalShortcut}
             columnJumpForeignEntries={args.columnJumpForeignEntries}
             onJumpToForeignColumn={args.onJumpToForeignColumn}
             scrollToColumnId={args.scrollToColumnId}
@@ -257,6 +259,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
     enableColumnVisibility,
     enableColumnJump,
     columnJumpIncludeHidden,
+    columnJumpGlobalShortcut,
     columnLabelFor,
     enableTabColumnPreview,
     enableMultiSort,
@@ -319,6 +322,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
       resolveSortLabel={resolveColumnLabel}
       enableColumnJump={enableColumnJump}
       columnJumpIncludeHidden={columnJumpIncludeHidden ?? true}
+      columnJumpGlobalShortcut={columnJumpGlobalShortcut}
     >
       <Table.Container>
         <Table.TabStrip

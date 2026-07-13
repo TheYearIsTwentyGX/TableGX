@@ -66,6 +66,8 @@ export type TableBodyRenderArgs = {
   columnJumpEnabled: boolean
   /** Resolved container-level `columnJumpIncludeHidden` (defaulted to `true`), for the same reason as `columnJumpEnabled`. */
   columnJumpIncludeHiddenResolved: boolean
+  /** Resolved container-level `columnJumpGlobalShortcut` (defaulted to `false`), for the same reason as `columnJumpEnabled`. */
+  columnJumpGlobalShortcutResolved: boolean
 }
 
 /**
@@ -137,6 +139,8 @@ export type TableProviderConfig = {
   enableColumnJump?: boolean
   /** Whether hidden columns appear in the jump list (see `AdvancedFeatureProps.columnJumpIncludeHidden`). Default true. */
   columnJumpIncludeHidden?: boolean
+  /** Whether the column-jump shortcut ignores hover/focus scoping (see `AdvancedFeatureProps.columnJumpGlobalShortcut`). Default false. */
+  columnJumpGlobalShortcut?: boolean
   // ----- shared-mode selection (group-level) -----
   enableRowSelection?: boolean
   selectedRowIds?: string[]

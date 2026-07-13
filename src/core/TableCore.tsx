@@ -489,6 +489,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     columnVisibilityStorageKey,
     enableColumnJump = false,
     columnJumpIncludeHidden = true,
+    columnJumpGlobalShortcut = false,
     enableRowVirtualization = true,
     enableColumnVirtualization = true,
     rowHeight,
@@ -1021,24 +1022,13 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onScrollToColumnHandled,
   ])
 
-  const handleTableKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (!enableColumnJump) return
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
-        e.preventDefault()
-        setColumnJumpOpen(true)
-      }
-    },
-    [enableColumnJump],
-  )
-
   // Most of a table's surface (body/header cell text) isn't natively
-  // focusable, so a plain click there never moves focus into the table and
-  // `handleTableKeyDown` never sees the keydown. Make the root a focus sink:
-  // clicking anywhere without a closer focusable target focuses the root
-  // itself, so Ctrl+G works regardless of what was clicked. Real controls
-  // (header sort buttons, checkboxes, filter triggers) keep taking focus
-  // natively — this only fires when nothing closer already would.
+  // focusable, so a plain click there never moves focus into the table. Make
+  // the root a focus sink: clicking anywhere without a closer focusable
+  // target focuses the root itself, so "focus is inside the table" (below)
+  // also covers plain cell clicks. Real controls (header sort buttons,
+  // checkboxes, filter triggers) keep taking focus natively — this only
+  // fires when nothing closer already would.
   const tableRootRef = useRef<HTMLDivElement | null>(null)
   const handleTableMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1049,6 +1039,40 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     },
     [enableColumnJump],
   )
+
+  // Mouse-hover scoping: lets Ctrl+G work with zero prior interaction (no
+  // click, no focus) as long as the cursor is over the table. Read only at
+  // keydown time, so hovering never itself steals focus from elsewhere.
+  const isHoveredRef = useRef(false)
+  const handleTableMouseEnter = useCallback(() => {
+    if (!enableColumnJump) return
+    isHoveredRef.current = true
+  }, [enableColumnJump])
+  const handleTableMouseLeave = useCallback(() => {
+    isHoveredRef.current = false
+  }, [])
+
+  // The shortcut listener lives on `document` (not a React onKeyDown on the
+  // root) because hover-scoping must work regardless of where DOM focus
+  // currently is — a keydown only bubbles from the focused element, which
+  // may be nowhere near this table while the mouse hovers it. Each mounted
+  // table decides independently whether to act: `columnJumpGlobalShortcut`
+  // opts out of scoping entirely, otherwise it fires only when the mouse is
+  // over this table or focus is already inside it.
+  useEffect(() => {
+    if (!enableColumnJump) return
+    const handleDocumentKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'g') return
+      if (!columnJumpGlobalShortcut) {
+        const focusInside = tableRootRef.current?.contains(document.activeElement) ?? false
+        if (!focusInside && !isHoveredRef.current) return
+      }
+      e.preventDefault()
+      setColumnJumpOpen(true)
+    }
+    document.addEventListener('keydown', handleDocumentKeyDown)
+    return () => document.removeEventListener('keydown', handleDocumentKeyDown)
+  }, [enableColumnJump, columnJumpGlobalShortcut])
 
   // ----- Rows + row virtualization -----
 
@@ -1514,8 +1538,9 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       )}
       style={maxHeight ? { maxHeight } : undefined}
       tabIndex={enableColumnJump ? -1 : undefined}
-      onKeyDown={handleTableKeyDown}
       onMouseDown={handleTableMouseDown}
+      onMouseEnter={handleTableMouseEnter}
+      onMouseLeave={handleTableMouseLeave}
     >
       {enableColumnJump && (
         <ColumnJumpDialog

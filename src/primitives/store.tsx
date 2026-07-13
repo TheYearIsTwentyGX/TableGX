@@ -78,6 +78,7 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     resolveSortLabel,
     enableColumnJump,
     columnJumpIncludeHidden,
+    columnJumpGlobalShortcut,
   } = config
 
   const autoLayoutId = useId()
@@ -357,6 +358,7 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
         onScrollToColumnHandled: () => setPendingScrollColumnId(null),
         columnJumpEnabled: enableColumnJump === true,
         columnJumpIncludeHiddenResolved: columnJumpIncludeHidden ?? true,
+        columnJumpGlobalShortcutResolved: columnJumpGlobalShortcut === true,
       }
     },
     [
@@ -380,6 +382,7 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
       pendingScrollColumnId,
       enableColumnJump,
       columnJumpIncludeHidden,
+      columnJumpGlobalShortcut,
     ],
   )
 

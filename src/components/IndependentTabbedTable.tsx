@@ -168,6 +168,7 @@ export function independentTable<TRow extends TableRowData>(
         classNames={args.classNames}
         enableColumnJump={args.columnJumpEnabled}
         columnJumpIncludeHidden={args.columnJumpIncludeHiddenResolved}
+        columnJumpGlobalShortcut={args.columnJumpGlobalShortcutResolved}
         columnJumpForeignEntries={args.columnJumpForeignEntries}
         onJumpToForeignColumn={args.onJumpToForeignColumn}
         scrollToColumnId={args.scrollToColumnId}
@@ -202,6 +203,8 @@ export type IndependentTabbedTableProps = {
   enableColumnJump?: boolean
   /** Whether hidden columns appear in the jump list. Default true. */
   columnJumpIncludeHidden?: boolean
+  /** Opt out of hover/focus scoping for the column-jump shortcut. Default false. */
+  columnJumpGlobalShortcut?: boolean
 }
 
 /**
@@ -228,6 +231,7 @@ export function IndependentTabbedTable({
   tabColumnPreviewPosition = 'auto',
   enableColumnJump,
   columnJumpIncludeHidden,
+  columnJumpGlobalShortcut,
 }: IndependentTabbedTableProps) {
   const buildFilterBadges = (api: FilterChromeApi): FilterBadgeItem[] => {
     const tab = tabs.find((t) => t.id === api.activeId)
@@ -257,6 +261,7 @@ export function IndependentTabbedTable({
       buildFilterBadges={buildFilterBadges}
       enableColumnJump={enableColumnJump === true}
       columnJumpIncludeHidden={columnJumpIncludeHidden ?? true}
+      columnJumpGlobalShortcut={columnJumpGlobalShortcut === true}
     >
       <Table.Container>
         <Table.TabStrip

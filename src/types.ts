@@ -265,6 +265,16 @@ export type AdvancedFeatureProps<TRow> = {
    */
   columnJumpIncludeHidden?: boolean
   /**
+   * Opt out of scoping the Ctrl+G / Cmd+G shortcut to this table: when true,
+   * it opens the jump dialog regardless of mouse position or focus, as long
+   * as this table is mounted. Off by default, meaning the shortcut only
+   * fires while the mouse is hovering this table or focus is already inside
+   * it. If more than one mounted table sets this, all of them respond to
+   * the same keypress — only enable it when you know at most one table with
+   * `enableColumnJump` is mounted at a time.
+   */
+  columnJumpGlobalShortcut?: boolean
+  /**
    * Row virtualization. On by default. Set false to render every row in normal
    * document flow instead of a sliding virtual window — useful for small tables
    * where you want browser find-in-page (Ctrl+F), printing, screen-reader access
@@ -589,5 +599,6 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'recordCountLabel'
   | 'enableColumnJump'
   | 'columnJumpIncludeHidden'
+  | 'columnJumpGlobalShortcut'
 > &
   Pick<AdvancedFeatureProps<TRow>, 'enableExpanding' | 'getSubRows' | 'defaultExpanded'>
