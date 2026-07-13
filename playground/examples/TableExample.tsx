@@ -152,6 +152,7 @@ export function TableExample() {
           enableFooter
           frozenColumns={1}
           enableColumnVisibility
+          enableColumnJump
           enableRowSelection={selectable}
           selectedRowIds={selected}
           onSelectedRowIdsChange={setSelected}

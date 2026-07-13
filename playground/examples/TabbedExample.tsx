@@ -352,6 +352,7 @@ export function TabbedExample() {
           selectedRowIds={selected}
           onSelectedRowIdsChange={setSelected}
           enableTabColumnPreview
+          enableColumnJump
         />
       </div>
     </Section>
