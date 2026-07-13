@@ -86,6 +86,27 @@ describe('column jump — single table', () => {
     })
   })
 
+  it('opens on Ctrl+G after clicking a plain body cell (no natively focusable target)', async () => {
+    const user = userEvent.setup()
+    await withElementSize(async () => {
+      render(
+        <ReadOnlyTable<Row>
+          data={data}
+          columns={columns}
+          getRowId={(r) => r.id}
+          measure={measure}
+          enableColumnJump
+        />,
+      )
+      // "Avocado" is plain cell text, not a button/input/checkbox — clicking
+      // it alone would never move focus into the table without the root
+      // container's mousedown-driven focus fallback.
+      await user.click(screen.getByText('Avocado'))
+      await user.keyboard('{Control>}g{/Control}')
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    })
+  })
+
   it('does not open when focus is outside the table', async () => {
     const user = userEvent.setup()
     await withElementSize(async () => {

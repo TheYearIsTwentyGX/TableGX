@@ -1032,6 +1032,24 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     [enableColumnJump],
   )
 
+  // Most of a table's surface (body/header cell text) isn't natively
+  // focusable, so a plain click there never moves focus into the table and
+  // `handleTableKeyDown` never sees the keydown. Make the root a focus sink:
+  // clicking anywhere without a closer focusable target focuses the root
+  // itself, so Ctrl+G works regardless of what was clicked. Real controls
+  // (header sort buttons, checkboxes, filter triggers) keep taking focus
+  // natively — this only fires when nothing closer already would.
+  const tableRootRef = useRef<HTMLDivElement | null>(null)
+  const handleTableMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!enableColumnJump) return
+      const target = e.target as HTMLElement
+      if (target.closest('button, a[href], input, select, textarea, [tabindex]')) return
+      tableRootRef.current?.focus({ preventScroll: true })
+    },
+    [enableColumnJump],
+  )
+
   // ----- Rows + row virtualization -----
 
   const rows = table.getRowModel().rows
@@ -1486,15 +1504,18 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   return (
     <div
+      ref={tableRootRef}
       data-tgx-table=""
       className={cn(
-        'relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-card text-card-foreground',
+        'relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-card text-card-foreground outline-none',
         bordered && 'rounded-md border border-border',
         !maxHeight && 'flex-1',
         classNames?.root,
       )}
       style={maxHeight ? { maxHeight } : undefined}
+      tabIndex={enableColumnJump ? -1 : undefined}
       onKeyDown={handleTableKeyDown}
+      onMouseDown={handleTableMouseDown}
     >
       {enableColumnJump && (
         <ColumnJumpDialog
