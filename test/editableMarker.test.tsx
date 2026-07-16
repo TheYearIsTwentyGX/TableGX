@@ -103,4 +103,45 @@ describe('data-tgx-editable marker (TableCore root)', () => {
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }))
     await waitFor(() => expect(tableRoot(container)).toHaveAttribute('data-tgx-editable', ''))
   })
+
+  it('tracks a live editableColumnIds prop change on a mounted instance (no fresh mount)', () => {
+    const { container, rerender } = render(
+      <EditableTable<Row>
+        data={data}
+        columns={editableColumns}
+        getRowId={(r) => r.id}
+        editableColumnIds={['name']}
+        onSaveEdit={async () => true}
+        measure={measure}
+      />,
+    )
+    expect(tableRoot(container)).toHaveAttribute('data-tgx-editable', '')
+
+    // Same mounted instance, only editableColumnIds changes: marker must
+    // disappear immediately, not stay stale from a memo keyed on the
+    // `editable`/column-visibility deps alone.
+    rerender(
+      <EditableTable<Row>
+        data={data}
+        columns={editableColumns}
+        getRowId={(r) => r.id}
+        editableColumnIds={[]}
+        onSaveEdit={async () => true}
+        measure={measure}
+      />,
+    )
+    expect(tableRoot(container)).not.toHaveAttribute('data-tgx-editable')
+
+    rerender(
+      <EditableTable<Row>
+        data={data}
+        columns={editableColumns}
+        getRowId={(r) => r.id}
+        editableColumnIds={['name']}
+        onSaveEdit={async () => true}
+        measure={measure}
+      />,
+    )
+    expect(tableRoot(container)).toHaveAttribute('data-tgx-editable', '')
+  })
 })

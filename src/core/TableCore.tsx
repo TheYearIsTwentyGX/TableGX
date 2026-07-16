@@ -1154,15 +1154,14 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // currently-*visible* leaf column passes the same gating cells use
   // (`canEditColumn`). Drives the `data-tgx-editable` DOM marker so a
   // consuming app's help system can detect "can this user actually edit
-  // something right now" rather than just the `editable` prop. Keyed on
-  // `visibleColumnIdsKey` (not `visibleLeafColumns` directly) so hiding all
-  // editable columns via the visibility picker flips this to false without
-  // needing a new array identity to be tracked as a dependency.
-  const isEffectivelyEditable = useMemo(() => {
-    if (!editable) return false
-    return visibleLeafColumns.some((col) => canEditColumn(col.id, col.columnDef.meta))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editable, visibleColumnIdsKey, canEditColumn])
+  // something right now" rather than just the `editable` prop. Computed as a
+  // plain expression (not memoized) so it always reflects the latest
+  // `editableColumnIds` prop — `canEditColumn`'s identity only changes with
+  // `editable`, so a memo keyed on it would miss column-set-only changes on
+  // an already-mounted table. The `.some()` is cheap: it runs over the
+  // visible leaf columns only, not the full row/column set.
+  const isEffectivelyEditable =
+    editable && visibleLeafColumns.some((col) => canEditColumn(col.id, col.columnDef.meta))
 
   const findAdjacentEditable = useCallback(
     (columnId: string, nav: EditNavigation): string | null => {
