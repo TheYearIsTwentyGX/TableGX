@@ -146,6 +146,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
       const model: TableTabModel = {
         id: tab.id,
         label: tab.label,
+        editable: tab.editable === true,
         columnVisibilityStorageKey: storageKeyFor(tab),
         initialSorting: tab.initialSorting,
         enableRowSelection: enableRowSelection === true,

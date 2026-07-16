@@ -64,6 +64,7 @@ export function independentTable<TRow extends TableRowData>(
   return {
     id: config.id,
     label: config.label,
+    editable: config.editable === true,
     initialSorting: config.initialSorting,
     enableColumnVisibility,
     enableRowSelection,
