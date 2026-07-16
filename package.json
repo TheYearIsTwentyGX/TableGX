@@ -1,6 +1,6 @@
 {
   "name": "@twentygx/tablegx",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "High-performance, type-safe React data-table system: ReadOnlyTable, EditableTable, and TabbedTable over one virtualized engine.",
   "license": "MIT",
   "type": "module",
