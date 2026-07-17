@@ -78,6 +78,7 @@
   --tgx-row-hover-bg: color-mix(in oklch, var(--card), var(--muted) 60%);
   --tgx-row-selected-bg: color-mix(in oklch, var(--card), var(--primary) 10%);
   --tgx-row-selected-hover-bg: color-mix(in oklch, var(--card), var(--primary) 18%);
+  --tgx-row-just-added-bg: color-mix(in oklch, var(--card), var(--primary) 22%);
 }
 
 :where(.dark) {
@@ -146,6 +147,21 @@
 
 :where([data-tgx-pop]) {
   transform-origin: var(--radix-popper-transform-origin, center);
+}
+
+/* --- New row landed under a frozen sort order (useFrozenRowOrder) --- */
+
+@keyframes tgx-row-flash {
+  from {
+    background-color: var(--tgx-row-just-added-bg);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+:where([data-tgx-just-added]) {
+  animation: tgx-row-flash 1400ms ease-out;
 }
 
 :where([data-tgx-pop][data-state='open']) {

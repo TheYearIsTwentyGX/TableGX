@@ -33,6 +33,7 @@ import {
 } from '../constants'
 import { getColumnId, useAutoColumnWidths } from '../hooks/useAutoColumnWidths'
 import { useColumnVirtualization } from '../hooks/useColumnVirtualization'
+import { useFrozenRowOrder } from '../hooks/useFrozenRowOrder'
 import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect'
 import { useLocalStorageState } from '../hooks/useLocalStorageState'
 import { useRowSelectionBridge } from '../hooks/useRowSelectionBridge'
@@ -332,6 +333,8 @@ type VirtualRowProps<TRow extends TableRowData> = RowCellContext<TRow> & {
   isSelected: boolean
   isSomeSelected: boolean
   isExpanded: boolean
+  /** Just spliced into the frozen sort order — briefly flashes via CSS. */
+  justAdded: boolean
   bodyRowClassName?: string
   pinnedPaneX?: MotionValue<number>
   /**
@@ -358,6 +361,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
     isSelected,
     isSomeSelected,
     isExpanded,
+    justAdded,
     bodyRowClassName,
     pinnedPaneX,
     autoHeight,
@@ -412,6 +416,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
       data-index={autoHeight && virtualized ? dataIndex : undefined}
       ref={autoHeight && virtualized ? measureRef : undefined}
       data-selected={isSelected ? '' : undefined}
+      data-tgx-just-added={justAdded ? '' : undefined}
       className={cn(
         'group flex w-full border-b border-border bg-card transition-colors hover:bg-(--tgx-row-hover-bg) data-[selected]:bg-(--tgx-row-selected-bg) hover:data-[selected]:bg-(--tgx-row-selected-hover-bg)',
         virtualized ? 'absolute top-0 left-0' : 'relative',
@@ -735,6 +740,19 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   const getRowIdString = useCallback((row: TRow) => String(getRowId(row)), [getRowId])
 
+  // Row order stays frozen across data changes (e.g. an edit that changes a
+  // sorted column's value) and only recomputes on a real sort action, so a
+  // row never jumps out from under someone mid-edit. Nested/expandable rows
+  // opt out entirely (bypassed to the live TanStack sort) since freezing a
+  // multi-level tree's order is out of scope here.
+  const { data: orderedData, justInsertedRowIds } = useFrozenRowOrder({
+    data,
+    getRowId: getRowIdString,
+    columns: effectiveColumns,
+    sorting: effectiveSorting,
+    enableExpanding,
+  })
+
   // Resolve which columns the global search box scans. An explicit
   // `searchableColumns` list wins outright; otherwise every visible,
   // non-selection column participates unless it opts out via `meta.searchable`.
@@ -753,7 +771,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   )
 
   const table = useReactTable<TRow>({
-    data,
+    data: orderedData,
     columns: effectiveColumns,
     state: {
       sorting: effectiveSorting,
@@ -782,6 +800,11 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     getColumnCanGlobalFilter,
     enableMultiSort,
     isMultiSortEvent: (e) => (e as React.MouseEvent).shiftKey,
+    // Row order is derived by useFrozenRowOrder above; TanStack must not
+    // re-sort orderedData by live values on every render (that's exactly the
+    // resort-on-edit behavior this feature removes). getSortedRowModel stays
+    // wired for header sort-icon state; it becomes a passthrough.
+    manualSorting: true,
     enableRowSelection,
     enableSubRowSelection: true,
     autoResetExpanded: false,
@@ -1114,6 +1137,35 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     getItemKey: (index) => rows[index]?.id ?? index,
     scrollMargin: headerOffset,
   })
+
+  // A row newly spliced into the frozen order (useFrozenRowOrder) snaps into
+  // view — no scroll animation — and flashes briefly so it isn't missed.
+  // Virtualized mode uses the virtualizer's own scrollToIndex, which works
+  // even for a row that isn't mounted yet; non-virtualized rows are always
+  // mounted, so a direct DOM scrollIntoView is simpler and avoids relying on
+  // estimated (not actually applied) virtualizer offsets.
+  const [justAddedIds, setJustAddedIds] = useState<Set<string> | null>(null)
+  const justAddedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!justInsertedRowIds || justInsertedRowIds.size === 0) return
+    const targetIndex = rows.findIndex((row) => justInsertedRowIds.has(row.id))
+    if (targetIndex !== -1) {
+      if (enableRowVirtualization) {
+        rowVirtualizer.scrollToIndex(targetIndex, { align: 'auto' })
+      } else {
+        const target = rows[targetIndex]
+        const el =
+          target && scrollRef.current?.querySelector(`[data-tgx-row="${CSS.escape(target.id)}"]`)
+        el?.scrollIntoView({ block: 'nearest' })
+      }
+    }
+    setJustAddedIds(justInsertedRowIds)
+    if (justAddedTimeoutRef.current) clearTimeout(justAddedTimeoutRef.current)
+    justAddedTimeoutRef.current = setTimeout(() => setJustAddedIds(null), 1400)
+    return () => {
+      if (justAddedTimeoutRef.current) clearTimeout(justAddedTimeoutRef.current)
+    }
+  }, [justInsertedRowIds, rows, rowVirtualizer, enableRowVirtualization])
 
   // ----- Editing -----
   //
@@ -1746,6 +1798,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                     isSelected={row.getIsSelected()}
                     isSomeSelected={row.getIsSomeSelected()}
                     isExpanded={row.getIsExpanded()}
+                    justAdded={justAddedIds?.has(row.id) ?? false}
                     canEditColumn={canEditColumn}
                     onBeginEdit={beginEdit}
                     onCommitEdit={commitEditForCell}
@@ -1787,6 +1840,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                       isSelected={row.getIsSelected()}
                       isSomeSelected={row.getIsSomeSelected()}
                       isExpanded={row.getIsExpanded()}
+                      justAdded={justAddedIds?.has(row.id) ?? false}
                       canEditColumn={canEditColumn}
                       onBeginEdit={beginEdit}
                       onCommitEdit={commitEditForCell}
