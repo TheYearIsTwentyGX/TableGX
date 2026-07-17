@@ -78,6 +78,13 @@ export type TableBodyRenderArgs = {
 export type TableTabModel = {
   id: string
   label: ReactNode
+  /**
+   * Whether the app declared this tab editable (`tab.editable === true` on the
+   * source `TabbedTableTab`/`IndependentTabConfig`). Drives the tabbed
+   * container's `data-tgx-editable` marker — present when ANY tab is
+   * editable, regardless of which tab is currently active.
+   */
+  editable?: boolean
   /** Full localStorage key for this tab's column visibility, if any. */
   columnVisibilityStorageKey?: string
   initialSorting?: SortingState
