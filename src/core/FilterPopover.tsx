@@ -164,6 +164,12 @@ export function FilterPopover({
             </div>
           </div>
         )}
+
+        <div className="mt-2 flex justify-end border-t pt-2">
+          <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => setOpen(false)}>
+            OK
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   )

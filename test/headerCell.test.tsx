@@ -74,4 +74,19 @@ describe('HeaderCell sort/filter affordances', () => {
     await user.click(screen.getByRole('button', { name: 'Filter Name' }))
     expect(await screen.findByPlaceholderText(/search name/i)).toBeInTheDocument()
   })
+
+  it('closes the filter popover when OK is clicked', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <ReadOnlyTable<Row> data={data} columns={columns} getRowId={(r) => r.id} measure={measure} />,
+    )
+    const header = container.querySelector<HTMLElement>('[data-tgx-header="name"]')
+    if (!header) throw new Error('no header rendered')
+
+    await user.click(screen.getByRole('button', { name: 'Filter Name' }))
+    expect(await screen.findByPlaceholderText(/search name/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'OK' }))
+    await waitFor(() => expect(screen.queryByPlaceholderText(/search name/i)).not.toBeInTheDocument())
+  })
 })
