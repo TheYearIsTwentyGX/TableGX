@@ -145,7 +145,7 @@ export function IndependentTabbedExample() {
       description="Three completely separate tables sharing only the tab strip and slide animation. Each tab has its own data and row shape — sorting, filtering, selection, and column visibility are independent and persist when switching tabs. The Invoices tab is independently editable."
     >
       <div className="flex h-[460px] flex-col">
-        <IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+        <IndependentTabbedTable tabs={tabs} defaultTabId="people" enableColumnJump />
       </div>
     </Section>
   )

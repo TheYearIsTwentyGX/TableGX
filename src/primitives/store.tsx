@@ -12,7 +12,7 @@ import type { OnChangeFn, SortingState, VisibilityState } from '@tanstack/react-
 import type { ColumnVisibilityItem } from '../core/ColumnVisibilityPicker'
 import type { FilterBadgeItem } from '../core/FilterBadges'
 import { useSharedTabFilters } from '../hooks/useSharedTabFilters'
-import type { RecordCountInfo } from '../types'
+import type { ColumnJumpEntry, RecordCountInfo } from '../types'
 import type {
   TableBodyRenderArgs,
   TableProviderConfig,
@@ -76,6 +76,9 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     buildFilterBadges,
     enableSortHierarchy = false,
     resolveSortLabel,
+    enableColumnJump,
+    columnJumpIncludeHidden,
+    columnJumpGlobalShortcut,
   } = config
 
   const autoLayoutId = useId()
@@ -276,6 +279,54 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     }
   }, [tabs])
 
+  // ----- Column jump (Ctrl+G / Cmd+G) -----
+
+  const columnJumpEntriesByTab = useMemo(() => {
+    const out: Record<string, ColumnJumpEntry[]> = {}
+    for (const tab of tabs) {
+      if (tab.columnJumpItems.length === 0) {
+        out[tab.id] = []
+        continue
+      }
+      const tabVisibility = getVisibility(tab.id)
+      out[tab.id] = tab.columnJumpItems
+        .map((item) => ({
+          columnId: item.id,
+          label: item.label,
+          hidden: tabVisibility[item.id] === false,
+          tabId: tab.id,
+          tabLabel: tab.label,
+        }))
+        .filter((entry) => columnJumpIncludeHidden !== false || !entry.hidden)
+    }
+    return out
+  }, [tabs, getVisibility, columnJumpIncludeHidden])
+
+  const columnJumpForeignEntries = useMemo(
+    () =>
+      tabs
+        .filter((tab) => tab.id !== activeId)
+        .flatMap((tab) => columnJumpEntriesByTab[tab.id] ?? []),
+    [tabs, activeId, columnJumpEntriesByTab],
+  )
+
+  const [pendingScrollColumnId, setPendingScrollColumnId] = useState<string | null>(null)
+
+  const jumpToForeignColumn = useCallback(
+    (entry: ColumnJumpEntry) => {
+      if (entry.tabId === undefined) return
+      if (entry.hidden) {
+        const targetTab = tabs.find((t) => t.id === entry.tabId)
+        if (targetTab) {
+          setVisibility(targetTab)((prev) => ({ ...prev, [entry.columnId]: true }))
+        }
+      }
+      selectTab(entry.tabId)
+      setPendingScrollColumnId(entry.columnId)
+    },
+    [tabs, setVisibility, selectTab],
+  )
+
   // ----- Top-placed record count, lifted from the active panel to the strip -----
   const [recordCountInfo, setRecordCountInfo] = useState<RecordCountInfo | null>(null)
 
@@ -301,6 +352,13 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
         recordCountInToolbar: tab?.showsTopRecordCount ? false : undefined,
         onRecordCountChange: tab?.showsTopRecordCount ? setRecordCountInfo : undefined,
         pinnedPaneX,
+        columnJumpForeignEntries,
+        onJumpToForeignColumn: jumpToForeignColumn,
+        scrollToColumnId: pendingScrollColumnId,
+        onScrollToColumnHandled: () => setPendingScrollColumnId(null),
+        columnJumpEnabled: enableColumnJump === true,
+        columnJumpIncludeHiddenResolved: columnJumpIncludeHidden ?? true,
+        columnJumpGlobalShortcutResolved: columnJumpGlobalShortcut === true,
       }
     },
     [
@@ -319,6 +377,12 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
       dataForTab,
       measure,
       classNames,
+      columnJumpForeignEntries,
+      jumpToForeignColumn,
+      pendingScrollColumnId,
+      enableColumnJump,
+      columnJumpIncludeHidden,
+      columnJumpGlobalShortcut,
     ],
   )
 

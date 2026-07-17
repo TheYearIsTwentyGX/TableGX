@@ -214,6 +214,8 @@ export type TableClassNames = {
   skeleton?: string
   /** The opt-in record-count region (top toolbar/tab-strip count or bottom floated corner annotation). */
   recordCount?: string
+  /** The Ctrl+G "jump to column" dialog (see `enableColumnJump`). */
+  columnJumpDialog?: string
 }
 
 /** Class overrides for the TabbedTable chrome. */
@@ -251,6 +253,27 @@ export type AdvancedFeatureProps<TRow> = {
   onSelectedRowIdsChange?: (ids: string[]) => void
   enableColumnVisibility?: boolean
   columnVisibilityStorageKey?: string
+  /**
+   * Ctrl+G / Cmd+G opens a searchable "jump to column" dialog; selecting an
+   * entry scrolls that column into view (and, in a tabbed table, switches to
+   * the tab that renders it). Off by default.
+   */
+  enableColumnJump?: boolean
+  /**
+   * Whether hidden columns appear in the jump list. Selecting a hidden column
+   * un-hides it. Default true.
+   */
+  columnJumpIncludeHidden?: boolean
+  /**
+   * Opt out of scoping the Ctrl+G / Cmd+G shortcut to this table: when true,
+   * it opens the jump dialog regardless of mouse position or focus, as long
+   * as this table is mounted. Off by default, meaning the shortcut only
+   * fires while the mouse is hovering this table or focus is already inside
+   * it. If more than one mounted table sets this, all of them respond to
+   * the same keypress — only enable it when you know at most one table with
+   * `enableColumnJump` is mounted at a time.
+   */
+  columnJumpGlobalShortcut?: boolean
   /**
    * Row virtualization. On by default. Set false to render every row in normal
    * document flow instead of a sliding virtual window — useful for small tables
@@ -318,6 +341,20 @@ export type AdvancedFeatureProps<TRow> = {
   expanded?: Record<string, boolean>
   onExpandedChange?: (next: Record<string, boolean>) => void
   defaultExpanded?: boolean | Record<string, boolean>
+}
+
+/**
+ * Internal — one row of the Ctrl+G "jump to column" dialog (see
+ * `AdvancedFeatureProps.enableColumnJump`). Not exported publicly; `tabId` /
+ * `tabLabel` are set only for entries belonging to a different tab than the
+ * one currently rendering the dialog.
+ */
+export type ColumnJumpEntry = {
+  columnId: string
+  label: string
+  hidden: boolean
+  tabId?: string
+  tabLabel?: ReactNode
 }
 
 export type ReadOnlyTableProps<TRow extends TableRowData> = {
@@ -560,5 +597,8 @@ export type TabbedTableProps<TRow extends TableRowData> = {
   | 'enableRecordCount'
   | 'recordCountPosition'
   | 'recordCountLabel'
+  | 'enableColumnJump'
+  | 'columnJumpIncludeHidden'
+  | 'columnJumpGlobalShortcut'
 > &
   Pick<AdvancedFeatureProps<TRow>, 'enableExpanding' | 'getSubRows' | 'defaultExpanded'>

@@ -50,6 +50,7 @@ import { Checkbox } from '../ui/checkbox'
 import type {
   ColumnFilterValue,
   ColumnGroupDef,
+  ColumnJumpEntry,
   EditingState,
   ReadOnlyTableProps,
   RecordCountInfo,
@@ -59,6 +60,7 @@ import type {
 import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
 import { BodyCell } from './BodyCell'
 import type { EditNavigation } from './CellEditors'
+import { ColumnJumpDialog } from './ColumnJumpDialog'
 import { ColumnVisibilityPicker } from './ColumnVisibilityPicker'
 import { describeFilterValue, FilterBadges, type FilterBadgeItem } from './FilterBadges'
 import { TableSearchInput } from './SearchInput'
@@ -154,6 +156,14 @@ export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow>
   searchInToolbar?: boolean
   /** Internal — negated tab-slide x offset keeping the pinned pane static (spec §18.5). */
   pinnedPaneX?: MotionValue<number>
+  /** Internal — TabbedTable/IndependentTabbedTable supply every other tab's jump entries. */
+  columnJumpForeignEntries?: ColumnJumpEntry[]
+  /** Internal — called when the user picks an entry belonging to another tab. */
+  onJumpToForeignColumn?: (entry: ColumnJumpEntry) => void
+  /** Internal — sent by the tab store after a cross-tab jump switches to this tab. */
+  scrollToColumnId?: string | null
+  /** Internal — acks a completed `scrollToColumnId` request so the store clears it. */
+  onScrollToColumnHandled?: () => void
 }
 
 function headerLabelOf<TRow extends TableRowData>(
@@ -477,6 +487,9 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onSelectedRowIdsChange,
     enableColumnVisibility = false,
     columnVisibilityStorageKey,
+    enableColumnJump = false,
+    columnJumpIncludeHidden = true,
+    columnJumpGlobalShortcut = false,
     enableRowVirtualization = true,
     enableColumnVirtualization = true,
     rowHeight,
@@ -512,6 +525,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     hideBuiltInPicker = false,
     hideFilterBadges = false,
     pinnedPaneX,
+    columnJumpForeignEntries,
+    onJumpToForeignColumn,
+    scrollToColumnId,
+    onScrollToColumnHandled,
   } = props
 
   // ----- Table state -----
@@ -922,6 +939,140 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   } = useColumnVirtualization(scrollWidths, paneWidth, getScrollLeft)
 
   const contentWidth = pinnedWidth + scrollTotalWidth
+
+  // ----- Column jump (Ctrl+G / Cmd+G) -----
+
+  const columnJumpOwnEntries = useMemo<ColumnJumpEntry[]>(() => {
+    if (!enableColumnJump) return []
+    return columns
+      .filter((c) => c.enableHiding !== false)
+      .map((c) => {
+        const id = getColumnId(c)
+        return {
+          columnId: id,
+          label: headerLabelOf(c, id, columnLabel),
+          hidden: visibility[id] === false,
+        }
+      })
+      .filter((entry) => columnJumpIncludeHidden !== false || !entry.hidden)
+  }, [columns, columnLabel, visibility, enableColumnJump, columnJumpIncludeHidden])
+
+  const columnJumpEntries = useMemo<ColumnJumpEntry[]>(
+    () => [...columnJumpOwnEntries, ...(columnJumpForeignEntries ?? [])],
+    [columnJumpOwnEntries, columnJumpForeignEntries],
+  )
+
+  const [columnJumpOpen, setColumnJumpOpen] = useState(false)
+  const [pendingJumpColumnId, setPendingJumpColumnId] = useState<string | null>(null)
+
+  // A cross-tab jump lands here once the store switches the active tab to
+  // this one and hands this instance the column id via `scrollToColumnId`.
+  useEffect(() => {
+    if (scrollToColumnId) setPendingJumpColumnId(scrollToColumnId)
+  }, [scrollToColumnId])
+
+  const handleColumnJumpSelect = useCallback(
+    (entry: ColumnJumpEntry) => {
+      if (entry.tabId !== undefined) {
+        onJumpToForeignColumn?.(entry)
+        return
+      }
+      setPendingJumpColumnId(entry.columnId)
+    },
+    [onJumpToForeignColumn],
+  )
+
+  // Un-hides (if needed) and scrolls a pending own-column jump into view. When
+  // the column starts hidden this runs twice: once to flip visibility, then
+  // again once the updated `visibility` re-render puts the column into
+  // `scrollColumns` so its offset can be computed.
+  useEffect(() => {
+    if (!pendingJumpColumnId) return
+    const id = pendingJumpColumnId
+    if (visibility[id] === false) {
+      handleVisibilityChange((prev) => ({ ...prev, [id]: true }))
+      return
+    }
+    if (!frozenColumnIds.has(id)) {
+      const index = scrollColumns.findIndex((c) => c.id === id)
+      if (index !== -1) {
+        const el = scrollRef.current
+        if (el) {
+          const left = colOffsets[index] ?? 0
+          const width = scrollWidths[index] ?? 0
+          const visibleStart = el.scrollLeft
+          const visibleEnd = visibleStart + paneWidth
+          if (left < visibleStart || left + width > visibleEnd) {
+            el.scrollTo({ left, behavior: 'smooth' })
+          }
+        }
+      }
+    }
+    setPendingJumpColumnId(null)
+    onScrollToColumnHandled?.()
+  }, [
+    pendingJumpColumnId,
+    visibility,
+    handleVisibilityChange,
+    frozenColumnIds,
+    scrollColumns,
+    colOffsets,
+    scrollWidths,
+    paneWidth,
+    onScrollToColumnHandled,
+  ])
+
+  // Most of a table's surface (body/header cell text) isn't natively
+  // focusable, so a plain click there never moves focus into the table. Make
+  // the root a focus sink: clicking anywhere without a closer focusable
+  // target focuses the root itself, so "focus is inside the table" (below)
+  // also covers plain cell clicks. Real controls (header sort buttons,
+  // checkboxes, filter triggers) keep taking focus natively — this only
+  // fires when nothing closer already would.
+  const tableRootRef = useRef<HTMLDivElement | null>(null)
+  const handleTableMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!enableColumnJump) return
+      const target = e.target as HTMLElement
+      if (target.closest('button, a[href], input, select, textarea, [tabindex]')) return
+      tableRootRef.current?.focus({ preventScroll: true })
+    },
+    [enableColumnJump],
+  )
+
+  // Mouse-hover scoping: lets Ctrl+G work with zero prior interaction (no
+  // click, no focus) as long as the cursor is over the table. Read only at
+  // keydown time, so hovering never itself steals focus from elsewhere.
+  const isHoveredRef = useRef(false)
+  const handleTableMouseEnter = useCallback(() => {
+    if (!enableColumnJump) return
+    isHoveredRef.current = true
+  }, [enableColumnJump])
+  const handleTableMouseLeave = useCallback(() => {
+    isHoveredRef.current = false
+  }, [])
+
+  // The shortcut listener lives on `document` (not a React onKeyDown on the
+  // root) because hover-scoping must work regardless of where DOM focus
+  // currently is — a keydown only bubbles from the focused element, which
+  // may be nowhere near this table while the mouse hovers it. Each mounted
+  // table decides independently whether to act: `columnJumpGlobalShortcut`
+  // opts out of scoping entirely, otherwise it fires only when the mouse is
+  // over this table or focus is already inside it.
+  useEffect(() => {
+    if (!enableColumnJump) return
+    const handleDocumentKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'g') return
+      if (!columnJumpGlobalShortcut) {
+        const focusInside = tableRootRef.current?.contains(document.activeElement) ?? false
+        if (!focusInside && !isHoveredRef.current) return
+      }
+      e.preventDefault()
+      setColumnJumpOpen(true)
+    }
+    document.addEventListener('keydown', handleDocumentKeyDown)
+    return () => document.removeEventListener('keydown', handleDocumentKeyDown)
+  }, [enableColumnJump, columnJumpGlobalShortcut])
 
   // ----- Rows + row virtualization -----
 
@@ -1377,15 +1528,29 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   return (
     <div
+      ref={tableRootRef}
       data-tgx-table=""
       className={cn(
-        'relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-card text-card-foreground',
+        'relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-card text-card-foreground outline-none',
         bordered && 'rounded-md border border-border',
         !maxHeight && 'flex-1',
         classNames?.root,
       )}
       style={maxHeight ? { maxHeight } : undefined}
+      tabIndex={enableColumnJump ? -1 : undefined}
+      onMouseDown={handleTableMouseDown}
+      onMouseEnter={handleTableMouseEnter}
+      onMouseLeave={handleTableMouseLeave}
     >
+      {enableColumnJump && (
+        <ColumnJumpDialog
+          open={columnJumpOpen}
+          onOpenChange={setColumnJumpOpen}
+          entries={columnJumpEntries}
+          onSelect={handleColumnJumpSelect}
+          className={classNames?.columnJumpDialog}
+        />
+      )}
       {hasToolbarRow && (
         <div
           data-tgx-toolbar=""
