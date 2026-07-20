@@ -59,7 +59,7 @@ Available on `ReadOnlyTable`, `EditableTable`, and `TabbedTable` (extra tab slot
 />
 ```
 
-Full base slot set: `root`, `toolbar`, `filterBadges`, `headerRow`, `headerCell`, `groupHeaderCell`, `bodyRow`, `bodyCell`, `footerRow`, `footerCell`, `empty`, `skeleton`, `recordCount` (the opt-in record-count region — top strip count or bottom corner annotation).
+Full base slot set: `root`, `toolbar`, `filterBadges`, `headerRow`, `headerCell`, `groupHeaderCell`, `bodyRow`, `bodyCell`, `footerRow`, `footerCell`, `empty`, `skeleton`, `recordCount` (the opt-in record-count region — top strip count or bottom corner annotation), `columnJumpDialog` (the Ctrl+G "jump to column" dialog), `confirmDialog` (the cell-action confirmation dialog shown for `CellAction.confirm`).
 
 TabbedTable adds: `container`, `tabStrip`, `tab`, `activeTab`, `inactiveTab`, `tabIndicator`, `tabScrollButton` (the Excel-style step arrows shown when the tab strip overflows), `panel`.
 
@@ -90,6 +90,7 @@ Caller classes merge with defaults via `tailwind-merge` (caller wins).
 | `[data-tgx-row]` / `[data-tgx-cell]` / `[data-tgx-header]` | Row/cell/header |
 | `[data-tgx-pop]` | Popovers/menus |
 | `[data-tgx-dialog]` | Confirm dialogs |
+| `[data-tgx-sort-affordance]` | Sort icon/priority-badge wrapper in header cells |
 
 ### Translucent / glass themes
 

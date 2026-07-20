@@ -20,16 +20,19 @@ type CellActionsProps<TRow extends TableRowData> = {
   actions: CellAction<TableRowData>[]
   row: TRow
   isSubmitting?: boolean
+  confirmDialogClassName?: string
 }
 
 function ActionButton<TRow extends TableRowData>({
   action,
   row,
   isSubmitting,
+  confirmDialogClassName,
 }: {
   action: CellActionButton<TableRowData>
   row: TRow
   isSubmitting?: boolean
+  confirmDialogClassName?: string
 }) {
   const [busy, setBusy] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -94,7 +97,11 @@ function ActionButton<TRow extends TableRowData>({
     <>
       {button}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent onClick={isolate} onDoubleClick={isolate}>
+        <AlertDialogContent
+          className={confirmDialogClassName}
+          onClick={isolate}
+          onDoubleClick={isolate}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>{action.confirm.title}</AlertDialogTitle>
             {action.confirm.description && (
@@ -129,6 +136,7 @@ export function CellActions<TRow extends TableRowData>({
   actions,
   row,
   isSubmitting,
+  confirmDialogClassName,
 }: CellActionsProps<TRow>) {
   const visible = actions.filter((action) => action.isHidden?.(row) !== true)
   if (visible.length === 0) return null
@@ -151,7 +159,13 @@ export function CellActions<TRow extends TableRowData>({
             {action.render(row)}
           </span>
         ) : (
-          <ActionButton key={action.id} action={action} row={row} isSubmitting={isSubmitting} />
+          <ActionButton
+            key={action.id}
+            action={action}
+            row={row}
+            isSubmitting={isSubmitting}
+            confirmDialogClassName={confirmDialogClassName}
+          />
         ),
       )}
     </span>

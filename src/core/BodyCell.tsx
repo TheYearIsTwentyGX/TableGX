@@ -52,6 +52,8 @@ export type BodyCellProps<TRow extends TableRowData> = {
    * instead of a fixed height.
    */
   autoHeight?: boolean
+  /** Class override for the cell-action confirmation dialog (see `TableClassNames.confirmDialog`). */
+  confirmDialogClassName?: string
 }
 
 /** Single body cell renderer implementing the spec §6 decision order. */
@@ -72,6 +74,7 @@ function BodyCellInner<TRow extends TableRowData>({
   className,
   rowHeightPx = ROW_HEIGHT_PX,
   autoHeight = false,
+  confirmDialogClassName,
 }: BodyCellProps<TRow>) {
   const meta = (cell.column.columnDef.meta ?? {}) as TableColumnMeta
   const row = cell.row
@@ -221,7 +224,12 @@ function BodyCellInner<TRow extends TableRowData>({
         />
       )}
       {actions && actions.length > 0 && (
-        <CellActions actions={actions} row={row.original} isSubmitting={isSubmitting} />
+        <CellActions
+          actions={actions}
+          row={row.original}
+          isSubmitting={isSubmitting}
+          confirmDialogClassName={confirmDialogClassName}
+        />
       )}
     </div>
   )

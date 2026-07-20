@@ -147,6 +147,18 @@ Body rows are a fixed **56px** by default. `rowHeight` overrides that:
 
 Source: src/types.ts
 
+### Virtualization toggles
+
+`enableRowVirtualization` and `enableColumnVirtualization` (both default `true`) are explicit escape hatches, independent of the `rowHeight="auto"` behavior above:
+
+```tsx
+<ReadOnlyTable enableRowVirtualization={false} enableColumnVirtualization={false} ... />
+```
+
+Turn one or both off for small tables, print/export views, or snapshot tests where virtualization overhead outweighs its benefit — e.g. a handful of rows/columns, or a DOM you need fully present (not windowed) for a screenshot or `document.querySelectorAll` pass. Recall `rowHeight="auto"` already forces column virtualization off automatically; these props let you opt out of either axis directly and unconditionally, regardless of `rowHeight`.
+
+Source: src/types.ts
+
 ### Nested rows
 
 ```tsx

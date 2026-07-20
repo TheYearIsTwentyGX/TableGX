@@ -4,15 +4,15 @@
     "tablegx-advanced": {
       "sources_sha": {
         "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/types.ts": "226867b3baa1f1f5b3c495e71eb08b26c0515f6d7079a2e7cdf8bb76cc96274a",
-        "src/components/TabbedTable.tsx": "fb6873fca26ea7e47a9092009341eb4644633610e24a0adbf1beb3396f44dba2",
-        "src/components/IndependentTabbedTable.tsx": "ab6e544a20acfbd156c2976aeaa72b1bff55167f02bf2fb8fab4189166753c73"
+        "src/types.ts": "e6606e615e3921d7d1e18d7c02f5e015baed00ca859a20a79839d97658230168",
+        "src/components/TabbedTable.tsx": "afc3953333fa9474e43eb6a9243253e9afb8eb605c6c1e1a1fb05e3fb32c92ec",
+        "src/components/IndependentTabbedTable.tsx": "9b77ea11cd5c922b43993267a57929befea9b82d3eb1e33e5d6190ca02ae92da"
       }
     },
     "tablegx-editing": {
       "sources_sha": {
         "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/types.ts": "226867b3baa1f1f5b3c495e71eb08b26c0515f6d7079a2e7cdf8bb76cc96274a",
+        "src/types.ts": "e6606e615e3921d7d1e18d7c02f5e015baed00ca859a20a79839d97658230168",
         "src/lib/columns.tsx": "758156b17699a29ed136889ba7bccca3f5bdf0aa344f5ba1c2231d2215316bca"
       }
     },

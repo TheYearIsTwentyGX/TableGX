@@ -216,6 +216,8 @@ export type TableClassNames = {
   recordCount?: string
   /** The Ctrl+G "jump to column" dialog (see `enableColumnJump`). */
   columnJumpDialog?: string
+  /** The cell-action confirmation dialog (see `CellAction.confirm`). */
+  confirmDialog?: string
 }
 
 /** Class overrides for the TabbedTable chrome. */

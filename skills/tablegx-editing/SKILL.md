@@ -136,6 +136,31 @@ customColumn<Row>('tags', 'Tags', ({ row }) => (
 - For interactive children inside a custom cell, spread `cellInteractionProps` (or call `isolateCellEvent`) so their clicks don't trigger selection/expand/edit.
 - `meta.onCellClick(ctx, e)` makes the whole cell clickable; on an editable column it does NOT also auto-enter edit.
 
+### Column groups
+
+`columnGroups` renders a second header row of spanning group labels above the normal column headers. It's an editable-table-only feature: pass it to `EditableTable`, or to a `TabbedTable`/`IndependentTabbedTable` tab with `editable: true` (non-editable tabs ignore it).
+
+```tsx
+import type { ColumnGroupDef } from '@twentygx/tablegx'
+
+const columnGroups: ColumnGroupDef[] = [
+  { id: 'identity', label: 'Identity', columnIds: ['dba', 'state'] },
+  { id: 'metrics', label: 'Metrics', columnIds: ['beds', 'isActive'] },
+]
+
+<EditableTable
+  columnGroups={columnGroups}
+  classNames={{ groupHeaderCell: 'font-semibold' }}
+  ...
+/>
+```
+
+- `ColumnGroupDef` is `{ id, label, columnIds }` — `columnIds` lists the leaf columns the group spans, in display order.
+- Style the group header row via `classNames.groupHeaderCell`.
+- Setting `columnGroups` disables the built-in column-visibility picker — grouped headers and per-column hide/show don't currently compose, so hide columns yourself upstream (e.g. by omitting them from your column defs) if you need both.
+
+Source: src/types.ts, src/components/TabbedTable.tsx, src/components/IndependentTabbedTable.tsx
+
 ## Common Mistakes
 
 ### CRITICAL meta.editable without editableColumnIds whitelist

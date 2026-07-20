@@ -243,6 +243,7 @@ type RowCellContext<TRow extends TableRowData> = {
   onDirectBooleanSave: (cell: Cell<TRow, unknown>, value: boolean) => void
   getCellClassName?: (row: TRow, columnId: string) => string | undefined
   bodyCellClassName?: string
+  confirmDialogClassName?: string
   /** Content-driven row height (`rowHeight: 'auto'`): cells wrap + grow. */
   autoHeight: boolean
   /** Resolved fixed pixel height for this row (ignored when `autoHeight`). */
@@ -287,6 +288,7 @@ function renderBodyCell<TRow extends TableRowData>(
       autoHeight={ctx.autoHeight}
       rowHeightPx={ctx.rowHeightPx}
       className={cn(ctx.bodyCellClassName, ctx.getCellClassName?.(ctx.row.original, columnId))}
+      confirmDialogClassName={ctx.confirmDialogClassName}
     />
   )
 }
@@ -400,6 +402,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
         onDirectBooleanSave={props.onDirectBooleanSave}
         getCellClassName={props.getCellClassName}
         bodyCellClassName={props.bodyCellClassName}
+        confirmDialogClassName={props.confirmDialogClassName}
         autoHeight={autoHeight}
         rowHeightPx={rowHeightPx}
       />,
@@ -1754,6 +1757,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                     getCellClassName={getCellClassName}
                     bodyRowClassName={classNames?.bodyRow}
                     bodyCellClassName={classNames?.bodyCell}
+                    confirmDialogClassName={classNames?.confirmDialog}
                     pinnedPaneX={pinnedPaneX}
                     autoHeight={autoRowHeight}
                     rowHeightPx={resolveRowHeight(row)}
@@ -1795,6 +1799,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                       getCellClassName={getCellClassName}
                       bodyRowClassName={classNames?.bodyRow}
                       bodyCellClassName={classNames?.bodyCell}
+                      confirmDialogClassName={classNames?.confirmDialog}
                       pinnedPaneX={pinnedPaneX}
                       autoHeight={autoRowHeight}
                       rowHeightPx={resolveRowHeight(row)}
