@@ -164,26 +164,30 @@
   animation: tgx-fade-out 100ms ease-in;
 }
 
-/* Centered dialog needs its translate preserved inside the animation. */
+/* Centering comes from the -translate-x-1/2/-translate-y-1/2 utilities, which
+   Tailwind v4 applies via the native `translate` property. Baking translate
+   into these `transform` keyframes as well would stack on top of that native
+   translate for the animation's duration, then snap away once the animation
+   (and its transform) ends — so only scale is animated here. */
 @keyframes tgx-dialog-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 }
 
 @keyframes tgx-dialog-out {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: scale(0.95);
   }
 }
 
