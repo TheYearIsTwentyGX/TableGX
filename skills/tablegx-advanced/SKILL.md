@@ -5,11 +5,13 @@ description: >-
   IndependentTabbedTable (fully separate per-tab tables), idColumn, nested rows
   (enableExpanding, getSubRows), footer aggregates on filtered leaves, column
   visibility persistence, frozen columns during tab slide, hover tab column
-  preview (enableTabColumnPreview). Use for tabbed views, tree grids, or
-  shared/independent filter/selection across column sets.
+  preview (enableTabColumnPreview), Ctrl+G column jump (enableColumnJump),
+  frozen sort order across data changes. Use for tabbed views, tree grids,
+  shared/independent filter/selection across column sets, or jump-to-column
+  navigation.
 type: core
 library: tablegx
-library_version: "3.1.0"
+library_version: "3.3.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -129,6 +131,36 @@ The active tab can be uncontrolled (`defaultTabId`) or controlled (`activeTabId`
 **Per-tab independence:** each tab keeps its own sorting, column filters, row selection, and column visibility, lifted by tab `id` so state survives tab switches. Chrome (filter badges, column picker, loading/empty states) reflects only the active tab. There is no `idColumn` and no cross-tab intersection — that concept is exclusive to `TabbedTable`. Column visibility persistence uses a full `columnVisibilityStorageKey` per tab (not a shared base). Frozen columns aren't shared across tabs, so the frozen pane slides out with the scrolling pane during the transition (`TabbedTable` instead keeps its shared frozen pane visually static).
 
 ## Core Patterns
+
+### Sorting — frozen across data changes
+
+Row order only recomputes on an explicit sort action (a header click, `enableMultiSort` shift-click, or a controlled-sorting-prop change) — it never resorts just because `data` changed, so editing a value in the sorted column doesn't yank that row out from under the user mid-edit. A row added while sorted is inserted at its correct comparator-based slot without disturbing the others; if that slot is outside the current scroll position the table snaps to it (no animation) and flashes it via `[data-tgx-just-added]` (see tablegx-theming). Applies to `ReadOnlyTable`, `EditableTable`, `TabbedTable`, and `IndependentTabbedTable` — no prop to enable, it's the default.
+
+On `TabbedTable`, this composes with the shared-sort behavior above: since only the **active** tab stays mounted (inactive tabs unmount), switching away and back resets that tab's frozen order to a fresh sort by current values. This is consistent with how other per-tab transient UI state behaves here — not a bug, but worth knowing if a "did my row move?" report only reproduces after a tab switch.
+
+Source: README.md
+
+### Column jump (Ctrl+G / Cmd+G)
+
+```tsx
+<ReadOnlyTable
+  data={data}
+  columns={columns}
+  getRowId={(r) => r.id}
+  enableColumnJump
+  columnJumpIncludeHidden   // default true — un-hides a hidden column on selection
+  // columnJumpGlobalShortcut // default false — see caveat below
+  classNames={{ columnJumpDialog: 'max-w-md' }}
+/>
+```
+
+Ctrl+G (Cmd+G on Mac) opens a searchable dialog listing every column; picking one scrolls it into view. Available on `ReadOnlyTable`, `EditableTable`, `TabbedTable`, and `IndependentTabbedTable` — on the tabbed variants the dialog lists columns across **all** tabs, and picking one on another tab switches to it first, then scrolls.
+
+- `columnJumpIncludeHidden` (default true): whether hidden columns appear in the list; selecting one un-hides it.
+- `columnJumpGlobalShortcut` (default false): by default the shortcut is scoped to hover-or-focus — it fires only while the mouse is over a table with `enableColumnJump`, or focus is already inside one, so multiple such tables can coexist on a page without stealing each other's keypress. Setting this to `true` makes the shortcut fire unconditionally whenever this table is mounted — only do that when you know at most one `enableColumnJump` table is mounted at a time.
+- Style the dialog with `classNames.columnJumpDialog`.
+
+Source: src/types.ts
 
 ### Row height
 

@@ -107,6 +107,14 @@ import { EditableTable, textColumn, booleanColumn } from '@twentygx/tablegx'
 
 A column is editable only when **both** `meta.editable: true` is set on the column *and* its id is in `editableColumnIds`. Editor type comes from `meta.inputType` (`'text' | 'number' | 'boolean' | 'select'`). Keyboard: **Enter** commits (Shift+Enter inserts a newline in text cells), **Escape** cancels, **blur** commits, **Tab / Shift+Tab** commits and moves to the adjacent editable cell. With `singleClickEdit`, boolean cells become directly interactive checkboxes.
 
+### Sorting
+
+Click a header to sort; shift-click adds another column when `enableMultiSort` is set, showing priority badges. Row order stays **frozen across data changes** — editing a cell, or any other update to `data`, never resorts the table; only clicking a header (or another explicit sort action) does. A row added while sorted is inserted at its correct sorted position without disturbing the others, snapping into view (no scroll animation) and briefly highlighting if it lands outside the current scroll position.
+
+### Column jump (Ctrl+G / Cmd+G)
+
+`enableColumnJump` adds a searchable "jump to column" dialog, available on `ReadOnlyTable`, `EditableTable`, `TabbedTable`, and `IndependentTabbedTable`. Ctrl+G (Cmd+G on Mac) opens it; picking a column scrolls it into view, un-hiding it first if needed — on `TabbedTable`/`IndependentTabbedTable`, picking a column that lives on another tab switches to that tab. `columnJumpIncludeHidden` (default true) controls whether hidden columns are listed. By default the shortcut is scoped to hover-or-focus — it only fires while the mouse is over a table with `enableColumnJump`, or focus is already inside one; set `columnJumpGlobalShortcut` to fire regardless of hover/focus, but only when at most one such table is mounted at a time, since every mounted table with it set would otherwise respond to the same keypress. Style the dialog with `classNames.columnJumpDialog`.
+
 ### Tabbed views
 
 ```tsx
@@ -196,9 +204,10 @@ Aggregates compute over the **currently-filtered leaf rows** — collapsed-but-m
 
 - `classNames` slot object on every component (`root`, `toolbar`, `filterBadges`, `headerRow`, `headerCell`, `groupHeaderCell`, `bodyRow`, `bodyCell`, `footerRow`, `footerCell`, `empty`, `skeleton`, plus `container`/`tabStrip`/`tab`/`activeTab`/`inactiveTab`/`tabIndicator`/`panel` on `TabbedTable`). Caller classes win (merged with `tailwind-merge`).
 - `getCellClassName(row, columnId)` for per-cell conditional styling (e.g. pending-edit highlights).
-- All colors flow through CSS variables; override `--primary`, `--card`, `--tgx-header-bg`, `--tgx-row-hover-bg`, `--tgx-row-selected-bg`, … to retheme.
-- Stable data-attribute hooks for plain-CSS theming (e.g. backdrop blurs on translucent themes): `[data-tgx-table]`, `[data-tgx-tabbed-table]`, `[data-tgx-editable]`, `[data-tgx-toolbar]`, `[data-tgx-header-block]` (the sticky header), `[data-tgx-footer-row]`, `[data-tgx-pinned]` (every frozen pane: header, body rows, footer), `[data-tgx-tab-strip]`, `[data-tgx-row]`, `[data-tgx-cell]`, `[data-tgx-header]`, `[data-tgx-pop]` (popovers/menus), `[data-tgx-dialog]`. If you give the header/pinned surfaces translucent backgrounds, pair them with a `backdrop-filter` on `[data-tgx-header-block]` / `[data-tgx-pinned]` so rows scrolling behind them don't bleed through.
+- All colors flow through CSS variables; override `--primary`, `--card`, `--tgx-header-bg`, `--tgx-row-hover-bg`, `--tgx-row-selected-bg`, `--tgx-row-just-added-bg`, … to retheme.
+- Stable data-attribute hooks for plain-CSS theming (e.g. backdrop blurs on translucent themes): `[data-tgx-table]`, `[data-tgx-tabbed-table]`, `[data-tgx-editable]`, `[data-tgx-toolbar]`, `[data-tgx-header-block]` (the sticky header), `[data-tgx-footer-row]`, `[data-tgx-pinned]` (every frozen pane: header, body rows, footer), `[data-tgx-tab-strip]`, `[data-tgx-row]`, `[data-tgx-cell]`, `[data-tgx-header]`, `[data-tgx-just-added]` (a row just inserted under a frozen sort, see Sorting), `[data-tgx-pop]` (popovers/menus), `[data-tgx-dialog]`. If you give the header/pinned surfaces translucent backgrounds, pair them with a `backdrop-filter` on `[data-tgx-header-block]` / `[data-tgx-pinned]` so rows scrolling behind them don't bleed through.
 - `[data-tgx-editable]` reflects **effective, per-user editability**, not just an `editable` prop: on a single table it's present only when `editable` is true AND at least one currently-visible column is actually editable (same gating cells use — a column can be nominally editable but excluded by `editableColumnIds` or hidden via the visibility picker, in which case the attribute is absent). On `TabbedTable`/`IndependentTabbedTable`, the attribute is on the tabbed container (alongside `[data-tgx-tabbed-table]`) and is present if **any** tab is editable, even while the active tab is read-only — so an app can detect "this user can edit something here" via `document.querySelector('[data-tgx-editable]')` regardless of which tab is showing.
+- `[data-tgx-just-added]` is set on a row for ~1.4s right after it's inserted under a frozen sort (see Sorting); it drives the default flash animation via `--tgx-row-just-added-bg` and is a hook for a custom one.
 - `measure?: (text, font) => number` lets you inject a custom text measurer (also how tests stub measurement).
 
 ## SSR

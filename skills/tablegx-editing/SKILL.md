@@ -7,7 +7,7 @@ description: >-
   Use when implementing editable grids, cell action buttons, or column meta.
 type: core
 library: tablegx
-library_version: "3.1.0"
+library_version: "3.3.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -106,6 +106,12 @@ For anything the declarative button can't express (popover triggers, menus), use
 - **blur** commits
 - **Tab / Shift+Tab** commits and moves to adjacent editable cell
 - `singleClickEdit`: boolean cells use interactive checkboxes directly
+
+### Detecting editability from outside the table
+
+`[data-tgx-editable]` reflects **effective, per-user editability**, not just the `editable` prop. On a single table it's present only when `editable` is true AND at least one currently-visible column is actually editable — the same gating cells use, so a column that's nominally editable but excluded by `editableColumnIds` or hidden via the visibility picker doesn't count. On `TabbedTable`/`IndependentTabbedTable` the attribute lives on the tabbed container and is present if **any** tab is editable, even while the active tab is read-only. Use `document.querySelector('[data-tgx-editable]')` (or plain CSS) to detect "this user can edit something here" without threading editability state through your own app.
+
+Source: README.md
 
 ### Row height
 

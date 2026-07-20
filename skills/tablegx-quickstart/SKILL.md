@@ -8,7 +8,7 @@ description: >-
   tablegx, configuring Tailwind for tablegx, or building a first read-only data grid.
 type: lifecycle
 library: tablegx
-library_version: "3.1.0"
+library_version: "3.3.0"
 sources:
   - "README.md"
   - "src/index.ts"
