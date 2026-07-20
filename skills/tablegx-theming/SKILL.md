@@ -7,7 +7,7 @@ description: >-
   Material/Fluent-style skins, or per-cell conditional classes.
 type: core
 library: tablegx
-library_version: "3.1.0"
+library_version: "3.3.0"
 sources:
   - "README.md"
   - "src/theme.css"
@@ -82,14 +82,30 @@ Caller classes merge with defaults via `tailwind-merge` (caller wins).
 | -------- | ------ |
 | `[data-tgx-table]` | Table root |
 | `[data-tgx-tabbed-table]` | TabbedTable root |
+| `[data-tgx-editable]` | Present when the table (or, on tabbed variants, any tab) is effectively editable — see tablegx-editing |
 | `[data-tgx-toolbar]` | Toolbar |
 | `[data-tgx-header-block]` | Sticky header |
 | `[data-tgx-footer-row]` | Footer |
 | `[data-tgx-pinned]` | Frozen pane (header, body, footer) |
 | `[data-tgx-tab-strip]` | Tab bar |
 | `[data-tgx-row]` / `[data-tgx-cell]` / `[data-tgx-header]` | Row/cell/header |
+| `[data-tgx-just-added]` | Set on a row for ~1.4s right after it's inserted under a frozen sort |
 | `[data-tgx-pop]` | Popovers/menus |
 | `[data-tgx-dialog]` | Confirm dialogs |
+
+### New-row flash
+
+Inserting a row while sorted (see tablegx-advanced → Sorting) briefly flashes it via `[data-tgx-just-added]` and the `--tgx-row-just-added-bg` token, animated by the built-in `tgx-row-flash` keyframes (1400ms). Override the variable to retheme the flash color, or target the attribute directly for a fully custom animation:
+
+```css
+:root {
+  --tgx-row-just-added-bg: oklch(0.9 0.1 140); /* retheme */
+}
+
+[data-tgx-just-added] {
+  animation: my-custom-flash 800ms ease-out; /* replace the default entirely */
+}
+```
 
 ### Translucent / glass themes
 

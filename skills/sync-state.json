@@ -1,31 +1,31 @@
 {
-  "library_version": "3.1.0",
+  "library_version": "3.3.0",
   "skills": {
     "tablegx-advanced": {
       "sources_sha": {
-        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/types.ts": "226867b3baa1f1f5b3c495e71eb08b26c0515f6d7079a2e7cdf8bb76cc96274a",
-        "src/components/TabbedTable.tsx": "fb6873fca26ea7e47a9092009341eb4644633610e24a0adbf1beb3396f44dba2",
-        "src/components/IndependentTabbedTable.tsx": "ab6e544a20acfbd156c2976aeaa72b1bff55167f02bf2fb8fab4189166753c73"
+        "README.md": "a76fe207601e23c38a57b80284c2c5b4291e0279ec24d6a980e76a82edd6be42",
+        "src/types.ts": "4d42e15c5f0855eb9c99c69e7ab5b3bde2c69f72a35335b292bd36e43d8f5896",
+        "src/components/TabbedTable.tsx": "fa349f82661aae771af8044b1b6d0c151239be9d1adbc436c1427618d097b1da",
+        "src/components/IndependentTabbedTable.tsx": "b5dd5f5ff7756f62405247606cc01a3bb6e59e0476dcfb54b377685f0c9c28da"
       }
     },
     "tablegx-editing": {
       "sources_sha": {
-        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/types.ts": "226867b3baa1f1f5b3c495e71eb08b26c0515f6d7079a2e7cdf8bb76cc96274a",
+        "README.md": "a76fe207601e23c38a57b80284c2c5b4291e0279ec24d6a980e76a82edd6be42",
+        "src/types.ts": "4d42e15c5f0855eb9c99c69e7ab5b3bde2c69f72a35335b292bd36e43d8f5896",
         "src/lib/columns.tsx": "758156b17699a29ed136889ba7bccca3f5bdf0aa344f5ba1c2231d2215316bca"
       }
     },
     "tablegx-quickstart": {
       "sources_sha": {
-        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
+        "README.md": "a76fe207601e23c38a57b80284c2c5b4291e0279ec24d6a980e76a82edd6be42",
         "src/index.ts": "61908a80e3e42571c8c3ff1ff3ded68cafbdb2607ce845800caf3962c3858bcc"
       }
     },
     "tablegx-theming": {
       "sources_sha": {
-        "README.md": "706bee8c995ae1da43156386a657b6289cbdd0abe426128d46b16357ef5c8283",
-        "src/theme.css": "db38535a77210df8d7f5e7ee1d72021101ea4cbf397092d7f49c8414bec05340"
+        "README.md": "a76fe207601e23c38a57b80284c2c5b4291e0279ec24d6a980e76a82edd6be42",
+        "src/theme.css": "c4b981258e7f5c4b9afa869f711eeb85cbc4dc32da2fabcef0a853d9caf4c02e"
       }
     }
   }
