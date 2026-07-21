@@ -341,7 +341,32 @@ export type AdvancedFeatureProps<TRow> = {
   expanded?: Record<string, boolean>
   onExpandedChange?: (next: Record<string, boolean>) => void
   defaultExpanded?: boolean | Record<string, boolean>
+  /**
+   * Per-column visibility/editability resolved by the host app (e.g. a
+   * permissions/policy layer it owns) and handed in as a plain, already-
+   * resolved object — TableGX does not fetch, cache, or interpret how these
+   * values were derived. See {@link ColumnAccessMap}.
+   */
+  columnAccess?: ColumnAccessMap
 }
+
+/**
+ * Per-column resolved access, supplied by the host app. A column id
+ * **absent** from the map is unrestricted: existing static
+ * `meta.editable`/`editableColumnIds`/`enableHiding` config decides it,
+ * exactly as if `columnAccess` were never passed at all — this is what
+ * makes per-column, incremental adoption possible.
+ *
+ * - `visible: false` removes the column entirely (rendering, sizing, the
+ *   visibility picker, column-jump — everywhere). Anything else (`true`,
+ *   or the key present without a `visible` field) renders normally.
+ * - `editable: false` blocks edit mode for that column regardless of its
+ *   own `meta.editable`/`editableColumnIds` static config. `editable: true`
+ *   likewise grants edit mode regardless of that static config. Governance
+ *   is authoritative, not merely a further restriction, for any column
+ *   present in the map — see the design doc for why (override, not relax).
+ */
+export type ColumnAccessMap = Record<string, { visible?: boolean; editable?: boolean }>
 
 /**
  * Internal — one row of the Ctrl+G "jump to column" dialog (see
@@ -437,6 +462,13 @@ export type CommonTab<TRow extends TableRowData> = {
   initialSorting?: SortingState
   columnVisibilityStorageKey?: string
   columnLabel?: (columnId: string) => string
+  /**
+   * This tab's resolved column visibility/editability (see
+   * {@link ColumnAccessMap}). Per-tab, not a whole-`TabbedTable` prop — each
+   * tab owns its own columns and permissions, exactly like `columns` and
+   * `editableColumnIds` already do.
+   */
+  columnAccess?: ColumnAccessMap
 }
 
 export type ReadOnlyTab<TRow extends TableRowData> = CommonTab<TRow> & { editable?: false }
@@ -509,6 +541,8 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   enableExpanding?: boolean
   getSubRows?: (row: TRow) => TRow[] | undefined
   defaultExpanded?: boolean | Record<string, boolean>
+  /** This tab's resolved column visibility/editability (see {@link ColumnAccessMap}). */
+  columnAccess?: ColumnAccessMap
 }
 
 export type ReadOnlyIndependentTab<TRow extends TableRowData> = IndependentTabBase<TRow> & {

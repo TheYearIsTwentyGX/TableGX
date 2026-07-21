@@ -7,7 +7,7 @@ description: >-
   Use when implementing editable grids, cell action buttons, or column meta.
 type: core
 library: tablegx
-library_version: "3.3.0"
+library_version: "3.4.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -112,6 +112,21 @@ For anything the declarative button can't express (popover triggers, menus), use
 `[data-tgx-editable]` reflects **effective, per-user editability**, not just the `editable` prop. On a single table it's present only when `editable` is true AND at least one currently-visible column is actually editable — the same gating cells use, so a column that's nominally editable but excluded by `editableColumnIds` or hidden via the visibility picker doesn't count. On `TabbedTable`/`IndependentTabbedTable` the attribute lives on the tabbed container and is present if **any** tab is editable, even while the active tab is read-only. Use `document.querySelector('[data-tgx-editable]')` (or plain CSS) to detect "this user can edit something here" without threading editability state through your own app.
 
 Source: README.md
+
+### Column access governance (`columnAccess`)
+
+Opt-in per-column override supplied by the host app (e.g. a permissions layer it owns), on top of — and independent from — `editableColumnIds`/`meta.editable`:
+
+```tsx
+<EditableTable
+  columns={columns}
+  editableColumnIds={['name']}
+  columnAccess={{ state: { editable: false }, region: { editable: true, visible: true } }}
+  ...
+/>
+```
+
+A column id **absent** from `columnAccess` behaves exactly as it would with the prop omitted entirely — `editableColumnIds`/`meta.editable` still decide it. A column **present** is authoritative: `visible: false` removes it from the table completely (not just the visibility-picker toggle); `editable` is an **override, not a further restriction** — `editable: true` grants edit mode even if the column is absent from `editableColumnIds` or lacks `meta.editable`, and `editable: false` blocks it even if both of those would otherwise allow it. This is what lets a host retire a hardcoded `editableColumnIds` array one governed column at a time instead of maintaining it forever underneath governance. See tablegx-advanced/SKILL.md → Column access governance for the per-tab (`TabbedTable`/`IndependentTabbedTable`) form.
 
 ### Row height
 

@@ -119,6 +119,7 @@ export function independentTable<TRow extends TableRowData>(
       <TableCore<TRow>
         data={config.data}
         columns={config.columns}
+        columnAccess={config.columnAccess}
         getRowId={config.getRowId}
         editable={config.editable === true}
         editableColumnIds={config.editable === true ? config.editableColumnIds : undefined}

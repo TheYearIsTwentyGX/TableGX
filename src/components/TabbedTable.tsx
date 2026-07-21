@@ -187,6 +187,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
           <TableCore<TRow>
             data={(args.sharedData as TRow[] | undefined) ?? data}
             columns={tab.columns}
+            columnAccess={tab.columnAccess}
             getRowId={getRowId}
             editable={tab.editable === true}
             editableColumnIds={tab.editable === true ? tab.editableColumnIds : undefined}

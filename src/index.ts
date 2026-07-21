@@ -107,6 +107,7 @@ export type {
   ReadOnlyIndependentTab,
   EditableIndependentTab,
   IndependentTabConfig,
+  ColumnAccessMap,
 } from './types'
 
 // Column factory helpers
@@ -126,6 +127,7 @@ export type { CellOverflowListProps } from './core/CellOverflowList'
 export { isolateCellEvent, cellInteractionProps } from './lib/isolate'
 
 // Utilities
+export { getColumnId } from './hooks/useAutoColumnWidths'
 export { getCellEditValue } from './lib/cell'
 export { formatDateSafe, parseDateSafe } from './lib/date'
 export { computeAggregate } from './lib/aggregates'

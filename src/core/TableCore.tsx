@@ -534,6 +534,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     onJumpToForeignColumn,
     scrollToColumnId,
     onScrollToColumnHandled,
+    columnAccess,
   } = props
 
   // ----- Table state -----
@@ -639,13 +640,26 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const isSubmittingRef = useRef(isSubmitting)
   isSubmittingRef.current = isSubmitting
 
+  // Column-access governance (opt-in): a column present in `columnAccess`
+  // with `visible: false` is removed from the model entirely, before any
+  // other derived list is built from `columns` — so the visibility picker,
+  // column-jump, frozen-pane math, grouping, and the footer all inherit the
+  // filtering automatically with no feature-specific changes. A column
+  // absent from the map, or `columnAccess` omitted entirely, passes through
+  // unchanged (reference-equal short-circuit below), matching every other
+  // opt-in feature in this file.
+  const governedColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
+    if (!columnAccess) return columns
+    return columns.filter((c) => columnAccess[getColumnId(c)]?.visible !== false)
+  }, [columns, columnAccess])
+
   // Foreign columns referenced by the shared sort that this tab doesn't render,
   // normalized to hidden sort-only columns. They let the engine order rows by a
   // column owned by another tab; they're forced invisible below so they never
   // reach rendering, the frozen-pane split, auto widths, the picker, or footer.
   const sortOnlyLeafColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
     if (!sortOnlyColumns || sortOnlyColumns.length === 0) return []
-    const own = new Set(columns.map((c) => getColumnId(c)).filter(Boolean))
+    const own = new Set(governedColumns.map((c) => getColumnId(c)).filter(Boolean))
     const seen = new Set<string>()
     const out: ColumnDef<TRow, unknown>[] = []
     for (const col of sortOnlyColumns) {
@@ -655,10 +669,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       out.push(toSortOnlyColumn(col, id))
     }
     return out
-  }, [sortOnlyColumns, columns])
+  }, [sortOnlyColumns, governedColumns])
 
   const effectiveColumns = useMemo<ColumnDef<TRow, unknown>[]>(() => {
-    if (!enableRowSelection) return [...columns, ...sortOnlyLeafColumns]
+    if (!enableRowSelection) return [...governedColumns, ...sortOnlyLeafColumns]
     const selectionColumn: ColumnDef<TRow, unknown> = {
       id: SELECTION_COLUMN_ID,
       header: ({ table }) => {
@@ -706,10 +720,10 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       enableHiding: false,
       enableResizing: false,
     }
-    return [selectionColumn, ...columns, ...sortOnlyLeafColumns]
+    return [selectionColumn, ...governedColumns, ...sortOnlyLeafColumns]
     // isSubmitting is read via isSubmittingRef (see above) — not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, sortOnlyLeafColumns, enableRowSelection])
+  }, [governedColumns, sortOnlyLeafColumns, enableRowSelection])
 
   // Sorting is fully shared across tabs: a sort by any column reorders rows on
   // every tab, since all tabs are views over one dataset. Columns this tab
@@ -817,7 +831,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const autoWidths = useAutoColumnWidths(
     {
-      columns,
+      columns: governedColumns,
       data,
       getSubRows,
       enableExpanding,
@@ -870,12 +884,12 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const frozenColumnIds = useMemo(() => {
     const ids = new Set<string>()
     if (enableRowSelection) ids.add(SELECTION_COLUMN_ID)
-    for (const col of columns.slice(0, Math.max(0, frozenColumns))) {
+    for (const col of governedColumns.slice(0, Math.max(0, frozenColumns))) {
       const id = getColumnId(col)
       if (id) ids.add(id)
     }
     return ids
-  }, [columns, enableRowSelection, frozenColumns])
+  }, [governedColumns, enableRowSelection, frozenColumns])
   const pinnedColumns = visibleLeafColumns.filter((c) => frozenColumnIds.has(c.id))
   const scrollColumns = visibleLeafColumns.filter((c) => !frozenColumnIds.has(c.id))
   // The canonical frozen set is a prefix of the column order, so visible pinned
@@ -967,7 +981,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
 
   const columnJumpOwnEntries = useMemo<ColumnJumpEntry[]>(() => {
     if (!enableColumnJump) return []
-    return columns
+    return governedColumns
       .filter((c) => c.enableHiding !== false)
       .map((c) => {
         const id = getColumnId(c)
@@ -978,7 +992,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
         }
       })
       .filter((entry) => columnJumpIncludeHidden !== false || !entry.hidden)
-  }, [columns, columnLabel, visibility, enableColumnJump, columnJumpIncludeHidden])
+  }, [governedColumns, columnLabel, visibility, enableColumnJump, columnJumpIncludeHidden])
 
   const columnJumpEntries = useMemo<ColumnJumpEntry[]>(
     () => [...columnJumpOwnEntries, ...(columnJumpForeignEntries ?? [])],
@@ -1182,6 +1196,8 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   )
   const editableColumnIdsSetRef = useRef(editableColumnIdsSet)
   editableColumnIdsSetRef.current = editableColumnIdsSet
+  const columnAccessRef = useRef(columnAccess)
+  columnAccessRef.current = columnAccess
   const onSaveEditRef = useRef(onSaveEdit)
   onSaveEditRef.current = onSaveEdit
   const savePendingRef = useRef(savePending)
@@ -1196,6 +1212,15 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const canEditColumn = useCallback(
     (columnId: string, meta: { editable?: boolean } | undefined): boolean => {
       if (!editable) return false
+      // Column-access governance (opt-in): a column present in the map is
+      // authoritative for that column — override, not a further restriction
+      // on top of meta.editable/editableColumnIds — so a host can retire its
+      // static editableColumnIds allowlist one governed column at a time
+      // instead of maintaining it forever underneath governance. A column
+      // absent from the map falls through to the existing static config
+      // unchanged.
+      const governed = columnAccessRef.current?.[columnId]
+      if (governed) return governed.editable === true
       if (meta?.editable !== true) return false
       return editableColumnIdsSetRef.current?.has(columnId) ?? false
     },

@@ -11,7 +11,7 @@ description: >-
   navigation.
 type: core
 library: tablegx
-library_version: "3.3.0"
+library_version: "3.4.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -213,6 +213,16 @@ Aggregates run over **filtered leaf rows** — collapsed matching leaves still c
 columnVisibilityStorageKey="my-table"           // ReadOnlyTable / EditableTable
 columnVisibilityStorageKeyBase="my-tabs"        // TabbedTable → `${base}:${tab.id}`
 ```
+
+### Column access governance
+
+`columnAccess` (opt-in, per-tab — a field on each `TabbedTableTab`/`IndependentTabBase`, not a whole-instance prop) lets a host app narrow which columns render and which are editable, driven by data it resolves externally (e.g. a permissions layer):
+
+```tsx
+type ColumnAccessMap = Record<string, { visible?: boolean; editable?: boolean }>
+```
+
+A column id **absent** from the map is unrestricted — static `meta.editable`/`editableColumnIds`/`enableHiding` decide it exactly as if `columnAccess` were omitted. A column **present** with `visible: false` is removed entirely (header, body, the visibility picker, column-jump — everywhere), not just toggled via the user-facing picker. A column present with `editable` set is **authoritative** for that column — overriding, not merely restricting, its own `meta.editable`/`editableColumnIds` — so a host can retire a static allowlist one governed column at a time. See tablegx-editing for the base-table (`ReadOnlyTable`/`EditableTable`/`TableGX`) form of this same prop.
 
 ### Loading skeleton
 
