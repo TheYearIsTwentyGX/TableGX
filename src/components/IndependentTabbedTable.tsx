@@ -68,6 +68,8 @@ export function independentTable<TRow extends TableRowData>(
     initialSorting: config.initialSorting,
     enableColumnVisibility,
     enableRowSelection,
+    selectedRowIds: config.selectedRowIds,
+    onSelectedRowIdsChange: config.onSelectedRowIdsChange,
     enableGlobalSearch: config.enableGlobalSearch === true,
     searchPlaceholder: config.searchPlaceholder,
     columnVisibilityStorageKey: config.columnVisibilityStorageKey,

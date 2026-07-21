@@ -7,7 +7,7 @@ description: >-
   Use when implementing editable grids, cell action buttons, or column meta.
 type: core
 library: tablegx
-library_version: "3.4.0"
+library_version: "3.5.0"
 sources:
   - "README.md"
   - "src/types.ts"

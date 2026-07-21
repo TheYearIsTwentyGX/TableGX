@@ -543,6 +543,16 @@ export type IndependentTabBase<TRow extends TableRowData> = {
   defaultExpanded?: boolean | Record<string, boolean>
   /** This tab's resolved column visibility/editability (see {@link ColumnAccessMap}). */
   columnAccess?: ColumnAccessMap
+  /**
+   * Controlled selection for this tab (only meaningful when `enableRowSelection`
+   * is true). Omit both to keep this tab's selection uncontrolled (internal
+   * state, the pre-existing default) — pass both to lift it into the caller,
+   * e.g. for a bulk-action toolbar that needs to read out which rows are
+   * checked. Unlike `TabbedTable`'s group-level `selectedRowIds`, this is
+   * scoped per independent tab: each tab's selection is entirely its own.
+   */
+  selectedRowIds?: string[]
+  onSelectedRowIdsChange?: (ids: string[]) => void
 }
 
 export type ReadOnlyIndependentTab<TRow extends TableRowData> = IndependentTabBase<TRow> & {

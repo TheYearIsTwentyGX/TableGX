@@ -89,6 +89,13 @@ export type TableTabModel = {
   columnVisibilityStorageKey?: string
   initialSorting?: SortingState
   enableRowSelection: boolean
+  /**
+   * Controlled selection for this tab in independent mode; undefined keeps it
+   * uncontrolled (internal `selectionByTab` state). Ignored in shared mode,
+   * which uses the provider-level `selectedRowIds`/`onSelectedRowIdsChange`.
+   */
+  selectedRowIds?: string[]
+  onSelectedRowIdsChange?: (ids: string[]) => void
   /** True when this tab opts into the built-in global search bar. */
   enableGlobalSearch: boolean
   /** Placeholder for this tab's global-search input. */

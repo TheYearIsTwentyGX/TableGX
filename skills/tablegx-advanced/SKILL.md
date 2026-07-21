@@ -11,7 +11,7 @@ description: >-
   navigation.
 type: core
 library: tablegx
-library_version: "3.4.0"
+library_version: "3.5.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -101,6 +101,8 @@ const tabs: IndependentTab[] = [
     getRowId: (r) => r.id,
     columns: [textColumn('name', 'Name')],
     enableRowSelection: true,
+    selectedRowIds: peopleSelected,       // optional: controlled, per this tab only
+    onSelectedRowIdsChange: setPeopleSelected,
     enableColumnVisibility: true,
     columnVisibilityStorageKey: 'app-people', // full key, NOT a base
   }),
@@ -125,6 +127,8 @@ const tabs: IndependentTab[] = [
 ```
 
 The active tab can be uncontrolled (`defaultTabId`) or controlled (`activeTabId` + `onActiveTabChange`); `actions` renders right-aligned controls in the tab strip. `TabbedTable` exposes the same `activeTabId` / `defaultTabId` / `onActiveTabChange` / `actions` controls.
+
+**Row selection is per-tab, and independently controllable.** Each tab's `selectedRowIds`/`onSelectedRowIdsChange` (in its `independentTable()` config, as above) is entirely its own — selecting a row on one tab never touches another tab's selection, unlike `TabbedTable`'s group-level selection. Omit both to keep a tab's selection uncontrolled (internal state, e.g. for a simple "just let users check rows" case); pass both when the caller needs to read out or seed the checked set — a bulk-action toolbar, for instance, that applies one operation to every selected row and needs the list of ids.
 
 **Tab column preview** (both `TabbedTable` and `IndependentTabbedTable`, default off): `enableTabColumnPreview` shows a popover on tab-header hover listing that tab's hideable columns alphabetically, so users can tell what's on a tab without switching to it. `tabColumnPreviewDelayMs` sets the hover delay before it opens (default 600); `tabColumnPreviewPosition` places it `'above'`, `'below'`, or `'auto'` (default) relative to the tab strip. Columns with `enableHiding: false` are excluded from the list. The `TabColumnPreviewPosition` type is exported.
 
@@ -259,7 +263,7 @@ Source: src/types.ts
 
 ### Selection count
 
-Row selection is shared on `TabbedTable` (per-tab on `IndependentTabbedTable`). Read the current count from the `selectedRowIds` array you pass to `selectedRowIds` / `onSelectedRowIdsChange` — there is no separate selection-count prop.
+Row selection is shared (group-level) on `TabbedTable`; on `IndependentTabbedTable` it's per-tab and independently controllable (see above). Either way, read the current count from the `selectedRowIds` array you pass to `selectedRowIds` / `onSelectedRowIdsChange` — there is no separate selection-count prop.
 
 ### Headless compound primitives
 

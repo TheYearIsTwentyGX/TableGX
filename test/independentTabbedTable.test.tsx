@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -205,6 +206,71 @@ describe('IndependentTabbedTable independence', () => {
           within(activeTable(container)).getAllByLabelText('Select row')[0]!,
         ).toBeChecked(),
       )
+    })
+  })
+
+  it('supports controlled selection, lifted per tab into the caller', async () => {
+    await withElementSize(async () => {
+      const user = userEvent.setup()
+
+      function Harness() {
+        const [peopleSelected, setPeopleSelected] = useState<string[]>([])
+        const [ordersSelected, setOrdersSelected] = useState<string[]>(['A-100'])
+        const tabs = [
+          independentTable<Person>({
+            id: 'people',
+            label: 'People',
+            data: people,
+            getRowId: (r) => r.id,
+            columns: [textColumn<Person>('name', 'Name')],
+            enableRowSelection: true,
+            selectedRowIds: peopleSelected,
+            onSelectedRowIdsChange: setPeopleSelected,
+            measure,
+          }),
+          independentTable<Order>({
+            id: 'orders',
+            label: 'Orders',
+            data: orders,
+            getRowId: (r) => r.ref,
+            columns: [textColumn<Order>('ref', 'Ref')],
+            enableRowSelection: true,
+            selectedRowIds: ordersSelected,
+            onSelectedRowIdsChange: setOrdersSelected,
+            measure,
+          }),
+        ]
+        return (
+          <>
+            <IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+            <div data-testid="people-selected">{peopleSelected.join(',')}</div>
+          </>
+        )
+      }
+
+      const { container, getByRole, getByTestId } = render(<Harness />)
+
+      // Orders starts pre-selected from caller-owned state (controlled seed).
+      await user.click(getByRole('button', { name: 'Orders' }))
+      await waitFor(() =>
+        expect(
+          within(activeTable(container)).getAllByLabelText('Select row')[0]!,
+        ).toBeChecked(),
+      )
+
+      // People starts empty and unaffected by Orders' controlled selection.
+      await user.click(getByRole('button', { name: 'People' }))
+      await waitFor(() =>
+        expect(
+          within(activeTable(container)).getAllByLabelText('Select row')[0]!,
+        ).not.toBeChecked(),
+      )
+      // Checking it calls back into the caller's own state (not internal store state).
+      await user.click(within(activeTable(container)).getAllByLabelText('Select row')[0]!)
+      await waitFor(() => expect(getByTestId('people-selected').textContent).toBe('1'))
+      expect(
+        within(activeTable(container)).getAllByLabelText('Select row')[0]!,
+      ).toBeChecked()
     })
   })
 

@@ -198,7 +198,8 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
     (tabId: string): string[] | undefined => {
       if (mode === 'shared') return sharedSelected
       const tab = tabs.find((t) => t.id === tabId)
-      return tab?.enableRowSelection ? (selectionByTab[tabId] ?? []) : undefined
+      if (!tab?.enableRowSelection) return undefined
+      return tab.selectedRowIds ?? selectionByTab[tabId] ?? []
     },
     [mode, sharedSelected, selectionByTab, tabs],
   )
@@ -213,13 +214,18 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
             handleSharedSelectedChange(ids)
             return
           }
+          const tab = tabs.find((t) => t.id === tabId)
+          if (tab?.selectedRowIds !== undefined) {
+            tab.onSelectedRowIdsChange?.(ids)
+            return
+          }
           setSelectionByTab((prev) => ({ ...prev, [tabId]: ids }))
         }
         cache.set(tabId, fn)
       }
       return fn
     }
-  }, [mode, handleSharedSelectedChange])
+  }, [mode, tabs, handleSharedSelectedChange])
 
   // ----- Filters (per-tab in both modes; intersected for display in shared mode) -----
   const filterSource = sharedFilterSource ?? { data: [], getRowId: (r: unknown) => r, tabs: [] }
