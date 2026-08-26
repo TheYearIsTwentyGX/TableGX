@@ -103,6 +103,17 @@ export function TableExample() {
             setAdding({ id: String(ctx.row.id), x: event.clientX, y: event.clientY }),
         },
       ),
+      // A rendered (JSX) header over a column with no values at all — the shape
+      // that used to collapse to an icon-only stub, because auto-sizing had no
+      // header string to measure and no cell content to fall back on. Its width
+      // now comes from the label painted in the header.
+      {
+        id: 'reviewer',
+        header: () => <span className="whitespace-normal leading-tight">Pending reviewer</span>,
+        accessorFn: () => '',
+        enableColumnFilter: true,
+        cell: () => null,
+      } as ColumnDef<Person, unknown>,
       {
         id: 'actions',
         header: 'Actions',

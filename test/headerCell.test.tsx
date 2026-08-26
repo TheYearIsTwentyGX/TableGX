@@ -75,6 +75,46 @@ describe('HeaderCell sort/filter affordances', () => {
     expect(await screen.findByPlaceholderText(/search name/i)).toBeInTheDocument()
   })
 
+  it('marks the label node so auto-sizing can read the rendered header text', () => {
+    const { container } = render(
+      <ReadOnlyTable<Row> data={data} columns={columns} getRowId={(r) => r.id} measure={measure} />,
+    )
+    const header = container.querySelector<HTMLElement>('[data-tgx-header="name"]')
+    const label = header?.querySelector<HTMLElement>('[data-tgx-header-label]')
+    expect(label).not.toBeNull()
+    expect(label).toHaveTextContent('Name')
+  })
+
+  it('sizes a column with a rendered header and no cell values by its label', () => {
+    // The reported bug: a function/JSX header measured as '', so a column whose
+    // cells are all empty collapsed to padding + icons and the icon overlay
+    // covered the label. The id ('mcdOther') is deliberately shorter than the
+    // label, so only reading the rendered text produces the expected width.
+    const withRenderedHeader = [
+      ...columns,
+      {
+        id: 'mcdOther',
+        header: () => <span className="whitespace-normal leading-tight">Medicaid/Other</span>,
+        accessorFn: () => '',
+        enableColumnFilter: true,
+      } as unknown as (typeof columns)[number],
+    ]
+    const { container } = render(
+      <ReadOnlyTable<Row>
+        data={data}
+        columns={withRenderedHeader}
+        getRowId={(r) => r.id}
+        measure={measure}
+      />,
+    )
+    const header = container.querySelector<HTMLElement>('[data-tgx-header="mcdOther"]')
+    if (!header) throw new Error('no header rendered')
+    // pad 24 + "Medicaid/Other" 14*8=112 + margin 4 + sort 24 + filter 28 = 192.
+    expect(Number.parseFloat(header.style.width)).toBe(192)
+    // Wide enough for the label and the icons side by side — no overlay.
+    expect(header.querySelector('[data-tgx-sort-affordance]')?.parentElement).toHaveClass('ml-auto')
+  })
+
   it('closes the filter popover when OK is clicked', async () => {
     const user = userEvent.setup()
     const { container } = render(

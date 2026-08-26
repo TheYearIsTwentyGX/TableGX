@@ -85,6 +85,14 @@ export type AutoWidthOptions<TRow extends TableRowData> = {
   /** Font shorthand for cell value measurement; defaults to the SSR fallback stack. */
   cellFont?: string
   /**
+   * Header label text per column id, read from the rendered DOM by the hook. Used
+   * for columns whose `header` is a function/JSX, so their real label still floors
+   * the column width. See {@link resolveHeaderLabel} for the full precedence.
+   */
+  headerLabels?: Map<string, string>
+  /** Consumer's display-label resolver (the table's `columnLabel` prop). */
+  columnLabel?: (columnId: string) => string
+  /**
    * When true (default) the header label + its sort/filter affordances floor
    * each column's width. When false, width is driven purely by data-cell
    * content (the header no longer acts as a width floor).
@@ -94,6 +102,85 @@ export type AutoWidthOptions<TRow extends TableRowData> = {
   sortIconWidth?: number
   /** Measured filter-affordance width (incl. gap); falls back to the fixed allowance. */
   filterIconWidth?: number
+}
+
+/**
+ * The label text whose width floors a column, in precedence order:
+ *
+ * 1. a plain-string `header` — the literal that is painted;
+ * 2. `meta.headerLabel` — the consumer's plain-text stand-in for a custom
+ *    (function/JSX) header; `''` is honored as an explicit opt-out, so an
+ *    icon-only header reserves no label room;
+ * 3. `headerLabels` — the text actually rendered in the header, read from the
+ *    DOM by the hook (this is what rescues a function/JSX header);
+ * 4. `columnLabel(id)` — the consumer's display-label resolver;
+ * 5. the column id — the same last-resort fallback the header menus use.
+ *
+ * Steps 4-5 only apply to a column that renders *something*: a column with no
+ * `header` at all paints nothing, so reserving room for its id would leave a
+ * permanent gap. Over-wide beats clipped for the rest — a column whose id is
+ * longer than its rendered label reserves a little slack until the DOM read
+ * lands (or the consumer sets `meta.headerLabel`).
+ */
+function resolveHeaderLabel<TRow extends TableRowData>(
+  col: ColumnDef<TRow, unknown>,
+  id: string,
+  meta: TableColumnMeta,
+  headerLabels?: Map<string, string>,
+  columnLabel?: (columnId: string) => string,
+): string {
+  if (typeof col.header === 'string') return col.header
+  if (typeof meta.headerLabel === 'string') return meta.headerLabel
+  const fromDom = headerLabels?.get(id)
+  if (fromDom !== undefined) return fromDom
+  if (col.header === undefined) return ''
+  if (columnLabel) return columnLabel(id)
+  return id
+}
+
+/**
+ * The per-column minimum width contributed by the header: its label plus the
+ * sort/filter affordances it renders. Pure; shared by {@link computeAutoWidths}
+ * (as the auto-width floor) and {@link computeHeaderFloors} (which hands the
+ * same numbers to the frozen pane so scaling can never clip a pinned header).
+ */
+export function headerFloorWidth<TRow extends TableRowData>(
+  col: ColumnDef<TRow, unknown>,
+  {
+    measure = measureTextWidth,
+    headerFont = HEADER_FONT,
+    sortIconWidth = SORT_ICON_ALLOWANCE_PX,
+    filterIconWidth = FILTER_ICON_ALLOWANCE_PX,
+    headerLabels,
+    columnLabel,
+  }: Pick<
+    AutoWidthOptions<TRow>,
+    'measure' | 'headerFont' | 'sortIconWidth' | 'filterIconWidth' | 'headerLabels' | 'columnLabel'
+  >,
+): number {
+  const id = getColumnId(col)
+  const meta = (col.meta ?? {}) as TableColumnMeta
+  const label = resolveHeaderLabel(col, id, meta, headerLabels, columnLabel)
+  let width = CELL_H_PADDING_PX
+  if (label) width += measure(label, headerFont) + AUTO_WIDTH_SAFETY_MARGIN_PX
+  if (col.enableSorting !== false) width += sortIconWidth
+  if (col.enableColumnFilter === true) width += filterIconWidth
+  return Math.max(width, ABSOLUTE_MIN_COLUMN_WIDTH_PX)
+}
+
+/**
+ * The header floor of every column, keyed by id. Same numbers
+ * {@link computeAutoWidths} floors with, exposed so the frozen pane can refuse
+ * to shrink a pinned column below its own header.
+ */
+export function computeHeaderFloors<TRow extends TableRowData>(
+  options: AutoWidthOptions<TRow>,
+): Map<string, number> {
+  const floors = new Map<string, number>()
+  for (const col of options.columns) {
+    floors.set(getColumnId(col), headerFloorWidth(col, options))
+  }
+  return floors
 }
 
 /**
@@ -111,6 +198,8 @@ export function computeAutoWidths<TRow extends TableRowData>({
   includeHeaderInAutosize = true,
   sortIconWidth = SORT_ICON_ALLOWANCE_PX,
   filterIconWidth = FILTER_ICON_ALLOWANCE_PX,
+  headerLabels,
+  columnLabel,
 }: AutoWidthOptions<TRow>): Map<string, number> {
   const widths = new Map<string, number>()
 
@@ -130,13 +219,16 @@ export function computeAutoWidths<TRow extends TableRowData>({
     // --- Header floor: the per-column minimum contributed by the header. ---
     // When includeHeaderInAutosize is false the header no longer floors the
     // width — only the hard ABSOLUTE_MIN survives so width is content-driven.
-    const headerLabel = typeof col.header === 'string' ? col.header : ''
-    let headerWidth = CELL_H_PADDING_PX
-    if (headerLabel) headerWidth += measure(headerLabel, headerFont) + AUTO_WIDTH_SAFETY_MARGIN_PX
-    if (col.enableSorting !== false) headerWidth += sortIconWidth
-    if (col.enableColumnFilter === true) headerWidth += filterIconWidth
-    headerWidth = Math.max(headerWidth, ABSOLUTE_MIN_COLUMN_WIDTH_PX)
-    const headerFloor = includeHeaderInAutosize ? headerWidth : ABSOLUTE_MIN_COLUMN_WIDTH_PX
+    const headerFloor = includeHeaderInAutosize
+      ? headerFloorWidth(col, {
+          measure,
+          headerFont,
+          sortIconWidth,
+          filterIconWidth,
+          headerLabels,
+          columnLabel,
+        })
+      : ABSOLUTE_MIN_COLUMN_WIDTH_PX
 
     // --- Content width. ---
     let contentWidth: number
@@ -205,6 +297,47 @@ type ResolvedHeaderMetrics = {
   filterIconWidth?: number
 }
 
+/** Auto-sizing result: the widths to render, plus the header floors behind them. */
+export type AutoSizing = {
+  widths: Map<string, number>
+  /** Per-column header floor, so the frozen pane can refuse to scale below it. */
+  headerFloors: Map<string, number>
+}
+
+/**
+ * Collapses the whitespace in a header label read from the DOM. A wrapping
+ * header (`whitespace-normal`) paints across lines, but the floor should be the
+ * width of the single-line label, so the text is normalized before measuring.
+ */
+function normalizeLabel(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Records the label text each rendered header is painting, keyed by column id.
+ *
+ * Writes into a caller-owned cache rather than returning a fresh map because
+ * columns are horizontally virtualized: only the headers inside the current
+ * window are in the DOM, so a per-recompute snapshot would make a column's
+ * width depend on where the table happened to be scrolled. The cache only ever
+ * adds or refreshes entries, so a label stays known once it has been seen.
+ *
+ * The label's *text* is captured, never its laid-out width — widening a column
+ * cannot change the text, so measurement converges in a single pass. (Reading
+ * `scrollWidth` would not: a wrapping header reports its wrapped width, and the
+ * next measurement would chase the width it just set.)
+ */
+function captureHeaderLabels(container: HTMLElement, into: Map<string, string>): void {
+  for (const header of container.querySelectorAll('[data-tgx-header]')) {
+    const id = header.getAttribute('data-tgx-header')
+    if (!id) continue
+    const labelEl = header.querySelector('[data-tgx-header-label]')
+    // No label node (a group placeholder) tells us nothing about this column.
+    if (!labelEl) continue
+    into.set(id, normalizeLabel(labelEl.textContent ?? ''))
+  }
+}
+
 /**
  * Reads the font actually painted in the rendered header/body cells (so text is
  * measured in the consumer's inherited font, not the hardcoded SSR fallback)
@@ -242,19 +375,40 @@ function resolveHeaderMetrics(container: HTMLElement | null): ResolvedHeaderMetr
 export function useAutoColumnWidths<TRow extends TableRowData>(
   options: AutoWidthOptions<TRow>,
   containerRef?: RefObject<HTMLElement | null>,
-): Map<string, number> | null {
-  const [autoWidths, setAutoWidths] = useState<Map<string, number> | null>(null)
+): AutoSizing | null {
+  const [autoSizing, setAutoSizing] = useState<AutoSizing | null>(null)
   const latest = useRef(options)
   latest.current = options
 
-  const columnsKey = options.columns.map(getColumnId).join('\u0000')
+  // Labels discovered from the DOM accumulate here across recomputes; see
+  // captureHeaderLabels for why this outlives a single measurement pass.
+  const headerLabels = useRef<Map<string, string>>(new Map())
+
+  // Keyed by id *and* label so renaming a header without changing its id still
+  // retriggers measurement.
+  const columnsKey = options.columns
+    .map((col) => {
+      const meta = (col.meta ?? {}) as TableColumnMeta
+      const label =
+        typeof col.header === 'string' ? col.header : (meta.headerLabel ?? '')
+      return `${getColumnId(col)}\u0001${label}`
+    })
+    .join('\u0000')
 
   const recompute = useCallback(() => {
     const opts = latest.current
     if (!opts.measure && !canMeasureText()) return
-    const metrics = resolveHeaderMetrics(containerRef?.current ?? null)
-    const next = computeAutoWidths({ ...opts, ...metrics })
-    setAutoWidths((prev) => (mapsEqual(prev, next) ? prev : next))
+    const container = containerRef?.current ?? null
+    if (container) captureHeaderLabels(container, headerLabels.current)
+    const metrics = resolveHeaderMetrics(container)
+    const resolved = { ...opts, ...metrics, headerLabels: headerLabels.current }
+    const widths = computeAutoWidths(resolved)
+    const headerFloors = computeHeaderFloors(resolved)
+    setAutoSizing((prev) =>
+      prev && mapsEqual(prev.widths, widths) && mapsEqual(prev.headerFloors, headerFloors)
+        ? prev
+        : { widths, headerFloors },
+    )
   }, [containerRef])
 
   // Function props (getSubRows, measure) are intentionally not identity deps:
@@ -285,5 +439,5 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
     }
   }, [recompute, options.data, columnsKey])
 
-  return autoWidths
+  return autoSizing
 }

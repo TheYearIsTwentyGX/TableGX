@@ -56,6 +56,7 @@ const STATE_OPTIONS = ['TX', 'CA', 'NY'].map((s) => ({ label: s, value: s }))
 | Key | Purpose |
 | --- | ------- |
 | `editable`, `inputType`, `selectOptions` | Inline editing |
+| `headerLabel` | Plain-text label for a custom (function/JSX) header when it should be measured differently from what it paints; `''` for icon-only headers |
 | `measureText(row)` | Auto-width string for custom/non-text cells |
 | `fixedMeasureWidth` | Fixed px width (icon/action columns) |
 | `measureWidth(row)` | Exact per-row content width (px) when width isn't a function of any text (sparkline, chips, image grid); takes precedence over the other two |

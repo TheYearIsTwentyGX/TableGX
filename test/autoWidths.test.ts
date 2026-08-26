@@ -6,7 +6,11 @@ import {
   INDENT_STEP_PX,
   MAX_COLUMN_WIDTH_PX,
 } from '../src/constants'
-import { computeAutoWidths, useAutoColumnWidths } from '../src/hooks/useAutoColumnWidths'
+import {
+  computeAutoWidths,
+  computeHeaderFloors,
+  useAutoColumnWidths,
+} from '../src/hooks/useAutoColumnWidths'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { MeasureTextFn, TableRowData } from '../src/types'
 
@@ -22,6 +26,14 @@ const data: Row[] = [
 
 const col = (id: string, header: string, extra?: object): ColumnDef<Row, unknown> =>
   ({ id, header, accessorKey: id, ...extra }) as ColumnDef<Row, unknown>
+
+/**
+ * A column with a rendered (function/JSX) header instead of a string literal —
+ * the shape that used to contribute no width at all. `accessorFn` returns '' so
+ * the column has no content width and the header floor is what's under test.
+ */
+const fnCol = (id: string, extra?: object): ColumnDef<Row, unknown> =>
+  ({ id, header: () => null, accessorFn: () => '', ...extra }) as ColumnDef<Row, unknown>
 
 describe('computeAutoWidths', () => {
   it('uses the larger of header and sampled content width', () => {
@@ -258,6 +270,120 @@ describe('computeAutoWidths', () => {
     // which beats the content width "Beta Beta Beta" (112 + 24 + 4 = 140).
     expect(widths.get('name')).toBe(150)
   })
+
+  // --- Header label resolution for non-string headers (regression) ---
+  //
+  // A function/JSX header used to measure as '' — so an empty-bodied column
+  // collapsed to padding + icons and its label was swallowed by the icon
+  // overlay. Each case below pins one link of the resolution chain.
+
+  it('floors a function header by the label read from the DOM', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [fnCol('Medicaid/Other', { enableColumnFilter: true })],
+      data,
+      measure,
+      headerLabels: new Map([['Medicaid/Other', 'Medicaid/Other']]),
+    })
+    // pad 24 + "Medicaid/Other" 14*8=112 + margin 4 + sort 24 + filter 28 = 192;
+    // the column's own cells are all empty (content width 24).
+    expect(widths.get('Medicaid/Other')).toBe(192)
+  })
+
+  it('prefers meta.headerLabel over the label found in the DOM', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [fnCol('tiny', { meta: { headerLabel: 'Long Label' } })],
+      data,
+      measure,
+      headerLabels: new Map([['tiny', 'x']]),
+    })
+    // pad 24 + "Long Label" 10*8=80 + margin 4 + sort 24 = 132.
+    expect(widths.get('tiny')).toBe(132)
+  })
+
+  it("treats meta.headerLabel: '' as an opt-out for icon-only headers", () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [fnCol('tiny', { enableColumnFilter: true, meta: { headerLabel: '' } })],
+      data,
+      measure,
+      headerLabels: new Map([['tiny', 'Not This Label']]),
+    })
+    // No label reserved: pad 24 + sort 24 + filter 28 = 76.
+    expect(widths.get('tiny')).toBe(76)
+  })
+
+  it('falls back to columnLabel, then to the column id', () => {
+    const viaColumnLabel = computeAutoWidths<Row>({
+      columns: [fnCol('tiny')],
+      data,
+      measure,
+      columnLabel: () => 'Resolved',
+    })
+    // pad 24 + "Resolved" 8*8=64 + margin 4 + sort 24 = 116.
+    expect(viaColumnLabel.get('tiny')).toBe(116)
+
+    const viaId = computeAutoWidths<Row>({
+      columns: [fnCol('Coinsurance')],
+      data,
+      measure,
+    })
+    // pad 24 + "Coinsurance" 11*8=88 + margin 4 + sort 24 = 140.
+    expect(viaId.get('Coinsurance')).toBe(140)
+  })
+
+  it('reserves no label room for a column that renders no header', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [
+        {
+          id: 'Coinsurance',
+          accessorFn: () => '',
+          enableColumnFilter: true,
+        } as unknown as ColumnDef<Row, unknown>,
+      ],
+      data,
+      measure,
+      columnLabel: () => 'A Very Long Label',
+    })
+    // Nothing is painted, so neither columnLabel nor the id is reserved:
+    // pad 24 + sort 24 + filter 28 = 76.
+    expect(widths.get('Coinsurance')).toBe(76)
+  })
+
+  it('keeps a string header authoritative over a stale DOM label', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [col('tiny', 'Name')],
+      data,
+      measure,
+      headerLabels: new Map([['tiny', 'A Very Long Stale Label']]),
+    })
+    // pad 24 + "Name" 32 + margin 4 + sort 24 = 84 — the literal wins.
+    expect(widths.get('tiny')).toBe(84)
+  })
+})
+
+describe('computeHeaderFloors', () => {
+  it('reports the same floor computeAutoWidths applies', () => {
+    const options = {
+      columns: [fnCol('Coinsurance', { enableColumnFilter: true }), col('name', 'Name')],
+      data,
+      measure,
+    }
+    const floors = computeHeaderFloors<Row>(options)
+    // The empty-bodied column has no content width, so its width *is* its floor.
+    expect(computeAutoWidths<Row>(options).get('Coinsurance')).toBe(floors.get('Coinsurance'))
+    // pad 24 + "Name" 32 + margin 4 + sort 24 = 84, below the content width 140.
+    expect(floors.get('name')).toBe(84)
+  })
+
+  it('ignores includeHeaderInAutosize — the floor is the header, always', () => {
+    // The frozen pane clamps to these floors even when the header is not part
+    // of the auto width, so a pinned label can never be scaled into clipping.
+    const columns = [col('tiny', 'Name')]
+    expect(
+      computeHeaderFloors<Row>({ columns, data, measure, includeHeaderInAutosize: false }).get(
+        'tiny',
+      ),
+    ).toBe(84)
+  })
 })
 
 describe('useAutoColumnWidths', () => {
@@ -287,6 +413,38 @@ describe('useAutoColumnWidths', () => {
       await waitFor(() => expect(calls).toBeGreaterThan(afterMount))
     } finally {
       docFonts.fonts = original
+    }
+  })
+
+  it('reads a rendered header label from the DOM and remembers it', () => {
+    // A header the consumer renders as JSX: only the DOM knows its text.
+    const container = document.createElement('div')
+    container.innerHTML =
+      '<div data-tgx-header="a"><span data-tgx-header-label="">Long Label Here</span></div>'
+    document.body.appendChild(container)
+    const containerRef = { current: container }
+
+    try {
+      const columns = [fnCol('a')]
+      const { result, rerender } = renderHook(
+        ({ rows }: { rows: Row[] }) =>
+          useAutoColumnWidths<Row>({ columns, data: rows, measure }, containerRef),
+        { initialProps: { rows: data } },
+      )
+
+      // pad 24 + "Long Label Here" 15*8=120 + margin 4 + sort 24 = 172. Without
+      // the DOM read this column would float on its id: 24 + 8 + 4 + 24 = 60.
+      expect(result.current?.widths.get('a')).toBe(172)
+      expect(result.current?.headerFloors.get('a')).toBe(172)
+
+      // Columns are horizontally virtualized, so a header can leave the DOM.
+      // The label it already reported must survive, or a column's width would
+      // depend on where the table happened to be scrolled when it remeasured.
+      container.innerHTML = ''
+      rerender({ rows: [...data] })
+      expect(result.current?.widths.get('a')).toBe(172)
+    } finally {
+      container.remove()
     }
   })
 })

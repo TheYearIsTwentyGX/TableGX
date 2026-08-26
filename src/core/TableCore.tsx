@@ -829,7 +829,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // ----- Auto + manual column widths -----
 
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const autoWidths = useAutoColumnWidths(
+  const autoSizing = useAutoColumnWidths(
     {
       columns: governedColumns,
       data,
@@ -837,9 +837,12 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       enableExpanding,
       measure,
       includeHeaderInAutosize,
+      columnLabel,
     },
     scrollRef,
   )
+  const autoWidths = autoSizing?.widths ?? null
+  const headerFloors = autoSizing?.headerFloors ?? null
   const [manualWidths, setManualWidths] = useState<Record<string, number>>({})
   /** After the user resizes any pinned (non-selection) column, stop shrinking sibling pinned autos to hold total at 50% — otherwise the pane stays capped until one manual column alone reaches half the viewport. */
   const [pinnedUserSized, setPinnedUserSized] = useState(false)
@@ -901,54 +904,93 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   // Cap only auto-sized pinned width at FROZEN_PANE_MAX_FRACTION of the viewport.
   // After the user resizes any pinned data column, sibling pinned autos are no
   // longer scaled down to keep the pane at that cap (see pinnedUserSized).
-  const { pinnedWidth, flexScale } = useMemo(() => {
+  //
+  // Scaling never takes a column below its own header floor: shrinking past the
+  // header clips the label ("Region" → "Regio") in exactly the columns a frozen
+  // pane holds — short values under long-ish headers. Columns that hit their
+  // floor drop out of the flexible pool and the remaining budget is re-divided
+  // among the rest, so the pane still honors the cap when it can and grows past
+  // it only when the floors leave no room. Both the pane width and the
+  // per-column widths come out of one map, so they cannot disagree.
+  const { pinnedWidth, pinnedWidths } = useMemo(() => {
+    const widths = new Map<string, number>()
     if (pinnedUserSized) {
-      const w = pinnedColumns.reduce((sum, col) => sum + widthOf(col.id), 0)
-      return { pinnedWidth: w, flexScale: 1 }
+      let sum = 0
+      for (const col of pinnedColumns) {
+        const w = widthOf(col.id)
+        widths.set(col.id, w)
+        sum += w
+      }
+      return { pinnedWidth: sum, pinnedWidths: widths }
     }
-    const pinnedCap =
-      viewportWidth > 0 ? viewportWidth * FROZEN_PANE_MAX_FRACTION : Infinity
+
+    const pinnedCap = viewportWidth > 0 ? viewportWidth * FROZEN_PANE_MAX_FRACTION : Infinity
+    // Manually resized columns are fixed outright; autos (and the selection
+    // column, which has no header to clip) start flexible.
     let fixedSum = 0
-    let flexRawSum = 0
+    const pool: { id: string; raw: number; floor: number }[] = []
     for (const col of pinnedColumns) {
       const id = col.id
-      const manualPinned = id !== SELECTION_COLUMN_ID && Object.hasOwn(manualWidths, id)
-      if (manualPinned) {
-        fixedSum += manualWidths[id] ?? MIN_COLUMN_WIDTH_PX
-      } else if (id === SELECTION_COLUMN_ID) {
-        flexRawSum += SELECTION_COLUMN_WIDTH_PX
-      } else {
-        flexRawSum += autoWidths?.get(id) ?? MIN_COLUMN_WIDTH_PX
+      if (id !== SELECTION_COLUMN_ID && Object.hasOwn(manualWidths, id)) {
+        const w = manualWidths[id] ?? MIN_COLUMN_WIDTH_PX
+        widths.set(id, w)
+        fixedSum += w
+        continue
       }
+      const raw =
+        id === SELECTION_COLUMN_ID
+          ? SELECTION_COLUMN_WIDTH_PX
+          : (autoWidths?.get(id) ?? MIN_COLUMN_WIDTH_PX)
+      // The floor can't exceed the natural width — clamping is only ever
+      // allowed to stop a shrink, never to widen a column past its auto size.
+      const floor =
+        id === SELECTION_COLUMN_ID ? 0 : Math.min(raw, headerFloors?.get(id) ?? 0)
+      pool.push({ id, raw, floor })
     }
-    let flexScale = 1
-    if (viewportWidth > 0 && flexRawSum > 0) {
-      if (fixedSum >= pinnedCap) {
-        flexScale = 1
-      } else {
+
+    // Solve the scale, pinning any column whose scaled width would fall under
+    // its floor and re-solving for the rest. Each pass removes at least one
+    // column, so this runs at most `pool.length` times.
+    let flexible = pool
+    let scale = 1
+    for (;;) {
+      const flexRawSum = flexible.reduce((sum, c) => sum + c.raw, 0)
+      scale = 1
+      if (viewportWidth > 0 && flexRawSum > 0 && fixedSum < pinnedCap) {
         const budget = pinnedCap - fixedSum
-        if (flexRawSum > budget) {
-          flexScale = budget / flexRawSum
-        }
+        if (flexRawSum > budget) scale = budget / flexRawSum
+      }
+      if (scale === 1) break
+      const clamped = flexible.filter((c) => c.raw * scale < c.floor)
+      if (clamped.length === 0) break
+      for (const c of clamped) {
+        widths.set(c.id, c.floor)
+        fixedSum += c.floor
+      }
+      flexible = flexible.filter((c) => c.raw * scale >= c.floor)
+      if (flexible.length === 0) {
+        scale = 1
+        break
       }
     }
-    return { pinnedWidth: fixedSum + flexRawSum * flexScale, flexScale }
-  }, [pinnedUserSized, pinnedColumns, manualWidths, autoWidths, viewportWidth, widthOf])
+    for (const c of flexible) widths.set(c.id, c.raw * scale)
+
+    let total = 0
+    for (const w of widths.values()) total += w
+    return { pinnedWidth: total, pinnedWidths: widths }
+  }, [
+    pinnedUserSized,
+    pinnedColumns,
+    manualWidths,
+    autoWidths,
+    headerFloors,
+    viewportWidth,
+    widthOf,
+  ])
 
   const pinnedWidthOf = useCallback(
-    (columnId: string): number => {
-      if (pinnedUserSized) {
-        return widthOf(columnId)
-      }
-      if (columnId === SELECTION_COLUMN_ID) {
-        return SELECTION_COLUMN_WIDTH_PX * flexScale
-      }
-      if (Object.hasOwn(manualWidths, columnId)) {
-        return manualWidths[columnId] ?? MIN_COLUMN_WIDTH_PX
-      }
-      return (autoWidths?.get(columnId) ?? MIN_COLUMN_WIDTH_PX) * flexScale
-    },
-    [pinnedUserSized, widthOf, manualWidths, autoWidths, flexScale],
+    (columnId: string): number => pinnedWidths.get(columnId) ?? widthOf(columnId),
+    [pinnedWidths, widthOf],
   )
 
   // Keyed by ids (not array identity) so widths stay referentially stable

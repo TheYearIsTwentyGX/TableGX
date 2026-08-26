@@ -3,7 +3,7 @@
 High-performance, type-safe React data tables: **`ReadOnlyTable`**, **`EditableTable`**, **`TabbedTable`**, and **`IndependentTabbedTable`**, all layered over one virtualized engine.
 
 - **Fast by construction** — row virtualization (TanStack Virtual), manual column virtualization for the scrollable pane, DOM-free text measurement ([@chenglou/pretext](https://github.com/chenglou/pretext)) so auto column widths are computed *before paint* with zero layout shift, and no `setTimeout`/`requestAnimationFrame` timing hacks anywhere.
-- **Feature-complete** — sorting (single + shift-click multi with priority badges), per-column filter popovers (text search + faceted checklist), removable filter badges, frozen columns (split pinned/scroll panes; auto-sized pinned width caps at 50% of the viewport until you resize a pinned column, then the pane can grow wider), row selection with parent/child/indeterminate semantics, nested rows, inline editing, declarative cell action buttons, footer aggregates, column visibility persistence, column resizing, loading/empty/submitting states.
+- **Feature-complete** — sorting (single + shift-click multi with priority badges), per-column filter popovers (text search + faceted checklist), removable filter badges, frozen columns (split pinned/scroll panes; auto-sized pinned width caps at 50% of the viewport until you resize a pinned column, then the pane can grow wider — never at the cost of clipping a pinned column's own header), row selection with parent/child/indeterminate semantics, nested rows, inline editing, declarative cell action buttons, footer aggregates, column visibility persistence, column resizing, loading/empty/submitting states.
 - **Composable styling** — Tailwind CSS v4 utilities + shadcn-style CSS-variable tokens. Every visual region accepts class overrides; theming is just overriding variables.
 
 ## Install
@@ -169,6 +169,7 @@ All custom per-column behavior lives in the column def's `meta` (typed via modul
 | Key | Purpose |
 | --- | --- |
 | `editable`, `inputType`, `selectOptions` | Inline editing |
+| `headerLabel` | Plain-text stand-in for a custom (function/JSX) header when the measured label should differ from the painted one; `''` opts an icon-only header out of the label floor |
 | `measureText(row)` | String to measure for non-text cells (badges, custom renders) |
 | `fixedMeasureWidth` | Fixed content width (px); skips sampling (icon/action columns) |
 | `maxColumnWidth` | Per-column auto-size clamp (the measured header width is always the floor) |
@@ -216,7 +217,7 @@ The package is client-only (`"use client"` is preserved in the bundle). Text mea
 
 ## Constants
 
-Fixed layout invariants (exported): `ROW_HEIGHT_PX` (56), `HEADER_HEIGHT_PX` (48), `MIN_COLUMN_WIDTH_PX` (160), `ABSOLUTE_MIN_COLUMN_WIDTH_PX` (48), `FROZEN_PANE_MAX_FRACTION` (0.5 — caps combined **auto-sized** pinned width until the user resizes any pinned data column; after that, the frozen pane may exceed this fraction), `INDENT_STEP_PX` (20), `MAX_COLUMN_WIDTH_PX` (480).
+Fixed layout invariants (exported): `ROW_HEIGHT_PX` (56), `HEADER_HEIGHT_PX` (48), `MIN_COLUMN_WIDTH_PX` (160), `ABSOLUTE_MIN_COLUMN_WIDTH_PX` (48), `FROZEN_PANE_MAX_FRACTION` (0.5 — caps combined **auto-sized** pinned width until the user resizes any pinned data column; after that, the frozen pane may exceed this fraction, as it also does when honoring the cap would shrink a pinned column below its own header width), `INDENT_STEP_PX` (20), `MAX_COLUMN_WIDTH_PX` (480).
 
 ## License
 

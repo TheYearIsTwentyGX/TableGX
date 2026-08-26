@@ -82,6 +82,14 @@ export type TableColumnMeta = {
   selectOptions?: { label: string; value: string }[]
 
   // --- Auto-sizing hints ---
+  /**
+   * Plain-text equivalent of a custom (function/JSX) `header`, used as the label
+   * whose width floors this column's auto-sized width. Auto-sizing otherwise
+   * reads the rendered header text from the DOM, so this is only needed when the
+   * measured label should differ from what is painted — including `''` for an
+   * icon-only header, which opts the column out of the label floor entirely.
+   */
+  headerLabel?: string
   /** Returns the underlying string that should be measured for non-text cells. */
   measureText?: (row: TableRowData) => string
   /** Fixed content width (px, excluding cell chrome/padding) used instead of measuring. */

@@ -163,7 +163,7 @@ function HeaderCellInner<TRow extends TableRowData>({
         }
       }}
     >
-      <span ref={textRef} className="truncate">
+      <span ref={textRef} data-tgx-header-label="" className="truncate">
         {header.isPlaceholder
           ? null
           : flexRender(column.columnDef.header, header.getContext())}
