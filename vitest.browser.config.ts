@@ -16,11 +16,19 @@ import type { BrowserCommand } from 'vitest/node'
 // libs on NixOS. Override with CHROMIUM_EXECUTABLE_PATH if needed.
 function resolveChromium(): string | undefined {
   if (process.env.CHROMIUM_EXECUTABLE_PATH) return process.env.CHROMIUM_EXECUTABLE_PATH
-  try {
-    return execSync('which chromium', { encoding: 'utf8' }).trim() || undefined
-  } catch {
-    return undefined
+  // `chromium` first (the Nix name, whose closure resolves cleanly), then the
+  // names Debian/Ubuntu actually install under. Without the fallbacks this
+  // returns undefined on a machine that has a perfectly good Chrome, and
+  // Playwright then reaches for its own chrome-headless-shell download.
+  for (const bin of ['chromium', 'chromium-browser', 'google-chrome', 'google-chrome-stable']) {
+    try {
+      const found = execSync(`which ${bin}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+      if (found) return found
+    } catch {
+      // not on PATH — try the next name
+    }
   }
+  return undefined
 }
 
 const executablePath = resolveChromium()
@@ -67,6 +75,12 @@ export default defineConfig({
     include: ['test/perf/**/*.bench.tsx'],
     browser: {
       enabled: true,
+      // Vitest's default browser-server port (63315) sits inside a range that
+      // WSL2 inherits as *reserved* from Windows/Hyper-V: nothing is listening
+      // there, but every bind returns EADDRINUSE, so startup fails with
+      // "No available ports found between 63315 and 65535". Override on such a
+      // machine (e.g. VITEST_BROWSER_PORT=45000); CI keeps the default.
+      api: { port: Number(process.env.VITEST_BROWSER_PORT ?? 63315) },
       provider: playwright({
         launchOptions: executablePath ? { executablePath } : undefined,
       }),
