@@ -107,6 +107,31 @@ import { EditableTable, textColumn, booleanColumn } from '@twentygx/tablegx'
 
 A column is editable only when **both** `meta.editable: true` is set on the column *and* its id is in `editableColumnIds`. Editor type comes from `meta.inputType` (`'text' | 'number' | 'boolean' | 'select'`). Keyboard: **Enter** commits (Shift+Enter inserts a newline in text cells), **Escape** cancels, **blur** commits, **Tab / Shift+Tab** commits and moves to the adjacent editable cell. With `singleClickEdit`, boolean cells become directly interactive checkboxes.
 
+#### Per-cell editing control
+
+The controls above are all column-shaped, which fits a table of homogeneous records. When a column is a *position* rather than a type — a grid mapped onto a spreadsheet, where one column holds a date, a currency amount and a `=SUM()` total on three consecutive rows — three per-cell hooks refine it:
+
+```tsx
+<EditableTable
+  editableColumnIds={['a', 'b', 'c']}
+  // Veto individual cells. Return false and that cell does not enter an
+  // editor on click, Tab skips over it, and it shows no edit affordance.
+  isCellEditable={(row, columnId) => row.__cells[columnId]?.kind !== 'formula'}
+  columns={[
+    textColumn('b', 'B', {
+      editable: true,
+      // Display and edit value can differ: show "$1,234.50", edit "1234.5".
+      renderCell: (ctx) => formatCurrency(ctx.value),
+      getEditValue: (row) => String(row.bRaw),
+      // Per-cell editor kind; undefined falls back to meta.inputType.
+      getCellInputType: (row) => (typeof row.b === 'number' ? 'number' : 'text'),
+    }),
+  ]}
+/>
+```
+
+`isCellEditable` can only ever **further restrict**. It runs after `columnAccess` and `editableColumnIds`, so it cannot grant edit rights to a column governance has already withheld — governance stays authoritative, and this is a local refinement beneath it.
+
 ### Sorting
 
 Click a header to sort; shift-click adds another column when `enableMultiSort` is set, showing priority badges. Row order stays **frozen across data changes** — editing a cell, or any other update to `data`, never resorts the table; only clicking a header (or another explicit sort action) does. A row added while sorted is inserted at its correct sorted position without disturbing the others, snapping into view (no scroll animation) and briefly highlighting if it lands outside the current scroll position.

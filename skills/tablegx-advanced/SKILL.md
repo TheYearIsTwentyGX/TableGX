@@ -11,7 +11,7 @@ description: >-
   navigation.
 type: core
 library: tablegx
-library_version: "3.5.0"
+library_version: "3.7.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -227,6 +227,8 @@ type ColumnAccessMap = Record<string, { visible?: boolean; editable?: boolean }>
 ```
 
 A column id **absent** from the map is unrestricted — static `meta.editable`/`editableColumnIds`/`enableHiding` decide it exactly as if `columnAccess` were omitted. A column **present** with `visible: false` is removed entirely (header, body, the visibility picker, column-jump — everywhere), not just toggled via the user-facing picker. A column present with `editable` set is **authoritative** for that column — overriding, not merely restricting, its own `meta.editable`/`editableColumnIds` — so a host can retire a static allowlist one governed column at a time. See tablegx-editing for the base-table (`ReadOnlyTable`/`EditableTable`/`TableGX`) form of this same prop.
+
+Editable tabs also accept **`isCellEditable(row, columnId)`**, the per-*cell* veto. It is consulted after `columnAccess` and `editableColumnIds`, so it can only further restrict — never grant — and a vetoed cell refuses edit entry, is skipped by Tab, and shows no edit affordance. Use it when a column mixes editable and non-editable rows (a spreadsheet column with a formula total in it); use `columnAccess` when the whole column is governed. See tablegx-editing → Per-cell editing control.
 
 ### Loading skeleton
 

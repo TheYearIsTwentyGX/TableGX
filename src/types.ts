@@ -80,6 +80,27 @@ export type TableColumnMeta = {
   editable?: boolean
   inputType?: EditInputType
   selectOptions?: { label: string; value: string }[]
+  /**
+   * Per-**cell** editor kind, overriding {@link inputType} for the rows it
+   * answers for. Return `undefined` to fall back to `inputType`.
+   *
+   * `inputType` is a column-level statement, which is right for a table whose
+   * column means one thing on every row. It is wrong for a grid whose column is
+   * a *position* rather than a type — a spreadsheet column holding a date, a
+   * currency amount and a note in three consecutive rows being the motivating
+   * case.
+   */
+  getCellInputType?: (row: TableRowData, columnId: string) => EditInputType | undefined
+  /**
+   * Supplies the string an editor opens with, overriding the default
+   * `String(row[columnId])`.
+   *
+   * Pair it with {@link renderCell} to separate what a cell *displays* from what
+   * it is *edited as*: a cell can show `$1,234.50` while its editor opens on
+   * `1234.5`, without the host keeping a shadow primitive on the row and
+   * without the user having to retype around the formatting.
+   */
+  getEditValue?: (row: TableRowData, columnId: string) => string
 
   // --- Auto-sizing hints ---
   /**
@@ -438,6 +459,25 @@ export type EditableTableExtraProps<TRow extends TableRowData> = {
   singleClickEdit?: boolean
   columnGroups?: ColumnGroupDef[]
   getCellClassName?: (row: TRow, columnId: string) => string | undefined
+  /**
+   * Per-**cell** veto on entering edit mode. Return `false` and that one cell is
+   * read-only: it does not enter an editor on click, Tab skips over it rather
+   * than landing in it, and it shows no edit affordance.
+   *
+   * This can only ever *further restrict*. It is consulted after
+   * `columnAccess` and `editableColumnIds`, so it cannot grant edit rights to a
+   * cell whose column is not already editable — keeping governance
+   * (`columnAccess`) authoritative and this a local refinement beneath it.
+   *
+   * Why it exists: every other editability control is column-shaped, which
+   * suits a table whose rows are homogeneous records. A grid mapped onto a
+   * spreadsheet is not that — a single column routinely mixes literals with a
+   * `=SUM()` total, and blanking the whole column to protect one formula cell
+   * is not an acceptable trade. Without this the only per-cell lever is a
+   * `pointer-events: none` class via `getCellClassName`, which stops the mouse
+   * but not the keyboard.
+   */
+  isCellEditable?: (row: TRow, columnId: string) => boolean
 }
 
 export type EditableTableProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow> &
@@ -488,6 +528,25 @@ export type EditableTab<TRow extends TableRowData> = CommonTab<TRow> & {
   columnGroups?: ColumnGroupDef[]
   singleClickEdit?: boolean
   getCellClassName?: (row: TRow, columnId: string) => string | undefined
+  /**
+   * Per-**cell** veto on entering edit mode. Return `false` and that one cell is
+   * read-only: it does not enter an editor on click, Tab skips over it rather
+   * than landing in it, and it shows no edit affordance.
+   *
+   * This can only ever *further restrict*. It is consulted after
+   * `columnAccess` and `editableColumnIds`, so it cannot grant edit rights to a
+   * cell whose column is not already editable — keeping governance
+   * (`columnAccess`) authoritative and this a local refinement beneath it.
+   *
+   * Why it exists: every other editability control is column-shaped, which
+   * suits a table whose rows are homogeneous records. A grid mapped onto a
+   * spreadsheet is not that — a single column routinely mixes literals with a
+   * `=SUM()` total, and blanking the whole column to protect one formula cell
+   * is not an acceptable trade. Without this the only per-cell lever is a
+   * `pointer-events: none` class via `getCellClassName`, which stops the mouse
+   * but not the keyboard.
+   */
+  isCellEditable?: (row: TRow, columnId: string) => boolean
   isSubmitting?: boolean
 }
 
@@ -574,6 +633,25 @@ export type EditableIndependentTab<TRow extends TableRowData> = IndependentTabBa
   columnGroups?: ColumnGroupDef[]
   singleClickEdit?: boolean
   getCellClassName?: (row: TRow, columnId: string) => string | undefined
+  /**
+   * Per-**cell** veto on entering edit mode. Return `false` and that one cell is
+   * read-only: it does not enter an editor on click, Tab skips over it rather
+   * than landing in it, and it shows no edit affordance.
+   *
+   * This can only ever *further restrict*. It is consulted after
+   * `columnAccess` and `editableColumnIds`, so it cannot grant edit rights to a
+   * cell whose column is not already editable — keeping governance
+   * (`columnAccess`) authoritative and this a local refinement beneath it.
+   *
+   * Why it exists: every other editability control is column-shaped, which
+   * suits a table whose rows are homogeneous records. A grid mapped onto a
+   * spreadsheet is not that — a single column routinely mixes literals with a
+   * `=SUM()` total, and blanking the whole column to protect one formula cell
+   * is not an acceptable trade. Without this the only per-cell lever is a
+   * `pointer-events: none` class via `getCellClassName`, which stops the mouse
+   * but not the keyboard.
+   */
+  isCellEditable?: (row: TRow, columnId: string) => boolean
   isSubmitting?: boolean
 }
 
