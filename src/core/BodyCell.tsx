@@ -75,7 +75,12 @@ function BodyCellInner<TRow extends TableRowData>({
 }: BodyCellProps<TRow>) {
   const meta = (cell.column.columnDef.meta ?? {}) as TableColumnMeta
   const row = cell.row
-  const isBoolean = meta.inputType === 'boolean'
+  // Per-cell editor kind falls back to the column's. Resolved once here so the
+  // boolean special-cases below and the editor itself cannot disagree about
+  // what kind of cell this is.
+  const inputType =
+    meta.getCellInputType?.(row.original, cell.column.id) ?? meta.inputType ?? 'text'
+  const isBoolean = inputType === 'boolean'
   const actions = meta.actions
   const renderCell = meta.renderCell
   const onCellClick = meta.onCellClick
@@ -124,7 +129,7 @@ function BodyCellInner<TRow extends TableRowData>({
   if (isEditing) {
     content = (
       <CellEditor
-        inputType={meta.inputType ?? 'text'}
+        inputType={inputType}
         selectOptions={meta.selectOptions}
         initialValue={initialEditValue}
         disabled={editorsDisabled}

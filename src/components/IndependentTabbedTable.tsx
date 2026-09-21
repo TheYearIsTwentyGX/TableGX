@@ -129,6 +129,7 @@ export function independentTable<TRow extends TableRowData>(
         singleClickEdit={config.editable === true ? config.singleClickEdit : undefined}
         columnGroups={config.editable === true ? config.columnGroups : undefined}
         getCellClassName={config.editable === true ? config.getCellClassName : undefined}
+        isCellEditable={config.editable === true ? config.isCellEditable : undefined}
         isSubmitting={config.editable === true ? config.isSubmitting : undefined}
         bordered={false}
         frozenColumns={config.frozenColumns ?? 0}

@@ -1,6 +1,6 @@
 {
   "name": "@twentygx/tablegx",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "High-performance, type-safe React data-table system: ReadOnlyTable, EditableTable, and TabbedTable over one virtualized engine.",
   "license": "MIT",
   "type": "module",
@@ -73,13 +73,10 @@
     "@radix-ui/react-tooltip": "^1.2.9",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.2",
-    "@vitest/browser": "^4.1.8",
-    "@vitest/browser-playwright": "^4.1.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
-    "playwright": "^1.60.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
@@ -92,7 +89,10 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/browser": "^4.1.8",
+    "@vitest/browser-playwright": "^4.1.8",
     "jsdom": "^29.1.1",
+    "playwright": "^1.60.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.0",

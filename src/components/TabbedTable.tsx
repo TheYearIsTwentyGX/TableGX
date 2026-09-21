@@ -195,6 +195,7 @@ export function TabbedTable<TRow extends TableRowData>(props: TabbedTableProps<T
             singleClickEdit={tab.editable === true ? tab.singleClickEdit : undefined}
             columnGroups={tab.editable === true ? tab.columnGroups : undefined}
             getCellClassName={tab.editable === true ? tab.getCellClassName : undefined}
+            isCellEditable={tab.editable === true ? tab.isCellEditable : undefined}
             isSubmitting={tab.editable === true ? tab.isSubmitting : undefined}
             bordered={false}
             frozenColumns={tab.frozenColumns ?? 0}
