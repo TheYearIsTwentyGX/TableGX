@@ -7,7 +7,7 @@ description: >-
   Material/Fluent-style skins, or per-cell conditional classes.
 type: core
 library: tablegx
-library_version: "3.7.0"
+library_version: "3.7.1"
 sources:
   - "README.md"
   - "src/theme.css"
