@@ -255,4 +255,53 @@ describe('frozen row order', () => {
       )
     })
   })
+
+  it('does not flash rows that arrive in a grid that mounted empty', async () => {
+    // A sorted grid mounted while its query loads: the first real data is the
+    // baseline, not a batch of insertions.
+    let setData: ((fn: (prev: Row[]) => Row[]) => void) | undefined
+    await withElementSize(async () => {
+      render(
+        <Harness
+          initialData={[]}
+          initialSorting={[{ id: 'amount', desc: true }]}
+          onData={(fn) => {
+            setData = fn
+          }}
+        />,
+      )
+
+      setData!(() => baseData)
+      await waitFor(() => expect(rowOrder()).toEqual(['3', '2', '1']))
+
+      expect(document.querySelector('[data-tgx-just-added]')).toBeNull()
+      expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled()
+    })
+  })
+
+  it('flashes only the added row once a grid that mounted empty has rows', async () => {
+    let setData: ((fn: (prev: Row[]) => Row[]) => void) | undefined
+    await withElementSize(async () => {
+      render(
+        <Harness
+          initialData={[]}
+          initialSorting={[{ id: 'amount', desc: false }]}
+          onData={(fn) => {
+            setData = fn
+          }}
+        />,
+      )
+
+      setData!(() => baseData)
+      await waitFor(() => expect(rowOrder()).toEqual(['1', '2', '3']))
+
+      setData!((prev) => [...prev, { id: '4', name: 'Delta', amount: 25 }])
+      await waitFor(() => expect(rowOrder()).toEqual(['1', '2', '4', '3']))
+
+      const flashed = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-tgx-just-added]'),
+      ).map((el) => el.getAttribute('data-tgx-row'))
+      expect(flashed).toEqual(['4'])
+    })
+  })
 })

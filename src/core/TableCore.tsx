@@ -56,6 +56,7 @@ import type {
   ReadOnlyTableProps,
   RecordCountInfo,
   SaveEditFn,
+  TableColumnMeta,
   TableRowData,
 } from '../types'
 import { formatRecordCount, RECORD_COUNT_CLASS } from '../lib/recordCount'
@@ -116,6 +117,23 @@ function PinnedPane({
   )
 }
 
+/**
+ * The string an editor opens with: the column's `meta.getEditValue` when it
+ * supplies one, else the default `String(row[columnId])`.
+ *
+ * Kept as a free function rather than a hook so the edit-seed rule lives in one
+ * place — `beginEdit`, Tab-navigation and the unchanged-value comparison in
+ * `commitEdit` must all agree, and a drift between them shows up as an edit
+ * that silently no-ops (the "did it save?" bug) rather than as an error.
+ */
+function resolveEditValue<TRow extends TableRowData>(
+  row: TRow,
+  columnId: string,
+  meta: TableColumnMeta | undefined,
+): string {
+  return meta?.getEditValue?.(row, columnId) ?? getCellEditValue(row, columnId)
+}
+
 export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow> & {
   editable: boolean
   editableColumnIds?: string[]
@@ -124,6 +142,7 @@ export type TableCoreProps<TRow extends TableRowData> = ReadOnlyTableProps<TRow>
   singleClickEdit?: boolean
   columnGroups?: ColumnGroupDef[]
   getCellClassName?: (row: TRow, columnId: string) => string | undefined
+  isCellEditable?: (row: TRow, columnId: string) => boolean
   /** Internal — TabbedTable lifts column visibility into the tab strip. */
   controlledVisibility?: VisibilityState
   onControlledVisibilityChange?: OnChangeFn<VisibilityState>
@@ -233,7 +252,11 @@ type RowCellContext<TRow extends TableRowData> = {
   editorsDisabled: boolean
   isSubmitting: boolean
   singleClickEdit: boolean
-  canEditColumn: (columnId: string, meta: { editable?: boolean } | undefined) => boolean
+  canEditCell: (
+    row: TRow,
+    columnId: string,
+    meta: { editable?: boolean } | undefined,
+  ) => boolean
   onBeginEdit: (cell: Cell<TRow, unknown>) => void
   onCommitEdit: (
     cell: Cell<TRow, unknown>,
@@ -274,7 +297,7 @@ function renderBodyCell<TRow extends TableRowData>(
       cell={cell}
       width={width}
       isEditing={isEditingCell}
-      canEdit={ctx.canEditColumn(columnId, cell.column.columnDef.meta)}
+      canEdit={ctx.canEditCell(ctx.row.original, columnId, cell.column.columnDef.meta)}
       singleClickEdit={ctx.singleClickEdit}
       editorsDisabled={ctx.editorsDisabled}
       isSubmitting={ctx.isSubmitting}
@@ -397,7 +420,7 @@ function VirtualRowInner<TRow extends TableRowData>(props: VirtualRowProps<TRow>
         editorsDisabled={props.editorsDisabled}
         isSubmitting={props.isSubmitting}
         singleClickEdit={props.singleClickEdit}
-        canEditColumn={props.canEditColumn}
+        canEditCell={props.canEditCell}
         onBeginEdit={props.onBeginEdit}
         onCommitEdit={props.onCommitEdit}
         onCancelEdit={props.onCancelEdit}
@@ -522,6 +545,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
     singleClickEdit = false,
     columnGroups,
     getCellClassName,
+    isCellEditable,
     controlledVisibility,
     onControlledVisibilityChange,
     controlledSorting,
@@ -1240,6 +1264,8 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   editableColumnIdsSetRef.current = editableColumnIdsSet
   const columnAccessRef = useRef(columnAccess)
   columnAccessRef.current = columnAccess
+  const isCellEditableRef = useRef(isCellEditable)
+  isCellEditableRef.current = isCellEditable
   const onSaveEditRef = useRef(onSaveEdit)
   onSaveEditRef.current = onSaveEdit
   const savePendingRef = useRef(savePending)
@@ -1282,29 +1308,58 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
   const isEffectivelyEditable =
     editable && visibleLeafColumns.some((col) => canEditColumn(col.id, col.columnDef.meta))
 
+  const columnMetaById = useCallback(
+    (columnId: string): TableColumnMeta | undefined =>
+      visibleLeafColumnsRef.current.find((col) => col.id === columnId)?.columnDef.meta,
+    [],
+  )
+
+  // Per-cell gate: the column-level decision, then the host's optional
+  // `isCellEditable` veto. Ordering matters and is part of the contract —
+  // `isCellEditable` runs LAST and can only narrow, so it can never hand edit
+  // rights to a column that `columnAccess` governance or `editableColumnIds`
+  // has already withheld.
+  const canEditCell = useCallback(
+    (row: TRow, columnId: string, meta: { editable?: boolean } | undefined): boolean => {
+      if (!canEditColumn(columnId, meta)) return false
+      return isCellEditableRef.current?.(row, columnId) ?? true
+    },
+    [canEditColumn],
+  )
+
   const findAdjacentEditable = useCallback(
-    (columnId: string, nav: EditNavigation): string | null => {
+    (row: Row<TRow>, columnId: string, nav: EditNavigation): string | null => {
+      // Row-aware, so Tab steps OVER a cell the host has vetoed rather than
+      // opening an editor the commit path would then have to reject. A
+      // column-only filter here is what strands a user in a read-only cell.
       const editableCols = visibleLeafColumnsRef.current.filter(
-        (col) => col.id !== SELECTION_COLUMN_ID && canEditColumn(col.id, col.columnDef.meta),
+        (col) =>
+          col.id !== SELECTION_COLUMN_ID && canEditCell(row.original, col.id, col.columnDef.meta),
       )
       const index = editableCols.findIndex((col) => col.id === columnId)
       if (index === -1) return null
       const target = editableCols[nav === 'next' ? index + 1 : index - 1]
       return target?.id ?? null
     },
-    [canEditColumn],
+    [canEditCell],
   )
 
-  const beginEdit = useCallback((cell: Cell<TRow, unknown>) => {
-    // Guarded here (not via a per-cell disabled prop) so a pending save blocks
-    // new edits without re-rendering every visible cell on each save.
-    if (savePendingRef.current || isSubmittingRef.current) return
-    setEditing({
-      rowId: cell.row.id,
-      columnId: cell.column.id,
-      initialValue: getCellEditValue(cell.row.original, cell.column.id),
-    })
-  }, [])
+  const beginEdit = useCallback(
+    (cell: Cell<TRow, unknown>) => {
+      // Guarded here (not via a per-cell disabled prop) so a pending save blocks
+      // new edits without re-rendering every visible cell on each save.
+      if (savePendingRef.current || isSubmittingRef.current) return
+      // Defence in depth: BodyCell already withholds the affordance for a vetoed
+      // cell, but keyboard paths and host-driven calls reach this directly.
+      if (!canEditCell(cell.row.original, cell.column.id, cell.column.columnDef.meta)) return
+      setEditing({
+        rowId: cell.row.id,
+        columnId: cell.column.id,
+        initialValue: resolveEditValue(cell.row.original, cell.column.id, cell.column.columnDef.meta),
+      })
+    },
+    [canEditCell],
+  )
 
   const cancelEdit = useCallback(() => setEditing(null), [])
 
@@ -1313,12 +1368,16 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
       void (async () => {
         const moveOrClose = () => {
           if (nav) {
-            const targetId = findAdjacentEditable(columnId, nav)
+            const targetId = findAdjacentEditable(row, columnId, nav)
             if (targetId) {
               setEditing({
                 rowId: row.id,
                 columnId: targetId,
-                initialValue: getCellEditValue(row.original, targetId),
+                initialValue: resolveEditValue(
+                  row.original,
+                  targetId,
+                  columnMetaById(targetId),
+                ),
               })
               return
             }
@@ -1326,7 +1385,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
           setEditing(null)
         }
 
-        const initial = getCellEditValue(row.original, columnId)
+        const initial = resolveEditValue(row.original, columnId, columnMetaById(columnId))
         if (String(value) === initial) {
           moveOrClose()
           return
@@ -1352,7 +1411,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
         }
       })()
     },
-    [findAdjacentEditable],
+    [findAdjacentEditable, columnMetaById],
   )
 
   const commitEditForCell = useCallback(
@@ -1880,7 +1939,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                     isSomeSelected={row.getIsSomeSelected()}
                     isExpanded={row.getIsExpanded()}
                     justAdded={justAddedIds?.has(row.id) ?? false}
-                    canEditColumn={canEditColumn}
+                    canEditCell={canEditCell}
                     onBeginEdit={beginEdit}
                     onCommitEdit={commitEditForCell}
                     onCancelEdit={cancelEdit}
@@ -1922,7 +1981,7 @@ export function TableCore<TRow extends TableRowData>(props: TableCoreProps<TRow>
                       isSomeSelected={row.getIsSomeSelected()}
                       isExpanded={row.getIsExpanded()}
                       justAdded={justAddedIds?.has(row.id) ?? false}
-                      canEditColumn={canEditColumn}
+                      canEditCell={canEditCell}
                       onBeginEdit={beginEdit}
                       onCommitEdit={commitEditForCell}
                       onCancelEdit={cancelEdit}

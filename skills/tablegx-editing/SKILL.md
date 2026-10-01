@@ -7,7 +7,7 @@ description: >-
   Use when implementing editable grids, cell action buttons, or column meta.
 type: core
 library: tablegx
-library_version: "3.5.0"
+library_version: "3.7.1"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -128,6 +128,32 @@ Opt-in per-column override supplied by the host app (e.g. a permissions layer it
 ```
 
 A column id **absent** from `columnAccess` behaves exactly as it would with the prop omitted entirely — `editableColumnIds`/`meta.editable` still decide it. A column **present** is authoritative: `visible: false` removes it from the table completely (not just the visibility-picker toggle); `editable` is an **override, not a further restriction** — `editable: true` grants edit mode even if the column is absent from `editableColumnIds` or lacks `meta.editable`, and `editable: false` blocks it even if both of those would otherwise allow it. This is what lets a host retire a hardcoded `editableColumnIds` array one governed column at a time instead of maintaining it forever underneath governance. See tablegx-advanced/SKILL.md → Column access governance for the per-tab (`TabbedTable`/`IndependentTabbedTable`) form.
+
+### Per-cell editing control (`isCellEditable`, `getEditValue`, `getCellInputType`)
+
+`editableColumnIds`, `meta.editable`, `meta.inputType` and `columnAccess` are all column-shaped. That is right for a table of homogeneous records and wrong for a grid whose column is a *position* rather than a type — a spreadsheet view where one column holds a date, a currency amount and a `=SUM()` total on three consecutive rows. Three per-cell hooks refine the column-level decision:
+
+```tsx
+<EditableTable
+  editableColumnIds={['a', 'b']}
+  // Table-level prop: veto individual cells.
+  isCellEditable={(row, columnId) => row.__cells[columnId]?.kind !== 'formula'}
+  columns={[
+    textColumn('b', 'B', {
+      editable: true,
+      renderCell: (ctx) => formatCurrency(ctx.value),   // displays "$1,234.50"
+      getEditValue: (row) => String(row.bRaw),          // edits "1234.5"
+      getCellInputType: (row) => (typeof row.b === 'number' ? 'number' : 'text'),
+    }),
+  ]}
+/>
+```
+
+- **`isCellEditable(row, columnId)`** — return `false` and that one cell does not enter an editor on click, **Tab skips over it** rather than landing in it, and it shows no pencil affordance. It can only ever *further restrict*: it is consulted **after** `columnAccess` and `editableColumnIds`, so it cannot grant edit rights to a column governance already withheld. Also available per-tab on `TabbedTable`/`IndependentTabbedTable` editable tabs.
+- **`meta.getEditValue(row, columnId)`** — overrides the default `String(row[columnId])` edit seed. Pair with `renderCell` so a cell can *display* formatted text while its editor opens on the underlying literal. The unchanged-value comparison uses this too, so committing an untouched seeded value is still a no-op and never calls `onSaveEdit`.
+- **`meta.getCellInputType(row, columnId)`** — per-cell editor kind; return `undefined` to fall back to `meta.inputType`.
+
+Before these existed the only per-cell lever was a `pointer-events: none` class via `getCellClassName`, which stops the mouse but not the keyboard, and `onSaveEdit` returning `false` *keeps the editor open* — so a rejected cell trapped the user rather than refusing entry. Do not reach for those workarounds; use `isCellEditable`.
 
 ### Row height
 
