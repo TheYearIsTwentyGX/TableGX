@@ -620,6 +620,22 @@ export type IndependentTabBase<TRow extends TableRowData> = {
    */
   selectedRowIds?: string[]
   onSelectedRowIdsChange?: (ids: string[]) => void
+  /**
+   * Controlled column filters for this tab, the same contract as
+   * `ReadOnlyTable`'s `columnFilters`/`onColumnFiltersChange`. Omit both to
+   * keep this tab's filters uncontrolled (the default) — pass both to lift
+   * them into the caller, e.g. for a bulk action that must act on exactly the
+   * rows the user can see. Scoped to this tab alone, like `selectedRowIds`.
+   */
+  columnFilters?: ColumnFiltersState
+  onColumnFiltersChange?: Dispatch<SetStateAction<ColumnFiltersState>>
+  /**
+   * Controlled global-search text for this tab (only meaningful with
+   * `enableGlobalSearch`). Omit both to keep it uncontrolled; pass both to
+   * lift it into the caller. Scoped to this tab alone.
+   */
+  globalSearch?: string
+  onGlobalSearchChange?: (value: string) => void
 }
 
 export type ReadOnlyIndependentTab<TRow extends TableRowData> = IndependentTabBase<TRow> & {

@@ -11,7 +11,7 @@ description: >-
   navigation.
 type: core
 library: tablegx
-library_version: "3.7.1"
+library_version: "3.8.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -129,6 +129,8 @@ const tabs: IndependentTab[] = [
 The active tab can be uncontrolled (`defaultTabId`) or controlled (`activeTabId` + `onActiveTabChange`); `actions` renders right-aligned controls in the tab strip. `TabbedTable` exposes the same `activeTabId` / `defaultTabId` / `onActiveTabChange` / `actions` controls.
 
 **Row selection is per-tab, and independently controllable.** Each tab's `selectedRowIds`/`onSelectedRowIdsChange` (in its `independentTable()` config, as above) is entirely its own — selecting a row on one tab never touches another tab's selection, unlike `TabbedTable`'s group-level selection. Omit both to keep a tab's selection uncontrolled (internal state, e.g. for a simple "just let users check rows" case); pass both when the caller needs to read out or seed the checked set — a bulk-action toolbar, for instance, that applies one operation to every selected row and needs the list of ids.
+
+**Column filters and global search are independently controllable per tab too.** `columnFilters`/`onColumnFiltersChange` and `globalSearch`/`onGlobalSearchChange` in a tab's `independentTable()` config follow the same contract as `ReadOnlyTable`'s props of those names, scoped to that tab: omit a pair to keep it internal, pass both to own it. A controlled tab's filters drive its header filters, its filter badges (clearing a badge or **Clear all** calls your setter), and its rows. Use it when an action must cover exactly the rows the user can see — e.g. "Confirm all (N visible)" over the filtered rows of one tab.
 
 **Tab column preview** (both `TabbedTable` and `IndependentTabbedTable`, default off): `enableTabColumnPreview` shows a popover on tab-header hover listing that tab's hideable columns alphabetically, so users can tell what's on a tab without switching to it. `tabColumnPreviewDelayMs` sets the hover delay before it opens (default 600); `tabColumnPreviewPosition` places it `'above'`, `'below'`, or `'auto'` (default) relative to the tab strip. Columns with `enableHiding: false` are excluded from the list. The `TabColumnPreviewPosition` type is exported.
 
