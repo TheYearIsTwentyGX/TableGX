@@ -140,7 +140,8 @@ function resolveHeaderLabel<TRow extends TableRowData>(
 
 /**
  * The per-column minimum width contributed by the header: its label plus the
- * sort/filter affordances it renders. Pure; shared by {@link computeAutoWidths}
+ * sort/filter affordances it renders, plus any `meta.headerExtraWidth` the
+ * consumer reserves for icons or badges painted beside the label. Pure; shared by {@link computeAutoWidths}
  * (as the auto-width floor) and {@link computeHeaderFloors} (which hands the
  * same numbers to the frozen pane so scaling can never clip a pinned header).
  */
@@ -165,6 +166,9 @@ export function headerFloorWidth<TRow extends TableRowData>(
   if (label) width += measure(label, headerFont) + AUTO_WIDTH_SAFETY_MARGIN_PX
   if (col.enableSorting !== false) width += sortIconWidth
   if (col.enableColumnFilter === true) width += filterIconWidth
+  if (typeof meta.headerExtraWidth === 'number' && meta.headerExtraWidth > 0) {
+    width += meta.headerExtraWidth
+  }
   return Math.max(width, ABSOLUTE_MIN_COLUMN_WIDTH_PX)
 }
 

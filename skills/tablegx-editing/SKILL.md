@@ -7,7 +7,7 @@ description: >-
   Use when implementing editable grids, cell action buttons, or column meta.
 type: core
 library: tablegx
-library_version: "3.8.0"
+library_version: "3.9.0"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -57,6 +57,7 @@ const STATE_OPTIONS = ['TX', 'CA', 'NY'].map((s) => ({ label: s, value: s }))
 | --- | ------- |
 | `editable`, `inputType`, `selectOptions` | Inline editing |
 | `headerLabel` | Plain-text label for a custom (function/JSX) header when it should be measured differently from what it paints; `''` for icon-only headers |
+| `headerExtraWidth` | Extra px the header floor reserves for icons/badges painted beside a custom header's label |
 | `measureText(row)` | Auto-width string for custom/non-text cells |
 | `fixedMeasureWidth` | Fixed px width (icon/action columns) |
 | `measureWidth(row)` | Exact per-row content width (px) when width isn't a function of any text (sparkline, chips, image grid); takes precedence over the other two |

@@ -311,6 +311,34 @@ describe('computeAutoWidths', () => {
     expect(widths.get('tiny')).toBe(76)
   })
 
+  it('adds meta.headerExtraWidth on top of the measured label', () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [
+        fnCol('tiny', { enableColumnFilter: true, meta: { headerExtraWidth: 18 } }),
+        fnCol('name', { enableColumnFilter: true }),
+      ],
+      data,
+      measure,
+      headerLabels: new Map([
+        ['tiny', 'Co_Serial'],
+        ['name', 'Co_Serial'],
+      ]),
+    })
+    // pad 24 + "Co_Serial" 9*8=72 + margin 4 + sort 24 + filter 28 = 152; +18 icon room.
+    expect(widths.get('name')).toBe(152)
+    expect(widths.get('tiny')).toBe(170)
+  })
+
+  it("still reserves meta.headerExtraWidth when headerLabel is ''", () => {
+    const widths = computeAutoWidths<Row>({
+      columns: [fnCol('tiny', { meta: { headerLabel: '', headerExtraWidth: 40 } })],
+      data,
+      measure,
+    })
+    // Icon-only header: pad 24 + sort 24 + icon 40 = 88.
+    expect(widths.get('tiny')).toBe(88)
+  })
+
   it('falls back to columnLabel, then to the column id', () => {
     const viaColumnLabel = computeAutoWidths<Row>({
       columns: [fnCol('tiny')],
@@ -372,6 +400,16 @@ describe('computeHeaderFloors', () => {
     expect(computeAutoWidths<Row>(options).get('Coinsurance')).toBe(floors.get('Coinsurance'))
     // pad 24 + "Name" 32 + margin 4 + sort 24 = 84, below the content width 140.
     expect(floors.get('name')).toBe(84)
+  })
+
+  it('includes meta.headerExtraWidth so a frozen header keeps its icons clear', () => {
+    const floors = computeHeaderFloors<Row>({
+      columns: [col('tiny', 'Name', { meta: { headerExtraWidth: 18 } })],
+      data,
+      measure,
+    })
+    // pad 24 + "Name" 32 + margin 4 + sort 24 = 84; +18 icon room.
+    expect(floors.get('tiny')).toBe(102)
   })
 
   it('ignores includeHeaderInAutosize — the floor is the header, always', () => {
