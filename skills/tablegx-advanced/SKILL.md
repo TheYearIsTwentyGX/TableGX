@@ -11,7 +11,7 @@ description: >-
   navigation.
 type: core
 library: tablegx
-library_version: "3.9.0"
+library_version: "3.9.1"
 sources:
   - "README.md"
   - "src/types.ts"
