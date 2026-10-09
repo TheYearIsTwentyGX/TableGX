@@ -111,6 +111,15 @@ export type TableColumnMeta = {
    * icon-only header, which opts the column out of the label floor entirely.
    */
   headerLabel?: string
+  /**
+   * Extra width (px) to reserve in this column's header floor for non-text
+   * content a custom header paints beside its label — icons, badges, a count
+   * pill. Auto-sizing measures only the label text, so without this a column
+   * whose data is narrow lets that content slide under the sort/filter buttons.
+   * Added on top of the measured label (and still applied when `headerLabel` is
+   * `''`), so it raises both the auto-width floor and the frozen-pane floor.
+   */
+  headerExtraWidth?: number
   /** Returns the underlying string that should be measured for non-text cells. */
   measureText?: (row: TableRowData) => string
   /** Fixed content width (px, excluding cell chrome/padding) used instead of measuring. */

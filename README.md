@@ -195,6 +195,7 @@ All custom per-column behavior lives in the column def's `meta` (typed via modul
 | --- | --- |
 | `editable`, `inputType`, `selectOptions` | Inline editing |
 | `headerLabel` | Plain-text stand-in for a custom (function/JSX) header when the measured label should differ from the painted one; `''` opts an icon-only header out of the label floor |
+| `headerExtraWidth` | Extra px reserved in the header floor for icons/badges a custom header paints beside its label (also raises the frozen-pane floor) |
 | `measureText(row)` | String to measure for non-text cells (badges, custom renders) |
 | `fixedMeasureWidth` | Fixed content width (px); skips sampling (icon/action columns) |
 | `maxColumnWidth` | Per-column auto-size clamp (the measured header width is always the floor) |

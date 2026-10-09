@@ -11,7 +11,7 @@ description: >-
   navigation.
 type: core
 library: tablegx
-library_version: "3.8.0"
+library_version: "3.9.1"
 sources:
   - "README.md"
   - "src/types.ts"
@@ -289,7 +289,7 @@ import {
 
 `includeHeaderInAutosize` (default true; on `ReadOnlyTable`, `TabbedTable`, and per `IndependentTab`) makes the header label plus its sort/filter icons a floor on each column's auto-sized width. Set false to size columns purely from data-cell content — a too-narrow header then truncates and its icons fall back to a floating right-aligned overlay instead of being hidden. Build-time prop, not a user-facing toggle.
 
-The label being measured is not limited to a string `header`: a function/JSX header is measured from the text it actually paints (read from the rendered header cell), falling back to the table's `columnLabel(id)` and then the column id for a column that has not been rendered yet. Set `meta.headerLabel` when the measured label should differ from the painted one, including `''` for an icon-only header that should reserve no label room. This matters most for a column whose cells are all empty: with no content width to fall back on, the header floor is the only thing holding the column open.
+The label being measured is not limited to a string `header`: a function/JSX header is measured from the text it actually paints (read from the rendered header cell), falling back to the table's `columnLabel(id)` and then the column id for a column that has not been rendered yet. Set `meta.headerLabel` when the measured label should differ from the painted one, including `''` for an icon-only header that should reserve no label room. Only text is measured, so icons or badges painted beside the label need `meta.headerExtraWidth` (px) — otherwise a narrow-data column, and especially a frozen one floored at exactly this width, slides them under the sort/filter buttons. This matters most for a column whose cells are all empty: with no content width to fall back on, the header floor is the only thing holding the column open.
 
 The frozen pane's `FROZEN_PANE_MAX_FRACTION` shrink also respects these floors — a pinned column is never scaled below its own header width, so the pane grows past the cap rather than clipping a pinned label.
 
