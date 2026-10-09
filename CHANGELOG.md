@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Changing only a column's `meta.headerExtraWidth` (e.g. header icons that
+  appear once a second query resolves, after the rows) did not re-measure the
+  column, so the new icons stayed under the sort/filter buttons until something
+  else triggered a recompute.
+
 ## [3.9.1] — 2026-10-08
 
 ### Added

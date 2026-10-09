@@ -485,4 +485,24 @@ describe('useAutoColumnWidths', () => {
       container.remove()
     }
   })
+
+  it('remeasures when only meta.headerExtraWidth changes', () => {
+    // Header icons often depend on metadata from a second query that lands
+    // after the rows, so the same data and ids must still pick up the new room.
+    const { result, rerender } = renderHook(
+      ({ extra }: { extra: number }) =>
+        useAutoColumnWidths<Row>({
+          columns: [fnCol('tiny', { meta: { headerLabel: 'Name', headerExtraWidth: extra } })],
+          data,
+          measure,
+        }),
+      { initialProps: { extra: 0 } },
+    )
+    // pad 24 + "Name" 32 + margin 4 + sort 24 = 84.
+    expect(result.current?.headerFloors.get('tiny')).toBe(84)
+
+    rerender({ extra: 36 })
+    expect(result.current?.widths.get('tiny')).toBe(120)
+    expect(result.current?.headerFloors.get('tiny')).toBe(120)
+  })
 })

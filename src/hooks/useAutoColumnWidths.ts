@@ -388,14 +388,15 @@ export function useAutoColumnWidths<TRow extends TableRowData>(
   // captureHeaderLabels for why this outlives a single measurement pass.
   const headerLabels = useRef<Map<string, string>>(new Map())
 
-  // Keyed by id *and* label so renaming a header without changing its id still
-  // retriggers measurement.
+  // Keyed by id, label *and* headerExtraWidth so renaming a header, or a header
+  // gaining icons once async metadata arrives, retriggers measurement without
+  // its id changing.
   const columnsKey = options.columns
     .map((col) => {
       const meta = (col.meta ?? {}) as TableColumnMeta
       const label =
         typeof col.header === 'string' ? col.header : (meta.headerLabel ?? '')
-      return `${getColumnId(col)}\u0001${label}`
+      return `${getColumnId(col)}\u0001${label}\u0001${meta.headerExtraWidth ?? ''}`
     })
     .join('\u0000')
 
