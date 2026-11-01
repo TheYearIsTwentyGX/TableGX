@@ -7,6 +7,7 @@ import {
   independentTable,
 } from '../src/components/IndependentTabbedTable'
 import { textColumn, numberColumn } from '../src/lib/columns'
+import type { ColumnFiltersState } from '@tanstack/react-table'
 import type { MeasureTextFn } from '../src/types'
 
 const measure: MeasureTextFn = (text) => text.length * 8
@@ -319,6 +320,105 @@ describe('IndependentTabbedTable independence', () => {
       await waitFor(() =>
         expect(within(activeTable(container)).queryByText('Bravo')).toBeInTheDocument(),
       )
+    })
+  })
+
+  it('supports controlled column filters, lifted per tab into the caller', async () => {
+    await withElementSize(async () => {
+      const user = userEvent.setup()
+      let lastPeopleFilters: unknown = undefined
+
+      function Harness() {
+        const [peopleFilters, setPeopleFilters] = useState<ColumnFiltersState>([
+          { id: 'name', value: { text: 'Alpha', checkedValues: null } },
+        ])
+        lastPeopleFilters = peopleFilters
+        const tabs = [
+          independentTable<Person>({
+            id: 'people',
+            label: 'People',
+            data: people,
+            getRowId: (r) => r.id,
+            columns: [textColumn<Person>('name', 'Name')],
+            columnFilters: peopleFilters,
+            onColumnFiltersChange: setPeopleFilters,
+            measure,
+          }),
+          independentTable<Order>({
+            id: 'orders',
+            label: 'Orders',
+            data: orders,
+            getRowId: (r) => r.ref,
+            columns: [textColumn<Order>('ref', 'Ref')],
+            measure,
+          }),
+        ]
+        return <IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+      }
+
+      const { container, getByRole } = render(<Harness />)
+
+      // The caller's seeded filter narrows the rows and shows as a badge.
+      await waitFor(() => expect(within(activeTable(container)).getByText('Alpha')).toBeInTheDocument())
+      expect(within(activeTable(container)).queryByText('Bravo')).toBeNull()
+
+      // Clearing the badge writes back to the caller's state, not internal state.
+      await user.click(screen.getByRole('button', { name: /^Clear filter: Name/ }))
+      await waitFor(() => expect(lastPeopleFilters).toEqual([]))
+      await waitFor(() => expect(within(activeTable(container)).getByText('Bravo')).toBeInTheDocument())
+
+      // The other tab is unaffected and keeps its own (uncontrolled) filters.
+      await user.click(getByRole('button', { name: 'Orders' }))
+      await waitFor(() => expect(within(activeTable(container)).getByText('A-200')).toBeInTheDocument())
+    })
+  })
+
+  it('supports controlled global search, lifted per tab into the caller', async () => {
+    await withElementSize(async () => {
+      const user = userEvent.setup()
+
+      function Harness() {
+        const [peopleSearch, setPeopleSearch] = useState('')
+        const tabs = [
+          independentTable<Person>({
+            id: 'people',
+            label: 'People',
+            data: people,
+            getRowId: (r) => r.id,
+            columns: [textColumn<Person>('name', 'Name')],
+            enableGlobalSearch: true,
+            globalSearch: peopleSearch,
+            onGlobalSearchChange: setPeopleSearch,
+            measure,
+          }),
+          independentTable<Order>({
+            id: 'orders',
+            label: 'Orders',
+            data: orders,
+            getRowId: (r) => r.ref,
+            columns: [textColumn<Order>('ref', 'Ref')],
+            enableGlobalSearch: true,
+            measure,
+          }),
+        ]
+        return (
+          <>
+            <IndependentTabbedTable tabs={tabs} defaultTabId="people" />
+            <div data-testid="people-search">{peopleSearch}</div>
+          </>
+        )
+      }
+
+      const { container, getByRole, getByTestId } = render(<Harness />)
+
+      await user.type(screen.getByRole('searchbox'), 'brav')
+      await waitFor(() => expect(getByTestId('people-search').textContent).toBe('brav'))
+      await waitFor(() => expect(within(activeTable(container)).queryByText('Alpha')).toBeNull())
+
+      // Orders' search stays its own (empty) value.
+      await user.click(getByRole('button', { name: 'Orders' }))
+      await waitFor(() => expect(screen.getByRole('searchbox')).toHaveValue(''))
+      expect(getByTestId('people-search').textContent).toBe('brav')
     })
   })
 })

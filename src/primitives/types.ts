@@ -96,6 +96,15 @@ export type TableTabModel = {
    */
   selectedRowIds?: string[]
   onSelectedRowIdsChange?: (ids: string[]) => void
+  /**
+   * Controlled column filters / global search for this tab in independent
+   * mode; undefined keeps each uncontrolled (internal per-tab state). Ignored
+   * in shared mode, whose filters intersect across tabs.
+   */
+  columnFilters?: ColumnFiltersState
+  onColumnFiltersChange?: Dispatch<SetStateAction<ColumnFiltersState>>
+  globalSearch?: string
+  onGlobalSearchChange?: (value: string) => void
   /** True when this tab opts into the built-in global search bar. */
   enableGlobalSearch: boolean
   /** Placeholder for this tab's global-search input. */

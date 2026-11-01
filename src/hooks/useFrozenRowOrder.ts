@@ -40,7 +40,9 @@ interface Committed<TRow extends TableRowData> {
  * response to a real sort action or a column-set change — never from a data
  * value change alone. New row ids are inserted at their comparator-correct
  * slot without disturbing the relative order of existing rows; removed ids
- * just drop out.
+ * just drop out. While no rows have been committed yet (e.g. the grid mounted
+ * with empty data while its query loads), incoming data is a fresh baseline
+ * rather than a batch of insertions, so it is sorted and never flashed.
  */
 export function useFrozenRowOrder<TRow extends TableRowData>({
   data,
@@ -79,7 +81,9 @@ export function useFrozenRowOrder<TRow extends TableRowData>({
     const committed = committedRef.current
     const sortChanged = !committed || committed.sorting !== sorting || committed.columns !== columns
 
-    if (sortChanged) {
+    // An empty committed order means nothing has been shown yet: there are no
+    // existing rows to insert among, so treat the data as a new baseline.
+    if (sortChanged || committed.order.length === 0) {
       const order = valueTable.getSortedRowModel().rows.map((row) => row.id)
       committedRef.current = { sorting, columns, order }
       return { data: toRows(order), justInsertedRowIds: null }

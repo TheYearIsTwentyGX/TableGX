@@ -6,9 +6,16 @@ import {
   useId,
   useMemo,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from 'react'
-import type { OnChangeFn, SortingState, VisibilityState } from '@tanstack/react-table'
+import type {
+  ColumnFiltersState,
+  OnChangeFn,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/react-table'
 import type { ColumnVisibilityItem } from '../core/ColumnVisibilityPicker'
 import type { FilterBadgeItem } from '../core/FilterBadges'
 import { useSharedTabFilters } from '../hooks/useSharedTabFilters'
@@ -159,9 +166,10 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
   const getSearch = useCallback(
     (tabId: string): string => {
       if (mode === 'shared') return sharedSearch
-      return searchByTab[tabId] ?? ''
+      const tab = tabs.find((t) => t.id === tabId)
+      return tab?.globalSearch ?? searchByTab[tabId] ?? ''
     },
-    [mode, sharedSearch, searchByTab],
+    [mode, sharedSearch, searchByTab, tabs],
   )
 
   const setSearch = useMemo(() => {
@@ -174,13 +182,18 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
             setSharedSearchState(value)
             return
           }
+          const tab = tabs.find((t) => t.id === tabId)
+          if (tab?.globalSearch !== undefined) {
+            tab.onGlobalSearchChange?.(value)
+            return
+          }
           setSearchByTab((prev) => ({ ...prev, [tabId]: value }))
         }
         cache.set(tabId, fn)
       }
       return fn
     }
-  }, [mode])
+  }, [mode, tabs])
 
   // ----- Selection (shared group-level vs per-tab) -----
   const [internalSelected, setInternalSelected] = useState<string[]>([])
@@ -230,11 +243,11 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
   // ----- Filters (per-tab in both modes; intersected for display in shared mode) -----
   const filterSource = sharedFilterSource ?? { data: [], getRowId: (r: unknown) => r, tabs: [] }
   const {
-    filtersByTab,
-    setFiltersForTab,
+    filtersByTab: internalFiltersByTab,
+    setFiltersForTab: setInternalFiltersForTab,
     dataForTab,
     activeFilters,
-    clearFilter,
+    clearFilter: clearInternalFilter,
     clearAll,
   } = useSharedTabFilters({
     // The hook only reads `tabs`/`data` for the intersection used in shared mode;
@@ -246,6 +259,50 @@ export function TableProvider({ children, ...config }: TableProviderProps) {
       | ((row: never) => never[] | undefined)
       | undefined,
   })
+
+  // An independent tab that passes `columnFilters` owns its filters: its value
+  // replaces the internal entry wherever filters are read (body, badges), and
+  // every write (header filter, badge clear, clear-all) goes to its callback.
+  const filtersByTab = useMemo(() => {
+    if (mode === 'shared') return internalFiltersByTab
+    const controlled = tabs.filter((t) => t.columnFilters !== undefined)
+    if (controlled.length === 0) return internalFiltersByTab
+    const out = { ...internalFiltersByTab }
+    for (const t of controlled) out[t.id] = t.columnFilters ?? []
+    return out
+  }, [mode, tabs, internalFiltersByTab])
+
+  const setFiltersForTab = useMemo(() => {
+    const cache = new Map<string, Dispatch<SetStateAction<ColumnFiltersState>>>()
+    return (tabId: string): Dispatch<SetStateAction<ColumnFiltersState>> => {
+      let fn = cache.get(tabId)
+      if (!fn) {
+        const tab = mode === 'shared' ? undefined : tabs.find((t) => t.id === tabId)
+        const controlled = tab?.columnFilters
+        fn =
+          controlled !== undefined
+            ? (updater) =>
+                tab?.onColumnFiltersChange?.(
+                  typeof updater === 'function' ? updater(controlled) : updater,
+                )
+            : setInternalFiltersForTab(tabId)
+        cache.set(tabId, fn)
+      }
+      return fn
+    }
+  }, [mode, tabs, setInternalFiltersForTab])
+
+  const clearFilter = useCallback(
+    (tabId: string, columnId: string) => {
+      const tab = mode === 'shared' ? undefined : tabs.find((t) => t.id === tabId)
+      if (tab?.columnFilters !== undefined) {
+        tab.onColumnFiltersChange?.(tab.columnFilters.filter((f) => f.id !== columnId))
+        return
+      }
+      clearInternalFilter(tabId, columnId)
+    },
+    [mode, tabs, clearInternalFilter],
+  )
 
   // ----- Per-tab column visibility, persisted under each tab's storage key -----
   const [visibilityByTab, setVisibilityByTab] = useState<Record<string, VisibilityState>>(() =>
