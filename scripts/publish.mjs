@@ -26,7 +26,6 @@ const HOME_SCOPE = '@twentygx'
 
 const TARGETS = {
   npm: { scope: '@twentygx', registry: 'https://registry.npmjs.org/' },
-  tutera: { scope: '@tutera', registry: 'http://52.165.90.230:4873/' },
 }
 
 const [target = 'all', ...passthrough] = process.argv.slice(2)
