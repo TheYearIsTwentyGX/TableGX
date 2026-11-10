@@ -1,17 +1,15 @@
 #!/usr/bin/env node
-// Publish the SAME package ("tablegx") under different scopes to different registries:
-//   - @twentygx/tablegx -> npm registry (https://registry.npmjs.org/)
-//   - @tutera/tablegx    -> private @tutera registry
+// Publish @twentygx/tablegx to the npm registry (https://registry.npmjs.org/).
 //
-// Registry auth lives in .npmrc via env interpolation (NPM_TOKEN, TUTERA_AUTH);
-// no tokens are stored here. package.json's `name` scope is swapped per target and
-// always normalized back to the canonical @twentygx scope afterwards — even if a
+// Registry auth lives in .npmrc via env interpolation (NPM_TOKEN); no tokens are
+// stored here. Targets are keyed by scope so another registry can be added to
+// TARGETS later; package.json's `name` scope is swapped per target and always
+// normalized back to the canonical @twentygx scope afterwards — even if a
 // previous run was killed mid-publish and left the file swapped.
 //
 //   node scripts/publish.mjs                 publish to all targets
-//   node scripts/publish.mjs npm             publish only the @twentygx (npm) build
-//   node scripts/publish.mjs tutera          publish only the @tutera build
-//   node scripts/publish.mjs all --dry-run   extra flags (e.g. --dry-run, --otp=123456) pass through
+//   node scripts/publish.mjs npm             publish only the npm build
+//   node scripts/publish.mjs npm --dry-run   extra flags (e.g. --dry-run, --otp=123456) pass through
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
