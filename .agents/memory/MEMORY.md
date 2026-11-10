@@ -1,4 +1,3 @@
-- [Multi-registry publishing](multi-registry-publishing.md) — same package "tablegx" published under two scopes; @twentygx is the canonical on-disk scope; @tutera goes to a private registry.
 - [Dark mode class placement](dark-mode-tokens.md) — toggle `.dark` on `<html>`, not a nested div, or `<body>` + Radix portals stay light.
 - [Auto-width font measurement](autowidth-font-measurement.md) — library sets no font-family; measure auto-column text in the consumer's inherited rendered font + safety margin + re-measure on fonts.ready.
 - [Frozen pane split is identity-based](frozen-pane-split.md) — the frozen pane is the visible intersection of a canonical frozen id set, never a positional slice of visible columns.

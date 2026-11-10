@@ -294,8 +294,7 @@ or coordinate across tabs the way selection/sorting/scroll-jump are.
   function. No existing prop, type, or behavior changes when `columnAccess`
   is omitted.
 - Minor version bump (this is a new feature, not a breaking change) —
-  `@tutera/tablegx` is consumed from a private registry; downstream
-  consumers (LTCDataPlus and any others) pick it up on their next dependency
+  downstream consumers (LTCDataPlus and any others) pick it up on their next dependency
   bump, at their own pace.
 - Since this package may have consumers beyond LTCDataPlus, the public API
   surface (`ColumnAccessMap`, the prop name, `getColumnId`'s export) is
